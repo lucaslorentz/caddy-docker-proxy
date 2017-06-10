@@ -1,0 +1,15 @@
+package: github.com/lucaslorentz/caddy-docker-proxy
+import:
+- package: github.com/caddyserver/dnsproviders
+  subpackages:
+  - route53
+- package: github.com/docker/docker
+  version: ~17.5.0-ce-rc3
+  subpackages:
+  - api/types
+  - api/types/swarm
+  - client
+- package: github.com/mholt/caddy
+  version: f4b6f15e07b91976d6579c8445a3321dcc63d8ae
+  subpackages:
+  - caddy/caddymain
