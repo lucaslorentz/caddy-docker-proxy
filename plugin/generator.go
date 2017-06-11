@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"html/template"
+	"log"
+	"sort"
 	"strings"
 
 	"github.com/docker/docker/api/types"
@@ -45,41 +48,152 @@ func addError(buffer *bytes.Buffer, e error) {
 }
 
 func addServiceToCaddyFile(buffer *bytes.Buffer, service *swarm.Service) {
+	var rootDirective = parseDirectives(service)
+	for _, directive := range rootDirective.children {
+		writeDirective(buffer, directive, 0)
+	}
+}
+
+func parseDirectives(service *swarm.Service) *Directive {
+	rootDirective := &Directive{}
+
 	address := service.Spec.Labels["caddy.address"]
-	if address == "" {
-		return
-	}
-
 	targetPort := service.Spec.Labels["caddy.targetport"]
-	targetPath := service.Spec.Labels["caddy.targetpath"]
 
-	buffer.WriteString(fmt.Sprintf("%s {\n", address))
-	buffer.WriteString(fmt.Sprintf("  proxy / %s:%s%s {\n", service.Spec.Name, targetPort, targetPath))
-	buffer.WriteString("    transparent\n")
+	if address != "" && targetPort != "" {
+		targetPath := service.Spec.Labels["caddy.targetpath"]
 
-	if healthcheck, ok := service.Spec.Labels["caddy.healthcheck"]; ok {
-		buffer.WriteString(fmt.Sprintf("    healthcheck %s\n", healthcheck))
+		proxyDirective := &Directive{
+			name: "proxy",
+			args: fmt.Sprintf("/ %s:%s%s", service.Spec.Name, targetPort, targetPath),
+			children: map[string]*Directive{
+				"transparent": &Directive{
+					name: "transparent",
+				},
+			},
+		}
+
+		siteDirective := &Directive{
+			name: address,
+			children: map[string]*Directive{
+				"proxy": proxyDirective,
+				"gzip": &Directive{
+					name: "gzip",
+				},
+			},
+		}
+
+		rootDirective.children = map[string]*Directive{
+			"caddy": siteDirective,
+		}
+
+		delete(service.Spec.Labels, "caddy.address")
+		delete(service.Spec.Labels, "caddy.targetport")
+		delete(service.Spec.Labels, "caddy.targetpath")
 	}
 
-	if _, ok := service.Spec.Labels["caddy.websocket"]; ok {
-		buffer.WriteString("    websocket\n")
+	parseAutomappedDirectives(service, rootDirective)
+
+	return rootDirective
+}
+
+func getOrCreateDirective(directive *Directive, path string) {
+	for i, p := range strings.Split(path, ".") {
+		if d, ok := directive.children[p]; ok {
+			directive = d
+		} else {
+			if directive.children == nil {
+				directive.children = map[string]*Directive{}
+			}
+			var newDirective = Directive{}
+			if i > 0 {
+				newDirective.name = removeSuffix(p)
+			}
+			directive.children[p] = &newDirective
+			directive = &newDirective
+		}
 	}
+}
 
-	buffer.WriteString("  }\n")
-	buffer.WriteString("  gzip\n")
-
-	if basicAuth, ok := service.Spec.Labels["caddy.basicauth"]; ok {
-		buffer.WriteString(fmt.Sprintf("  basicauth / %s\n", basicAuth))
+func parseAutomappedDirectives(service *swarm.Service, rootDirective *Directive) {
+	for label, value := range service.Spec.Labels {
+		if !strings.HasPrefix(label, "caddy") {
+			continue
+		}
+		directive := rootDirective
+		path := strings.Split(label, ".")
+		for i, p := range path {
+			if d, ok := directive.children[p]; ok {
+				directive = d
+			} else {
+				if directive.children == nil {
+					directive.children = map[string]*Directive{}
+				}
+				var newDirective = Directive{}
+				if i > 0 {
+					newDirective.name = removeSuffix(p)
+				}
+				directive.children[p] = &newDirective
+				directive = &newDirective
+			}
+		}
+		directive.args = processVariables(service, value)
 	}
+}
 
-	tls := service.Spec.Labels["caddy.tls"]
-	if tlsDNS, ok := service.Spec.Labels["caddy.tls.dns"]; ok {
-		buffer.WriteString(fmt.Sprintf("  tls %s {\n", tls))
-		buffer.WriteString(fmt.Sprintf("    dns %s\n", tlsDNS))
-		buffer.WriteString("  }\n")
-	} else if tls != "" {
-		buffer.WriteString(fmt.Sprintf("  tls %s\n", tls))
+func processVariables(service *swarm.Service, content string) string {
+	t, err := template.New("").Parse(content)
+	if err != nil {
+		log.Println(err)
+		return content
 	}
+	var writer bytes.Buffer
+	t.Execute(&writer, service)
+	return writer.String()
+}
 
-	buffer.WriteString("}\n")
+func writeDirective(buffer *bytes.Buffer, directive *Directive, level int) {
+	buffer.WriteString(strings.Repeat(" ", level*2))
+	if directive.name != "" {
+		buffer.WriteString(directive.name)
+	}
+	if directive.name != "" && directive.args != "" {
+		buffer.WriteString(" ")
+	}
+	if directive.args != "" {
+		buffer.WriteString(directive.args)
+	}
+	if directive.children != nil {
+		buffer.WriteString(" {\n")
+		for _, name := range getSortedKeys(&directive.children) {
+			subdirective := directive.children[name]
+			writeDirective(buffer, subdirective, level+1)
+		}
+		buffer.WriteString(strings.Repeat(" ", level*2) + "}")
+	}
+	buffer.WriteString("\n")
+}
+
+func removeSuffix(name string) string {
+	return strings.Split(name, "_")[0]
+}
+
+func getSortedKeys(m *map[string]*Directive) []string {
+	var keys = getKeys(m)
+	sort.Strings(keys)
+	return keys
+}
+
+func getKeys(m *map[string]*Directive) []string {
+	var keys []string
+	for k := range *m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+type Directive struct {
+	name     string
+	args     string
+	children map[string]*Directive
 }
