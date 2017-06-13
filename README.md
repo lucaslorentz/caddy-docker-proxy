@@ -4,15 +4,15 @@
 Caddy docker proxy is a caddy plugin that generates caddy config files from Docker Swarm Services metadata, making caddy act as a docker proxy.
 
 ## Supported metadata
-# labels
-caddy.address: list of addresses that should be proxied to that service
-caddy.targetport: the port that is being served
-caddy.targetpath: the path to add to the proxied urls
-caddy.healthcheck: healthcheck url
-caddy.websocket: set to enable websockets
-caddy.basicauth: username password
-caddy.tls: off
-caddy.tls.dns: dns value
+| Label        | Example           | Description  |
+| -------------|-------------| -----|
+| caddy.address | service.test.com | list of addresses that should be proxied to that service |
+| caddy.targetport | 80 | the port being serverd by the service |
+| caddy.targetpath | /api | the path being served by the service |
+| caddy.websocket | (empty) | enable websocket proxxy |
+| caddy.basicauth | username password | enable basic auth |
+| caddy.tls | off | disable automatic TLS |
+| caddy.tls.dns | route53 | use a dns provider for automatic TLS |
 
 ## Test it
 
