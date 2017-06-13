@@ -23,7 +23,7 @@ docker network create --driver overlay caddy
 
 Run caddy proxy:
 ```
-docker service create --name docker-caddy --constraint=node.role==manager --publish 2015:2015 --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock --network caddy lucaslorentz/docker-caddy -log stdout
+docker service create --name caddy-docker-proxy --constraint=node.role==manager --publish 2015:2015 --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock --network caddy lucaslorentz/caddy-docker-proxy -log stdout
 ```
 
 Create services:
