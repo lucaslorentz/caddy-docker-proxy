@@ -1,5 +1,10 @@
 # CADDY-DOCKER-PROXY
 
+## WIP
+This is on experimental stage.  
+I'm doing some tests and deciding the metadata format.  
+We don't have any oficial release yet, but you can find the testing image here: https://hub.docker.com/r/lucaslorentz/caddy-docker-proxy/
+
 ## Introduction
 Caddy docker proxy is a caddy plugin that generates caddy config files from Docker Swarm Services metadata, making caddy act as a docker proxy.
 
