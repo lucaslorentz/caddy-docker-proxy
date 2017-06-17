@@ -19,6 +19,16 @@ Caddy docker proxy is a caddy plugin that generates caddy config files from Dock
 | caddy.tls | off | disable automatic TLS |
 | caddy.tls.dns | route53 | use a dns provider for automatic TLS |
 
+## Build it
+You can use our caddy build wrapper **build.sh** and include extra plugins on https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/main.go#L5
+
+Or, you can build from caddy repository and import  **caddy-docker-proxy** plugin on file https://github.com/mholt/caddy/blob/master/caddy/caddymain/run.go :
+```
+import (
+  _ "github.com/lucaslorentz/caddy-docker-proxy/plugin"
+)
+```
+
 ## Test it
 
 Create caddy network:
