@@ -1,5 +1,5 @@
-hash: ed67fbaf9be4e76f2d18aa2eefd013f43e9ccfd996bdfcddc498203221bc0025
-updated: 2017-06-10T12:19:23.7002798+02:00
+hash: b5a6e36e3fb54ec2ddac3bac5233c1771c157e9c8e2b82058f2a0e139a12a633
+updated: 2017-07-01T20:22:11.4079288+02:00
 imports:
 - name: github.com/aead/chacha20
   version: d31a916ded42d1640b9d89a26f8abd53cc96790c
@@ -187,6 +187,10 @@ imports:
   repo: https://github.com/russross/blackfriday
 - name: github.com/Sirupsen/logrus
   version: 85b1699d505667d13f8ac4478c1debbf85d6c5de
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
 - name: github.com/xenolf/lego
   version: aaa8e70aec58a858b6bef0706b367dd5e8d58128
   subpackages:
@@ -244,4 +248,12 @@ imports:
 - name: gopkg.in/yaml.v2
   version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
   repo: https://gopkg.in/yaml.v2
-testImports: []
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
