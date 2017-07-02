@@ -1,5 +1,5 @@
-hash: b5a6e36e3fb54ec2ddac3bac5233c1771c157e9c8e2b82058f2a0e139a12a633
-updated: 2017-07-01T20:22:11.4079288+02:00
+hash: 6c8ec78b96a37512f04e44662d892414c6fb9db170ffad917965331fcf5389c6
+updated: 2017-07-02T02:54:27.727929+02:00
 imports:
 - name: github.com/aead/chacha20
   version: d31a916ded42d1640b9d89a26f8abd53cc96790c
@@ -129,7 +129,7 @@ imports:
   version: d2f86524cced5186554df90d92529757d22c1cb6
   repo: https://github.com/lucas-clemente/quic-go-certificates
 - name: github.com/mholt/caddy
-  version: f4b6f15e07b91976d6579c8445a3321dcc63d8ae
+  version: dfa389c9df67470bf2b357c08e2efe205181894d
   subpackages:
   - caddy/caddymain
   - caddyfile
@@ -156,6 +156,7 @@ imports:
   - caddyhttp/proxy
   - caddyhttp/push
   - caddyhttp/redirect
+  - caddyhttp/requestid
   - caddyhttp/rewrite
   - caddyhttp/root
   - caddyhttp/staticfiles
@@ -178,6 +179,9 @@ imports:
   repo: https://github.com/naoina/toml
   subpackages:
   - ast
+- name: github.com/nu7hatch/gouuid
+  version: 179d4d0c4d8d407a32af483c2354df1d2c91e6c3
+  repo: https://github.com/nu7hatch/gouuid
 - name: github.com/opencontainers/go-digest
   version: 279bed98673dd5bef374d3b6e4b09e2af76183bf
 - name: github.com/pkg/errors
@@ -187,10 +191,6 @@ imports:
   repo: https://github.com/russross/blackfriday
 - name: github.com/Sirupsen/logrus
   version: 85b1699d505667d13f8ac4478c1debbf85d6c5de
-- name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
-  subpackages:
-  - assert
 - name: github.com/xenolf/lego
   version: aaa8e70aec58a858b6bef0706b367dd5e8d58128
   subpackages:
@@ -237,7 +237,7 @@ imports:
   - unicode/norm
   - unicode/rangetable
 - name: gopkg.in/natefinch/lumberjack.v2
-  version: dd45e6a67c53f673bb49ca8a001fd3a63ceb640e
+  version: df99d62fd42d8b3752c8a42c6723555372c02a03
   repo: https://gopkg.in/natefinch/lumberjack.v2
 - name: gopkg.in/square/go-jose.v1
   version: aa2e30fdd1fe9dd3394119af66451ae790d50e0d
@@ -257,3 +257,7 @@ testImports:
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
   - difflib
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
