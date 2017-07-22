@@ -14,17 +14,21 @@ import (
 	"github.com/docker/docker/client"
 )
 
+var dockerClient *client.Client
+
 // GenerateCaddyFile generates a caddy file config from docker swarm
 func GenerateCaddyFile() []byte {
 	var buffer bytes.Buffer
 
-	client, err := client.NewEnvClient()
-	if err != nil {
-		addError(&buffer, err)
-		return buffer.Bytes()
+	if dockerClient == nil {
+		var err error
+		if dockerClient, err = client.NewEnvClient(); err != nil {
+			addError(&buffer, err)
+			return buffer.Bytes()
+		}
 	}
 
-	services, err := client.ServiceList(context.Background(), types.ServiceListOptions{})
+	services, err := dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
 	if err != nil {
 		addError(&buffer, err)
 		return buffer.Bytes()

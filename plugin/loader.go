@@ -15,7 +15,11 @@ type DockerLoader struct {
 
 // CreateDockerLoader creates a docker loader
 func CreateDockerLoader() *DockerLoader {
-	loader := DockerLoader{}
+	loader := DockerLoader{
+		Input: caddy.CaddyfileInput{
+			ServerTypeName: "http",
+		},
+	}
 	loader.updateInput()
 	loader.scheduleUpdate()
 	return &loader
@@ -37,10 +41,7 @@ func (dockerLoader *DockerLoader) updateInput() bool {
 		return false
 	}
 
-	dockerLoader.Input = caddy.CaddyfileInput{
-		Contents:       newContents,
-		ServerTypeName: "http",
-	}
+	dockerLoader.Input.Contents = newContents
 
 	log.Println("[INFO] New CaddyFile:")
 	log.Println(string(dockerLoader.Input.Contents))
