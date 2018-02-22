@@ -49,7 +49,7 @@ import (
 )
 ```
 
-## Test it
+## Try it
 
 Create caddy network:
 ```
