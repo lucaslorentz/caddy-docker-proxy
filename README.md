@@ -15,7 +15,31 @@ Caddy docker proxy is a caddy plugin that generates caddy config files from Dock
 | caddy.targetport | 80 | the port being serverd by the service |
 | caddy.targetpath | /api | the path being served by the service |
 
-TODO: Describe automatic label to directive mapping
+It's possible to write any configuration using labels, like:
+```
+caddy.limits=7500
+```
+will generate:
+```
+limits 7500
+```
+
+And
+```
+caddy.limits.header=100KB
+caddy.limits.body_0=/upload 100MB
+caddy.limits.body_1=/profile 25KB
+caddy.limits.body_2=/api 10KB
+```
+will generate:
+```
+limits {
+	header 100KB
+	body   /upload 100MB
+	body   /profile 25KB
+	body   /api 10KB
+}
+```
 
 ## Build it
 You can use our caddy build wrapper **build.sh** and include extra plugins on https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/main.go#L5
