@@ -1,4 +1,4 @@
-# CADDY-DOCKER-PROXY
+# CADDY-DOCKER-PROXY [![Build Status](https://travis-ci.org/lucaslorentz/caddy-docker-proxy.svg?branch=master)](https://travis-ci.org/lucaslorentz/caddy-docker-proxy)
 
 ## WIP
 We don't have any oficial release yet, but you can find the testing image here: https://hub.docker.com/r/lucaslorentz/caddy-docker-proxy/

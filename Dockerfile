@@ -1,4 +1,4 @@
-FROM alpine:3.5
+FROM alpine:3.7
 LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
 
 EXPOSE 80 443 2015
