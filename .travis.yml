@@ -16,4 +16,10 @@ install:
 
 script:
   - ./build.sh
- 
+
+deploy:
+  - provider: script
+    script: ./deploy.sh
+    on:
+      tags: true
+      branch: master
