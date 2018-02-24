@@ -2,7 +2,7 @@ version: '3'
 
 services:
   caddy:
-    image: lucaslorentz/caddy-docker-proxy
+    image: lucaslorentz/caddy-docker-proxy:alpine
     ports:
       - 2015:2015
     networks:
