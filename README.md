@@ -157,6 +157,17 @@ import (
 Docker images are available at Docker Registry:
 https://hub.docker.com/r/lucaslorentz/caddy-docker-proxy/
 
+## Configuring connection to Docker Server
+
+The following environment variables are supported to configure connection with Docker host.
+
+* **DOCKER_HOST**: to set the url to the docker server.
+* **DOCKER_API_VERSION**: to set the version of the API to reach, leave empty for latest.
+* **DOCKER_CERT_PATH**: to load the tls certificates from.
+* **DOCKER_TLS_VERIFY**: to enable or disable TLS verification, off by default.
+
+In case you see error messages like `client version 1.37 is too new. Maximum supported API version is 1.35`. Set the environment variable DOCKER_API_VERSION to the maximum supported API version before connecting.
+
 
 ## Trying it
 
