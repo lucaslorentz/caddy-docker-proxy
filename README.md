@@ -21,6 +21,13 @@ Those are the main labels that configures the basic behavior of the proxying:
 | caddy.targetport | 80 | the port being serverd by the service |
 | caddy.targetpath | /api | the path being served by the service |
 
+The values above will generate the following caddy configuration:
+```
+service.example.com {
+	proxy / servicedns:80/api
+}
+```
+
 ### Usage examples
 Proxying domain root to container root
 ```
