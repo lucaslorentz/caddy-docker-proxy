@@ -15,7 +15,7 @@ services:
       placement:
         constraints:
           - node.role == manager
-      replicas: 1
+      replicas: 3
       restart_policy:
         condition: any
       resources:
