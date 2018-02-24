@@ -7,7 +7,6 @@ import (
 	_ "github.com/caddyserver/dnsproviders/route53"
 
 	// Caddy
-
 	"github.com/mholt/caddy/caddy/caddymain"
 )
 

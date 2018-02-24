@@ -1,46 +1,150 @@
 # CADDY-DOCKER-PROXY [![Build Status](https://travis-ci.org/lucaslorentz/caddy-docker-proxy.svg?branch=master)](https://travis-ci.org/lucaslorentz/caddy-docker-proxy)
 
-## WIP
-We don't have any oficial release yet, but you can find the testing image here: https://hub.docker.com/r/lucaslorentz/caddy-docker-proxy/
-
 ## Introduction
-Caddy docker proxy is a caddy plugin that generates caddy config files from Docker Swarm Services metadata, making caddy act as a docker proxy.
+This plugin enables caddy to be used as a reverse proxy for Docker Swarm services.
 
-## Labels for service
-| Label        | Example           | Description  |
-| -------------|-------------| -----|
-| caddy.address | service.test.com | list of addresses that should be proxied to that service |
+## How does it work?
+It scans Docker Swarm services metadata looking for labels indicating that the service should be exposed on caddy.
+
+Then it generates an in memory Caddyfile with website entries and proxies directives pointing to each Docker Service internal DNS name.
+
+Every time Docker services changes, it updates the Caddyfile and triggers a caddy zero-downtime reload.
+
+## Basic service labels
+To expose a service inside caddy configuration, you just need to add labels starting with caddy to the service.
+
+Those are the main labels that configures the basic behavior of the proxying:
+
+| Label | Example | Description |
+| - | - | - |
+| caddy.address | service.example.com | addresses that should be proxied to that service separated by ',' |
 | caddy.targetport | 80 | the port being serverd by the service |
 | caddy.targetpath | /api | the path being served by the service |
 
-It's possible to write any configuration using labels, like:
+### Usage examples
+Proxying domain root to container root
 ```
-caddy.limits=7500
-```
-will generate:
-```
-limits 7500
+caddy.address=service.example.com
+caddy.targetport=80
 ```
 
-And
+Proxying domain root to container path
 ```
-caddy.limits.header=100KB
-caddy.limits.body_0=/upload 100MB
-caddy.limits.body_1=/profile 25KB
-caddy.limits.body_2=/api 10KB
+caddy.address=service.example.com
+caddy.targetport=80
+caddy.targetpath=/my-path
 ```
-will generate:
+
+Proxying domain path to container root
 ```
-limits {
-	header 100KB
-	body   /upload 100MB
-	body   /profile 25KB
-	body   /api 10KB
+caddy.address=service.example.com/path1
+caddy.targetport=80
+```
+
+Proxying domain path to container path
+```
+caddy.address=service.example.com/path1
+caddy.targetport=80
+caddy.targetpath=/path2
+```
+
+Proxying multiple domains to container
+```
+caddy.address=service1.example.com,service2.example.com
+caddy.targetport=80
+```
+## More service labels
+Any other label prefixed with caddy, will also be converted to caddyfile configuration based on the following rules:
+
+Label's keys are transformed into a directive and its value becomes the directive arguments. Example:
+```
+caddy.directive=valueA valueB
+```
+Generates:
+```
+directive valueA valueB
+```
+
+Dots represents nested directives. Example:
+```
+caddy.directive=argA
+caddy.directive.subdirA=valueA
+caddy.directive.subdirB=valueB1 valueB2
+```
+Generates:
+```
+directive argA {
+	subdirA valueA
+	subdirB valueB1 valueB2
 }
 ```
 
-## Build it
-You can use our caddy build wrapper **build.sh** and include extra plugins on https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/main.go#L5
+Labels for parent directives are not required. Example:
+```
+caddy.directive.subdirA=valueA
+```
+Generates:
+```
+directive {
+	subdirA valueA
+}
+```
+
+Labels with empty values generates directives without arguments. Example:
+```
+caddy.directive=
+```
+Generates:
+```
+directive
+```
+
+It's possible to add directives to the automatically created proxy directive. Example:
+```
+caddy.proxy.websocket=
+```
+Generates:
+```
+service.example.com {
+	proxy / servicedns:80/api {
+		websocket
+	}
+}
+```
+
+Any _* suffix on labels is removed when generating caddyfile configuration, that allows you to write repeating directives. Example:
+```
+caddy.directive_1=value1
+caddy.directive_2=value2
+```
+Generates:
+```
+directive value1
+directive value2
+```
+
+## Multiple caddyfile sections from one service
+It's possible to generate multiple caddyfile sections for the same service by suffixing the caddy prefix with _*. That's usefull to expose multiple service ports at different urls.
+
+For example:
+```
+caddy_0.address = portal.example.com
+caddy_0.targetport = 80
+caddy_1.address = admin.example.com
+caddy_1.targetport = 81
+```
+Generates:
+```
+portal.example.com {
+	proxy / servicedns:80
+}
+admin.example.com {
+	proxy / servicedns:81
+}
+```
+
+## Building it
+You can use our caddy build wrapper **build.sh** and include additional plugins on https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/main.go#L5
 
 Or, you can build from caddy repository and import  **caddy-docker-proxy** plugin on file https://github.com/mholt/caddy/blob/master/caddy/caddymain/run.go :
 ```
@@ -49,29 +153,30 @@ import (
 )
 ```
 
-## Try it
-
-Create caddy network:
-```
-docker network create --driver overlay caddy
-```
-
-Run caddy proxy:
-```
-docker service create --name caddy-docker-proxy --constraint=node.role==manager --publish 2015:2015 --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock --network caddy lucaslorentz/caddy-docker-proxy -log stdout
-```
-
-Create services:
-```
-docker service create --network caddy -l caddy.address=whoami0.caddy-proxy -l caddy.targetport=8000 -l caddy.tls=off --name whoami0 jwilder/whoami
+## Docker images
+Docker images are available at Docker Registry:
+https://hub.docker.com/r/lucaslorentz/caddy-docker-proxy/
 
 
-docker service create --network caddy -l caddy.address=whoami1.caddy-proxy -l caddy.targetport=8000 -l caddy.tls=off --name whoami1 jwilder/whoami
+## Trying it
+
+Clone this repository.
+
+Deploy the compose file to swarm cluster:
+```
+docker stack deploy -c examples/demo.yaml caddy-docker-demo
 ```
 
-Access them through the proxy:
-```
-curl -H Host:whoami0.caddy-proxy http://localhost:2015
+Wait a bit for services startup...
 
-curl -H Host:whoami1.caddy-proxy http://localhost:2015
+Now you can access both services using different urls
+```
+curl -H Host:whoami0.caddy-docker-demo http://localhost:2015
+
+curl -H Host:whoami1.caddy-docker-demo http://localhost:2015
+```
+
+After testing, delete the demo stack:
+```
+docker stack rm caddy-docker-demo
 ```

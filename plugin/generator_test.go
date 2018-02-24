@@ -55,7 +55,7 @@ func TestAddServiceAutoMapping(t *testing.T) {
 	testSingleService(t, service, expected)
 }
 
-func TestAddServiceMacroLabels(t *testing.T) {
+func TestAddServiceBasicLabels(t *testing.T) {
 	var service = swarm.Service{
 		Spec: swarm.ServiceSpec{
 			Annotations: swarm.Annotations{
@@ -65,6 +65,7 @@ func TestAddServiceMacroLabels(t *testing.T) {
 					"caddy.targetport":        "5000",
 					"caddy.targetpath":        "/api",
 					"caddy.proxy.healthcheck": "/health",
+					"caddy.proxy.transparent": "",
 					"caddy.proxy.websocket":   "",
 					"caddy.basicauth":         "/ user password",
 					"caddy.tls.dns":           "route53",
@@ -75,12 +76,54 @@ func TestAddServiceMacroLabels(t *testing.T) {
 
 	const expected string = "service.testdomain.com {\n" +
 		"  basicauth / user password\n" +
-		"  gzip\n" +
 		"  proxy / service:5000/api {\n" +
 		"    healthcheck /health\n" +
 		"    transparent\n" +
 		"    websocket\n" +
 		"  }\n" +
+		"  tls {\n" +
+		"    dns route53\n" +
+		"  }\n" +
+		"}\n"
+
+	testSingleService(t, service, expected)
+}
+
+func TestAddServiceBasicLabelsMultipleConfigs(t *testing.T) {
+	var service = swarm.Service{
+		Spec: swarm.ServiceSpec{
+			Annotations: swarm.Annotations{
+				Name: "service",
+				Labels: map[string]string{
+					"caddy_0.address":           "service1.testdomain.com",
+					"caddy_0.targetport":        "5000",
+					"caddy_0.targetpath":        "/api",
+					"caddy_0.proxy.healthcheck": "/health",
+					"caddy_0.proxy.transparent": "",
+					"caddy_0.proxy.websocket":   "",
+					"caddy_0.basicauth":         "/ user password",
+					"caddy_0.tls.dns":           "route53",
+					"caddy_1.address":           "service2.testdomain.com",
+					"caddy_1.targetport":        "5001",
+					"caddy_1.tls.dns":           "route53",
+				},
+			},
+		},
+	}
+
+	const expected string = "service1.testdomain.com {\n" +
+		"  basicauth / user password\n" +
+		"  proxy / service:5000/api {\n" +
+		"    healthcheck /health\n" +
+		"    transparent\n" +
+		"    websocket\n" +
+		"  }\n" +
+		"  tls {\n" +
+		"    dns route53\n" +
+		"  }\n" +
+		"}\n" +
+		"service2.testdomain.com {\n" +
+		"  proxy / service:5001\n" +
 		"  tls {\n" +
 		"    dns route53\n" +
 		"  }\n" +
