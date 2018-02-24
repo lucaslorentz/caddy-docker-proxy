@@ -22,7 +22,7 @@ deploy:
     script: ./deploy.sh
     on:
       branch: master
-- provider: script
+  - provider: script
     script: ./deploy.sh
     on:
       tags: true
