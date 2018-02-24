@@ -7,9 +7,10 @@ services:
       - 2015:2015
     networks:
       - caddy
-    command: -email email@example.com -agree=true
+    command: -email email@caddy-docker-demo -agree=true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - caddy:/root/.caddy
     deploy:
       placement:
         constraints:
@@ -22,25 +23,9 @@ services:
           cpus: '0.1'
           memory: 200M
 
-  whoami0:
-    image: jwilder/whoami
-    networks:
-      - caddy
-    deploy:
-      labels:
-        caddy.address: whoami0.example.com
-        caddy.targetport: 8000
-        caddy.tls: "off"
-
-  whoami1:
-    image: jwilder/whoami
-    networks:
-      - caddy
-    deploy:
-      labels:
-        caddy.address: whoami1.example.com
-        caddy.targetport: 8000
-        caddy.tls: "off"
+volumes:
+  caddy:
+    driver: rexray/efs
 
 networks:
   caddy:
