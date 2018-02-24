@@ -143,22 +143,17 @@ admin.example.com {
 }
 ```
 
-## Building it
-You can use our caddy build wrapper **build.sh** and include additional plugins on https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/main.go#L5
-
-Or, you can build from caddy repository and import  **caddy-docker-proxy** plugin on file https://github.com/mholt/caddy/blob/master/caddy/caddymain/run.go :
-```
-import (
-  _ "github.com/lucaslorentz/caddy-docker-proxy/plugin"
-)
-```
-
 ## Docker images
 Docker images are available at Docker Registry:
 https://hub.docker.com/r/lucaslorentz/caddy-docker-proxy/
 
-## Configuring connection to Docker Server
+## Caddy CLI
+All flags and environment variables supported by Caddy CLI are also supported:
+https://caddyserver.com/docs/cli
 
+Check **examples** folder to see how to set them on a docker compose file.
+
+## Configuring connection to Docker Server
 The following environment variables are supported to configure connection with Docker host.
 
 * **DOCKER_HOST**: to set the url to the docker server.
@@ -168,6 +163,16 @@ The following environment variables are supported to configure connection with D
 
 In case you see error messages like `client version 1.37 is too new. Maximum supported API version is 1.35`. Set the environment variable DOCKER_API_VERSION to the maximum supported API version before connecting.
 
+## Volumes
+On a production docker swarm cluster, it's **very important** to store Caddy folder on a persistent storage. Otherwise Caddy will re-issue certificates every time it is restarted, exceeding let's encrypt quota.
+
+To do that map a docker volume to `/root/.caddy` folder.
+
+Since Caddy version 0.10.11, it is possible to run multiple caddy instances sharing same certificates.
+
+For resilient production deployments, use multiple caddy replicas and map a`/root/.caddy` folder to a volume that supports multiple mounts, like Network File Sharing docker volumes plugins.
+
+[Here is an example](examples/efs-volume.yaml) of compose file with replicas and persistent volume using  Rexray EFS Plugin for AWS.
 
 ## Trying it
 
@@ -182,12 +187,22 @@ Wait a bit for services startup...
 
 Now you can access both services using different urls
 ```
-curl -H Host:whoami0.caddy-docker-demo http://localhost:2015
+curl -H Host:whoami0.example.com http://localhost:2015
 
-curl -H Host:whoami1.caddy-docker-demo http://localhost:2015
+curl -H Host:whoami1.example.com http://localhost:2015
 ```
 
 After testing, delete the demo stack:
 ```
 docker stack rm caddy-docker-demo
+```
+
+## Building it
+You can use our caddy build wrapper **build.sh** and include additional plugins on https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/main.go#L5
+
+Or, you can build from caddy repository and import  **caddy-docker-proxy** plugin on file https://github.com/mholt/caddy/blob/master/caddy/caddymain/run.go :
+```
+import (
+  _ "github.com/lucaslorentz/caddy-docker-proxy/plugin"
+)
 ```

@@ -1,10 +1,16 @@
-FROM alpine:3.7
+FROM alpine:3.7 as alpine
+RUN apk add -U --no-cache ca-certificates
+
+# Image starts here
+FROM scratch
 LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
 
 EXPOSE 80 443 2015
+ENV HOME /root
 
-ADD caddy /usr/bin
+WORKDIR /
+COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-RUN apk add --no-cache ca-certificates curl
+ADD caddy /bin/
 
-ENTRYPOINT ["/usr/bin/caddy"]
+ENTRYPOINT ["/bin/caddy"]

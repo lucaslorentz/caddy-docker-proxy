@@ -2,12 +2,12 @@ version: '3'
 
 services:
   caddy:
-    image: lucaslorentz/caddy-docker-proxy
+    image: lucaslorentz/caddy-docker-proxy:alpine
     ports:
       - 2015:2015
     networks:
       - caddy
-    command: -email email@caddy-docker-demo -agree=true
+    command: -email email@example.com -agree=true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     deploy:
@@ -28,7 +28,7 @@ services:
       - caddy
     deploy:
       labels:
-        caddy.address: whoami0.caddy-docker-demo
+        caddy.address: whoami0.example.com
         caddy.targetport: 8000
         caddy.tls: "off"
 
@@ -38,7 +38,7 @@ services:
       - caddy
     deploy:
       labels:
-        caddy.address: whoami1.caddy-docker-demo
+        caddy.address: whoami1.example.com
         caddy.targetport: 8000
         caddy.tls: "off"
 
