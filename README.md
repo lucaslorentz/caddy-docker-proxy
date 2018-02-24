@@ -160,10 +160,10 @@ https://caddyserver.com/docs/cli
 
 Check **examples** folder to see how to set them on a docker compose file.
 
-## Connecting to Docker Server
-This plugin connects by default to the following docker host:  
-* Unix: `unix:///var/run/docker.sock`
-* Windows: `npipe:////./pipe/docker_engine`
+## Connecting to Docker Host
+The default connection to docker host varies per platform:
+* At Unix: `unix:///var/run/docker.sock`
+* At Windows: `npipe:////./pipe/docker_engine`
 
 You can modify docker connection using the following environment variables:
 
