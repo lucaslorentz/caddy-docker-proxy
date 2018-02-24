@@ -1,0 +1,47 @@
+version: '3'
+
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy
+    ports:
+      - 2015:2015
+    networks:
+      - caddy
+    command: -email email@caddy-docker-demo -agree=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        reservations:
+          cpus: '0.1'
+          memory: 200M
+
+  whoami0:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    deploy:
+      labels:
+        caddy.address: whoami0.caddy-docker-demo
+        caddy.targetport: 8000
+        caddy.tls: "off"
+
+  whoami1:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    deploy:
+      labels:
+        caddy.address: whoami1.caddy-docker-demo
+        caddy.targetport: 8000
+        caddy.tls: "off"
+
+networks:
+  caddy:
+    driver: overlay
