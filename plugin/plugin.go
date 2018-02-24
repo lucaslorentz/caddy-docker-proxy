@@ -5,5 +5,5 @@ import (
 )
 
 func init() {
-	caddy.SetDefaultCaddyfileLoader("docker", CreateDockerLoader())
+	caddy.RegisterCaddyfileLoader("docker", CreateDockerLoader())
 }
