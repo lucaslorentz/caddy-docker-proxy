@@ -19,10 +19,10 @@ script:
 
 deploy:
   - provider: script
-    script: ./deploy.sh
+    script: ./deploy-branch.sh
     on:
       branch: master
   - provider: script
-    script: ./deploy.sh
+    script: ./deploy-tag.sh
     on:
       tags: true
