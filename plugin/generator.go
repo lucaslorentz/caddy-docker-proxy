@@ -28,14 +28,22 @@ func GenerateCaddyFile() []byte {
 		}
 	}
 
-	services, err := dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
-	if err != nil {
+	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
+	if err == nil {
+		for _, container := range containers {
+			addContainerToCaddyFile(&buffer, &container)
+		}
+	} else {
 		addError(&buffer, err)
-		return buffer.Bytes()
 	}
 
-	for _, service := range services {
-		addServiceToCaddyFile(&buffer, &service)
+	services, err := dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
+	if err == nil {
+		for _, service := range services {
+			addServiceToCaddyFile(&buffer, &service)
+		}
+	} else {
+		addError(&buffer, err)
 	}
 
 	if buffer.Len() == 0 {
@@ -51,17 +59,32 @@ func addError(buffer *bytes.Buffer, e error) {
 	}
 }
 
-func addServiceToCaddyFile(buffer *bytes.Buffer, service *swarm.Service) {
-	var directives = parseDirectives(service)
+func addContainerToCaddyFile(buffer *bytes.Buffer, container *types.Container) {
+	ipAddress := getContainerIPAddress(container)
+	var directives = parseDirectives(container.Labels, container, ipAddress)
 	for _, name := range getSortedKeys(&directives.children) {
 		writeDirective(buffer, directives.children[name], 0)
 	}
 }
 
-func parseDirectives(service *swarm.Service) *directiveData {
+func getContainerIPAddress(container *types.Container) string {
+	for _, network := range container.NetworkSettings.Networks {
+		return network.IPAddress
+	}
+	return ""
+}
+
+func addServiceToCaddyFile(buffer *bytes.Buffer, service *swarm.Service) {
+	var directives = parseDirectives(service.Spec.Labels, service, service.Spec.Name)
+	for _, name := range getSortedKeys(&directives.children) {
+		writeDirective(buffer, directives.children[name], 0)
+	}
+}
+
+func parseDirectives(labels map[string]string, templateData interface{}, proxyTarget string) *directiveData {
 	rootDirective := &directiveData{}
 
-	convertLabelsToDirectives(service, rootDirective)
+	convertLabelsToDirectives(labels, templateData, rootDirective)
 
 	//Convert basic labels
 	for _, directive := range rootDirective.children {
@@ -74,7 +97,7 @@ func parseDirectives(service *swarm.Service) *directiveData {
 		targetPath := directive.children["targetpath"]
 		if targetPort != nil {
 			proxyDirective := getOrCreateDirective(directive, "proxy")
-			proxyDirective.args = fmt.Sprintf("/ %s:%s", service.Spec.Name, targetPort.args)
+			proxyDirective.args = fmt.Sprintf("/ %s:%s", proxyTarget, targetPort.args)
 			if targetPath != nil {
 				proxyDirective.args += targetPath.args
 			}
@@ -108,8 +131,8 @@ func getOrCreateDirective(directive *directiveData, path string) *directiveData 
 	return currentDirective
 }
 
-func convertLabelsToDirectives(service *swarm.Service, rootDirective *directiveData) {
-	for label, value := range service.Spec.Labels {
+func convertLabelsToDirectives(labels map[string]string, templateData interface{}, rootDirective *directiveData) {
+	for label, value := range labels {
 		if !strings.HasPrefix(label, "caddy") {
 			continue
 		}
@@ -130,18 +153,18 @@ func convertLabelsToDirectives(service *swarm.Service, rootDirective *directiveD
 				directive = &newDirective
 			}
 		}
-		directive.args = processVariables(service, value)
+		directive.args = processVariables(templateData, value)
 	}
 }
 
-func processVariables(service *swarm.Service, content string) string {
+func processVariables(data interface{}, content string) string {
 	t, err := template.New("").Parse(content)
 	if err != nil {
 		log.Println(err)
 		return content
 	}
 	var writer bytes.Buffer
-	t.Execute(&writer, service)
+	t.Execute(&writer, data)
 	return writer.String()
 }
 
