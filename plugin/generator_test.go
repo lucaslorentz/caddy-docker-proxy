@@ -4,12 +4,98 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAddServiceAutoMapping(t *testing.T) {
-	var service = swarm.Service{
+func TestAddContainerWithTemplates(t *testing.T) {
+	var container = &types.Container{
+		Names: []string{
+			"container-name",
+		},
+		NetworkSettings: &types.SummaryNetworkSettings{
+			Networks: map[string]*network.EndpointSettings{
+				"bridge": &network.EndpointSettings{
+					IPAddress: "172.17.0.2",
+				},
+			},
+		},
+		Labels: map[string]string{
+			"caddy":       "{{index .Names 0}}.testdomain.com",
+			"caddy.proxy": "/ {{(index .NetworkSettings.Networks \"bridge\").IPAddress}}:5000/api",
+		},
+	}
+
+	const expected string = "container-name.testdomain.com {\n" +
+		"  proxy / 172.17.0.2:5000/api\n" +
+		"}\n"
+
+	testSingleContainer(t, container, expected)
+}
+
+func TestAddContainerWithBasicLabels(t *testing.T) {
+	var container = &types.Container{
+		NetworkSettings: &types.SummaryNetworkSettings{
+			Networks: map[string]*network.EndpointSettings{
+				"bridge": &network.EndpointSettings{
+					IPAddress: "172.17.0.2",
+				},
+			},
+		},
+		Labels: map[string]string{
+			"caddy.address":    "service.testdomain.com",
+			"caddy.targetport": "5000",
+			"caddy.targetpath": "/api",
+		},
+	}
+
+	const expected string = "service.testdomain.com {\n" +
+		"  proxy / 172.17.0.2:5000/api\n" +
+		"}\n"
+
+	testSingleContainer(t, container, expected)
+}
+
+func TestAddContainerWithBasicLabelsAndMultipleConfigs(t *testing.T) {
+	var container = &types.Container{
+		NetworkSettings: &types.SummaryNetworkSettings{
+			Networks: map[string]*network.EndpointSettings{
+				"bridge": &network.EndpointSettings{
+					IPAddress: "172.17.0.2",
+				},
+			},
+		},
+		Labels: map[string]string{
+			"caddy_0.address":    "service1.testdomain.com",
+			"caddy_0.targetport": "5000",
+			"caddy_0.targetpath": "/api",
+			"caddy_0.tls.dns":    "route53",
+			"caddy_1.address":    "service2.testdomain.com",
+			"caddy_1.targetport": "5001",
+			"caddy_1.tls.dns":    "route53",
+		},
+	}
+
+	const expected string = "service1.testdomain.com {\n" +
+		"  proxy / 172.17.0.2:5000/api\n" +
+		"  tls {\n" +
+		"    dns route53\n" +
+		"  }\n" +
+		"}\n" +
+		"service2.testdomain.com {\n" +
+		"  proxy / 172.17.0.2:5001\n" +
+		"  tls {\n" +
+		"    dns route53\n" +
+		"  }\n" +
+		"}\n"
+
+	testSingleContainer(t, container, expected)
+}
+
+func TestAddServiceWithTemplates(t *testing.T) {
+	var service = &swarm.Service{
 		Spec: swarm.ServiceSpec{
 			Annotations: swarm.Annotations{
 				Name: "service",
@@ -55,8 +141,8 @@ func TestAddServiceAutoMapping(t *testing.T) {
 	testSingleService(t, service, expected)
 }
 
-func TestAddServiceBasicLabels(t *testing.T) {
-	var service = swarm.Service{
+func TestAddServiceWithBasicLabels(t *testing.T) {
+	var service = &swarm.Service{
 		Spec: swarm.ServiceSpec{
 			Annotations: swarm.Annotations{
 				Name: "service",
@@ -89,8 +175,8 @@ func TestAddServiceBasicLabels(t *testing.T) {
 	testSingleService(t, service, expected)
 }
 
-func TestAddServiceBasicLabelsMultipleConfigs(t *testing.T) {
-	var service = swarm.Service{
+func TestAddServiceWithBasicLabelsAndMultipleConfigs(t *testing.T) {
+	var service = &swarm.Service{
 		Spec: swarm.ServiceSpec{
 			Annotations: swarm.Annotations{
 				Name: "service",
@@ -132,9 +218,16 @@ func TestAddServiceBasicLabelsMultipleConfigs(t *testing.T) {
 	testSingleService(t, service, expected)
 }
 
-func testSingleService(t *testing.T, service swarm.Service, expected string) {
+func testSingleService(t *testing.T, service *swarm.Service, expected string) {
 	var buffer bytes.Buffer
-	addServiceToCaddyFile(&buffer, &service)
+	addServiceToCaddyFile(&buffer, service)
+	var content = buffer.String()
+	assert.Equal(t, expected, content)
+}
+
+func testSingleContainer(t *testing.T, container *types.Container, expected string) {
+	var buffer bytes.Buffer
+	addContainerToCaddyFile(&buffer, container)
 	var content = buffer.String()
 	assert.Equal(t, expected, content)
 }

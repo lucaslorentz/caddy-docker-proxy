@@ -1,27 +1,27 @@
 # CADDY-DOCKER-PROXY [![Build Status](https://travis-ci.org/lucaslorentz/caddy-docker-proxy.svg?branch=master)](https://travis-ci.org/lucaslorentz/caddy-docker-proxy)
 
 ## Introduction
-This plugin enables caddy to be used as a reverse proxy for Docker Swarm services.
+This plugin enables caddy to be used as a reverse proxy for Docker.
 
 ## How does it work?
-It scans Docker Swarm services metadata looking for labels indicating that the service should be exposed on caddy.
+It scans Docker metadata looking for labels indicating that the service or container should be exposed on caddy.
 
-Then it generates an in memory Caddyfile with website entries and proxies directives pointing to each Docker Service internal DNS name.
+Then it generates an in memory Caddyfile with website entries and proxies directives pointing to each Docker service dns name or container IP.
 
-Every time Docker services changes, it updates the Caddyfile and triggers a caddy zero-downtime reload.
+Every time Docker objects changes, it updates the Caddyfile and triggers a caddy zero-downtime reload.
 
-## Basic service labels
-To expose a service inside caddy configuration, you just need to add labels starting with caddy to the service.
+## Basic labels
+To expose a service or container inside caddy configuration, you just need to add labels starting with caddy.
 
 Those are the main labels that configures the basic behavior of the proxying:
 
 | Label | Example | Description |
 | - | - | - |
-| caddy.address | service.example.com | addresses that should be proxied to that service separated by ',' |
-| caddy.targetport | 80 | the port being serverd by the service |
-| caddy.targetpath | /api | the path being served by the service |
+| caddy.address | service.example.com | addresses that should be proxied separated by ',' |
+| caddy.targetport | 80 | the port being server by container |
+| caddy.targetpath | /api | the path being served by container |
 
-The values above will generate the following caddy configuration:
+When added to a service, the values above will generate the following caddy configuration:
 ```
 service.example.com {
 	proxy / servicedns:80/api
@@ -60,7 +60,7 @@ Proxying multiple domains to container
 caddy.address=service1.example.com,service2.example.com
 caddy.targetport=80
 ```
-## More service labels
+## More labels
 Any other label prefixed with caddy, will also be converted to caddyfile configuration based on the following rules:
 
 Label's keys are transformed into a directive and its value becomes the directive arguments. Example:
@@ -130,8 +130,8 @@ directive value1
 directive value2
 ```
 
-## Multiple caddyfile sections from one service
-It's possible to generate multiple caddyfile sections for the same service by suffixing the caddy prefix with _*. That's usefull to expose multiple service ports at different urls.
+## Multiple caddyfile sections from one service/container
+It's possible to generate multiple caddyfile sections for the same service/container by suffixing the caddy prefix with _*. That's usefull to expose multiple service ports at different urls.
 
 For example:
 ```
