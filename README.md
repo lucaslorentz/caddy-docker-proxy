@@ -6,9 +6,9 @@ This plugin enables caddy to be used as a reverse proxy for Docker.
 ## How does it work?
 It scans Docker metadata looking for labels indicating that the service or container should be exposed on caddy.
 
-Then it generates an in memory Caddyfile with website entries and proxies directives pointing to each Docker service dns name or container IP.
+Then it generates an in memory Caddyfile with website entries and proxies directives pointing to each Docker service DNS name or container IP.
 
-Every time Docker objects changes, it updates the Caddyfile and triggers a caddy zero-downtime reload.
+Every time a docker object changes, it updates the Caddyfile and triggers a caddy zero-downtime reload.
 
 ## Basic labels
 To expose a service or container inside caddy configuration, you just need to add labels starting with caddy.
