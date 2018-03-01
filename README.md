@@ -119,7 +119,7 @@ service.example.com {
 }
 ```
 
-Any _* suffix on labels is removed when generating caddyfile configuration, that allows you to write repeating directives. Example:
+Any _# suffix on labels is removed when generating caddyfile configuration, that allows you to write repeating directives. Example:
 ```
 caddy.directive_1=value1
 caddy.directive_2=value2
@@ -131,7 +131,7 @@ directive value2
 ```
 
 ## Multiple caddyfile sections from one service/container
-It's possible to generate multiple caddyfile sections for the same service/container by suffixing the caddy prefix with _*. That's usefull to expose multiple service ports at different urls.
+It's possible to generate multiple caddyfile sections for the same service/container by suffixing the caddy prefix with _#. That's usefull to expose multiple service ports at different urls.
 
 For example:
 ```

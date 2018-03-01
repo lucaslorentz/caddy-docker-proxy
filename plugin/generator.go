@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -15,6 +16,7 @@ import (
 )
 
 var dockerClient *client.Client
+var suffixRegex = regexp.MustCompile("_\\d+$")
 
 // GenerateCaddyFile generates a caddy file config from docker swarm
 func GenerateCaddyFile() []byte {
@@ -191,7 +193,7 @@ func writeDirective(buffer *bytes.Buffer, directive *directiveData, level int) {
 }
 
 func removeSuffix(name string) string {
-	return strings.Split(name, "_")[0]
+	return suffixRegex.ReplaceAllString(name, "")
 }
 
 func getSortedKeys(m *map[string]*directiveData) []string {
