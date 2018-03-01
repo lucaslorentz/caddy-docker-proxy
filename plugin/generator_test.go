@@ -100,19 +100,19 @@ func TestAddServiceWithTemplates(t *testing.T) {
 			Annotations: swarm.Annotations{
 				Name: "service",
 				Labels: map[string]string{
-					"caddy":                   "{{.Spec.Name}}.testdomain.com",
-					"caddy.proxy":             "/ {{.Spec.Name}}:5000/api",
-					"caddy.proxy.transparent": "",
-					"caddy.proxy.healthcheck": "/health",
-					"caddy.proxy.websocket":   "",
-					"caddy.gzip":              "",
-					"caddy.basicauth":         "/ user password",
-					"caddy.tls.dns":           "route53",
-					"caddy.rewrite_0":         "/path1 /path2",
-					"caddy.rewrite_1":         "/path3 /path4",
-					"caddy.limits.header":     "100kb",
-					"caddy.limits.body_0":     "/path1 2mb",
-					"caddy.limits.body_1":     "/path2 4mb",
+					"caddy":                    "{{.Spec.Name}}.testdomain.com",
+					"caddy.proxy":              "/ {{.Spec.Name}}:5000/api",
+					"caddy.proxy.transparent":  "",
+					"caddy.proxy.health_check": "/health",
+					"caddy.proxy.websocket":    "",
+					"caddy.gzip":               "",
+					"caddy.basicauth":          "/ user password",
+					"caddy.tls.dns":            "route53",
+					"caddy.rewrite_0":          "/path1 /path2",
+					"caddy.rewrite_1":          "/path3 /path4",
+					"caddy.limits.header":      "100kb",
+					"caddy.limits.body_0":      "/path1 2mb",
+					"caddy.limits.body_1":      "/path2 4mb",
 				},
 			},
 		},
@@ -127,7 +127,7 @@ func TestAddServiceWithTemplates(t *testing.T) {
 		"    header 100kb\n" +
 		"  }\n" +
 		"  proxy / service:5000/api {\n" +
-		"    healthcheck /health\n" +
+		"    health_check /health\n" +
 		"    transparent\n" +
 		"    websocket\n" +
 		"  }\n" +
@@ -147,14 +147,14 @@ func TestAddServiceWithBasicLabels(t *testing.T) {
 			Annotations: swarm.Annotations{
 				Name: "service",
 				Labels: map[string]string{
-					"caddy.address":           "service.testdomain.com",
-					"caddy.targetport":        "5000",
-					"caddy.targetpath":        "/api",
-					"caddy.proxy.healthcheck": "/health",
-					"caddy.proxy.transparent": "",
-					"caddy.proxy.websocket":   "",
-					"caddy.basicauth":         "/ user password",
-					"caddy.tls.dns":           "route53",
+					"caddy.address":            "service.testdomain.com",
+					"caddy.targetport":         "5000",
+					"caddy.targetpath":         "/api",
+					"caddy.proxy.health_check": "/health",
+					"caddy.proxy.transparent":  "",
+					"caddy.proxy.websocket":    "",
+					"caddy.basicauth":          "/ user password",
+					"caddy.tls.dns":            "route53",
 				},
 			},
 		},
@@ -163,7 +163,7 @@ func TestAddServiceWithBasicLabels(t *testing.T) {
 	const expected string = "service.testdomain.com {\n" +
 		"  basicauth / user password\n" +
 		"  proxy / service:5000/api {\n" +
-		"    healthcheck /health\n" +
+		"    health_check /health\n" +
 		"    transparent\n" +
 		"    websocket\n" +
 		"  }\n" +
@@ -181,17 +181,17 @@ func TestAddServiceWithBasicLabelsAndMultipleConfigs(t *testing.T) {
 			Annotations: swarm.Annotations{
 				Name: "service",
 				Labels: map[string]string{
-					"caddy_0.address":           "service1.testdomain.com",
-					"caddy_0.targetport":        "5000",
-					"caddy_0.targetpath":        "/api",
-					"caddy_0.proxy.healthcheck": "/health",
-					"caddy_0.proxy.transparent": "",
-					"caddy_0.proxy.websocket":   "",
-					"caddy_0.basicauth":         "/ user password",
-					"caddy_0.tls.dns":           "route53",
-					"caddy_1.address":           "service2.testdomain.com",
-					"caddy_1.targetport":        "5001",
-					"caddy_1.tls.dns":           "route53",
+					"caddy_0.address":            "service1.testdomain.com",
+					"caddy_0.targetport":         "5000",
+					"caddy_0.targetpath":         "/api",
+					"caddy_0.proxy.health_check": "/health",
+					"caddy_0.proxy.transparent":  "",
+					"caddy_0.proxy.websocket":    "",
+					"caddy_0.basicauth":          "/ user password",
+					"caddy_0.tls.dns":            "route53",
+					"caddy_1.address":            "service2.testdomain.com",
+					"caddy_1.targetport":         "5001",
+					"caddy_1.tls.dns":            "route53",
 				},
 			},
 		},
@@ -200,7 +200,7 @@ func TestAddServiceWithBasicLabelsAndMultipleConfigs(t *testing.T) {
 	const expected string = "service1.testdomain.com {\n" +
 		"  basicauth / user password\n" +
 		"  proxy / service:5000/api {\n" +
-		"    healthcheck /health\n" +
+		"    health_check /health\n" +
 		"    transparent\n" +
 		"    websocket\n" +
 		"  }\n" +
