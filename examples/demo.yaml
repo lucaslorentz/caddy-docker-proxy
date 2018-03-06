@@ -7,7 +7,7 @@ services:
       - 2015:2015
     networks:
       - caddy
-    command: -email email@example.com -agree=true
+    command: -email email@example.com -agree=true -log stdout
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     deploy:
@@ -29,7 +29,7 @@ services:
     deploy:
       labels:
         caddy.address: whoami0.example.com
-        caddy.targetport: 8000
+        caddy.targetport: "8000"
         caddy.tls: "off"
 
   whoami1:
@@ -39,7 +39,7 @@ services:
     deploy:
       labels:
         caddy.address: whoami1.example.com
-        caddy.targetport: 8000
+        caddy.targetport: "8000"
         caddy.tls: "off"
 
 networks:
