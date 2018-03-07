@@ -28,6 +28,14 @@ func GenerateCaddyFile() []byte {
 			addError(&buffer, err)
 			return buffer.Bytes()
 		}
+
+		dockerPing, err := dockerClient.Ping(context.Background())
+		if err != nil {
+			addError(&buffer, err)
+			return buffer.Bytes()
+		}
+
+		dockerClient.NegotiateAPIVersionPing(dockerPing)
 	}
 
 	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})

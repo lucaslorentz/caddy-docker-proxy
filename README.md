@@ -172,8 +172,6 @@ You can modify docker connection using the following environment variables:
 * **DOCKER_CERT_PATH**: to load the tls certificates from.
 * **DOCKER_TLS_VERIFY**: to enable or disable TLS verification, off by default.
 
-In case you see error messages like `client version 1.37 is too new. Maximum supported API version is 1.35`. Set the environment variable DOCKER_API_VERSION to the maximum supported API version before connecting.
-
 ## Volumes
 On a production docker swarm cluster, it's **very important** to store Caddy folder on a persistent storage. Otherwise Caddy will re-issue certificates every time it is restarted, exceeding let's encrypt quota.
 

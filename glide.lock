@@ -1,5 +1,5 @@
-hash: 6c8ec78b96a37512f04e44662d892414c6fb9db170ffad917965331fcf5389c6
-updated: 2018-02-23T20:21:10.0799898+01:00
+hash: eb1c59c0ed251030e81068c40da7740cc100197e53649feb40af80c6f42d9ace
+updated: 2018-03-07T19:42:58.0286771+01:00
 imports:
 - name: github.com/aead/chacha20
   version: 8d6ce0550041f9d97e7f15ec27ed489f8bbbb0fb
@@ -7,7 +7,7 @@ imports:
   subpackages:
   - chacha
 - name: github.com/aws/aws-sdk-go
-  version: 5327e5f9fb7f0115585c1f636282335e649f6c04
+  version: 628f99e2cda77dd323992ede8b05961b41f4352f
   subpackages:
   - aws
   - aws/awserr
@@ -25,6 +25,7 @@ imports:
   - aws/request
   - aws/session
   - aws/signer/v4
+  - internal/sdkrand
   - internal/shareddefaults
   - private/protocol
   - private/protocol/query
@@ -51,12 +52,12 @@ imports:
   version: 349fcc471aaccc29cd074e1275f1a494323826cd
   repo: https://github.com/codahale/aesnicheck
 - name: github.com/docker/distribution
-  version: 1e2f10eb65743fed02f573d31a4587de09afb20e
+  version: 6fca8d6e6713acbdf3f9ca40cf6370fc5ee5ee53
   subpackages:
   - digestset
   - reference
 - name: github.com/docker/docker
-  version: 90d35abf7b3535c1c319c872900fbd76374e521c
+  version: 8cf8fe9cf80a07d4e68829f619ea2c71fbb5af0c
   subpackages:
   - api
   - api/types
@@ -70,24 +71,19 @@ imports:
   - api/types/registry
   - api/types/strslice
   - api/types/swarm
+  - api/types/swarm/runtime
   - api/types/time
   - api/types/versions
   - api/types/volume
   - client
-  - pkg/ioutils
-  - pkg/longpath
-  - pkg/system
-  - pkg/tlsconfig
 - name: github.com/docker/go-connections
-  version: e15c02316c12de00874640cd76311849de2aeed5
+  version: 7395e3f8aa162843a74ed6d48e79627d9792ac55
   subpackages:
   - nat
   - sockets
   - tlsconfig
 - name: github.com/docker/go-units
-  version: 0dadbb0345b35ec7ef35e228dabb8de89a65bf52
-- name: github.com/docker/libtrust
-  version: aabc10ec26b754e797f9028f4589c5b7bd90dc20
+  version: 47565b4f722fb6ceae66b95f853feed578a4a51c
 - name: github.com/dustin/go-humanize
   version: 259d2a102b871d17f30e3cd9881a642961a1e486
   repo: https://github.com/dustin/go-humanize
@@ -95,7 +91,11 @@ imports:
   version: 3f9db97f856818214da2e1057f8ad84803971cff
   repo: https://github.com/flynn/go-shlex
 - name: github.com/go-ini/ini
-  version: d3de07a94d22b4a0972deb4b96d790c2c0ce8333
+  version: a76e4b8c9ac73023bb88120b228cc33ebf4fc3b2
+- name: github.com/gogo/protobuf
+  version: d5bc08a2c4c572e9bcff820aa125fe38ac3a3a42
+  subpackages:
+  - proto
 - name: github.com/google/uuid
   version: 7e072fc3a7be179aee6d3359e46015aa8c995314
   repo: https://github.com/google/uuid
@@ -116,7 +116,7 @@ imports:
   subpackages:
   - basic
 - name: github.com/jmespath/go-jmespath
-  version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
+  version: c2b33e8439af944379acbdd9c3a5fe0bc44bd8a5
 - name: github.com/lucas-clemente/aes12
   version: 25700e67be5c860bcc999137275b9ef8b65932bd
   repo: https://github.com/lucas-clemente/aes12
@@ -181,7 +181,7 @@ imports:
   - onevent/hook
   - startupshutdown
 - name: github.com/Microsoft/go-winio
-  version: f533f7a102197536779ea3a8cb881d639e21ec5a
+  version: 7da180ee92d8bd8bb8c37fc560e673e6557c392f
 - name: github.com/miekg/dns
   version: 0f3adef2e2201d72e50309a36fc99d8a9d1a4960
   repo: https://github.com/miekg/dns
@@ -195,13 +195,16 @@ imports:
   - ast
 - name: github.com/opencontainers/go-digest
   version: 279bed98673dd5bef374d3b6e4b09e2af76183bf
+- name: github.com/opencontainers/image-spec
+  version: 149252121d044fddff670adcdc67f33148e16226
+  subpackages:
+  - specs-go
+  - specs-go/v1
 - name: github.com/pkg/errors
-  version: c605e284fe17294bda444b34710735b29d1a9d90
+  version: 30136e27e2ac8d167177e8a583aa4c3fea5be833
 - name: github.com/russross/blackfriday
   version: 067529f716f4c3f5e37c8c95ddd59df1007290ae
   repo: https://github.com/russross/blackfriday
-- name: github.com/Sirupsen/logrus
-  version: 85b1699d505667d13f8ac4478c1debbf85d6c5de
 - name: github.com/xenolf/lego
   version: 4dde48a9b9916926a8dd4f69639c8dba40930355
   subpackages:
@@ -261,11 +264,11 @@ imports:
   repo: https://gopkg.in/yaml.v2
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  version: 8991bc29aa16c548c550c7ff78260e27b9ab7c73
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
