@@ -43,8 +43,7 @@ func (dockerLoader *DockerLoader) updateInput() bool {
 
 	dockerLoader.Input.Contents = newContents
 
-	log.Println("[INFO] New CaddyFile:")
-	log.Println(string(dockerLoader.Input.Contents))
+	log.Printf("[INFO] New CaddyFile:\n%s", dockerLoader.Input.Contents)
 
 	return true
 }
