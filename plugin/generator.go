@@ -28,6 +28,8 @@ func GenerateCaddyFile() []byte {
 			addError(&buffer, err)
 			return buffer.Bytes()
 		}
+
+		dockerClient.NegotiateAPIVersion(context.Background())
 	}
 
 	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
