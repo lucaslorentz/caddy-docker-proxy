@@ -15,28 +15,11 @@ import (
 	"github.com/docker/docker/client"
 )
 
-var dockerClient *client.Client
 var suffixRegex = regexp.MustCompile("_\\d+$")
 
 // GenerateCaddyFile generates a caddy file config from docker swarm
-func GenerateCaddyFile() []byte {
+func GenerateCaddyFile(dockerClient *client.Client) []byte {
 	var buffer bytes.Buffer
-
-	if dockerClient == nil {
-		var err error
-		if dockerClient, err = client.NewEnvClient(); err != nil {
-			addError(&buffer, err)
-			return buffer.Bytes()
-		}
-
-		dockerPing, err := dockerClient.Ping(context.Background())
-		if err != nil {
-			addError(&buffer, err)
-			return buffer.Bytes()
-		}
-
-		dockerClient.NegotiateAPIVersionPing(dockerPing)
-	}
 
 	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err == nil {
@@ -71,6 +54,7 @@ func addError(buffer *bytes.Buffer, e error) {
 
 func addContainerToCaddyFile(buffer *bytes.Buffer, container *types.Container) {
 	ipAddress := getContainerIPAddress(container)
+
 	var directives = parseDirectives(container.Labels, container, ipAddress)
 	for _, name := range getSortedKeys(&directives.children) {
 		writeDirective(buffer, directives.children[name], 0)
