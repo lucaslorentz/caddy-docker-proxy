@@ -1,5 +1,5 @@
-hash: eb1c59c0ed251030e81068c40da7740cc100197e53649feb40af80c6f42d9ace
-updated: 2018-03-07T19:42:58.0286771+01:00
+hash: efe010d201bd148003b4a77c489c9ad7d8e18fac1e99f6cb7d0128aa51e9686d
+updated: 2018-03-31T20:14:55.2416455+02:00
 imports:
 - name: github.com/aead/chacha20
   version: 8d6ce0550041f9d97e7f15ec27ed489f8bbbb0fb
@@ -57,7 +57,7 @@ imports:
   - digestset
   - reference
 - name: github.com/docker/docker
-  version: 8cf8fe9cf80a07d4e68829f619ea2c71fbb5af0c
+  version: 635f359f8b61887faa9427d9c673be96faf992b5
   subpackages:
   - api
   - api/types
@@ -124,7 +124,7 @@ imports:
   version: 393af48d391698c6ae4219566bfbdfef67269997
   repo: https://github.com/lucas-clemente/fnv128a
 - name: github.com/lucas-clemente/quic-go
-  version: d71850eb2ff581620f2f5742b558a97de22c13f6
+  version: 9fa739409e6edddbbd47c8031cb7bb3d1a209cc8
   repo: https://github.com/lucas-clemente/quic-go
   subpackages:
   - h2quic
@@ -141,7 +141,7 @@ imports:
   version: d2f86524cced5186554df90d92529757d22c1cb6
   repo: https://github.com/lucas-clemente/quic-go-certificates
 - name: github.com/mholt/caddy
-  version: d3f338ddab9ee24b376b5c9c51e202581e2d43ba
+  version: f379bf3421bb65becde8bbeb3f940fc4c4215d1f
   subpackages:
   - caddy/caddymain
   - caddyfile
@@ -179,7 +179,6 @@ imports:
   - caddytls
   - onevent
   - onevent/hook
-  - startupshutdown
 - name: github.com/Microsoft/go-winio
   version: 7da180ee92d8bd8bb8c37fc560e673e6557c392f
 - name: github.com/miekg/dns
@@ -206,16 +205,18 @@ imports:
   version: 067529f716f4c3f5e37c8c95ddd59df1007290ae
   repo: https://github.com/russross/blackfriday
 - name: github.com/xenolf/lego
-  version: 4dde48a9b9916926a8dd4f69639c8dba40930355
+  version: 805eec97569ff533e1b75b16eac0bdd94e67bdd6
   subpackages:
   - acme
+  - acmev2
   - providers/dns/route53
 - name: golang.org/x/crypto
-  version: 2faea1465de239e4babd8f5905cc25b781712442
+  version: 94eea52f7b742c7cbe0b03b22f0c4c8631ece122
   repo: https://go.googlesource.com/crypto
   subpackages:
-  - acme
   - curve25519
+  - ed25519
+  - ed25519/internal/edwards25519
   - hkdf
   - ocsp
   - ssh/terminal
@@ -255,7 +256,12 @@ imports:
   repo: https://gopkg.in/natefinch/lumberjack.v2
 - name: gopkg.in/square/go-jose.v1
   version: aa2e30fdd1fe9dd3394119af66451ae790d50e0d
-  repo: https://gopkg.in/square/go-jose.v1
+  subpackages:
+  - cipher
+  - json
+- name: gopkg.in/square/go-jose.v2
+  version: 6ee92191fea850cdcab9a18867abf5f521cdbadb
+  repo: https://gopkg.in/square/go-jose.v2
   subpackages:
   - cipher
   - json
