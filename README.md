@@ -17,7 +17,7 @@ Those are the main labels that configures the basic behavior of the proxying:
 
 | Label | Example | Description |
 | - | - | - |
-| caddy.address | service.example.com | addresses that should be proxied separated by ',' |
+| caddy.address | service.example.com | addresses that should be proxied separated by whitespace |
 | caddy.targetport | 80 | the port being server by container |
 | caddy.targetpath | /api | the path being served by container |
 
@@ -57,7 +57,7 @@ caddy.targetpath=/path2
 
 Proxying multiple domains to container
 ```
-caddy.address=service1.example.com,service2.example.com
+caddy.address=service1.example.com service2.example.com
 caddy.targetport=80
 ```
 ## More labels
