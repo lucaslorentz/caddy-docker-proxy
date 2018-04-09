@@ -3,6 +3,7 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"flag"
 	"fmt"
 	"html/template"
 	"log"
@@ -14,6 +15,12 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
 )
+
+var proxyServiceTasks bool
+
+func init() {
+	flag.BoolVar(&proxyServiceTasks, "proxy-service-tasks", false, "Proxy to service tasks instead of VIP")
+}
 
 var suffixRegex = regexp.MustCompile("_\\d+$")
 
@@ -69,9 +76,18 @@ func getContainerIPAddress(container *types.Container) string {
 }
 
 func addServiceToCaddyFile(buffer *bytes.Buffer, service *swarm.Service) {
-	var directives = parseDirectives(service.Spec.Labels, service, service.Spec.Name)
+	var proxyTarget = getServiceProxyTarget(service)
+	var directives = parseDirectives(service.Spec.Labels, service, proxyTarget)
 	for _, name := range getSortedKeys(&directives.children) {
 		writeDirective(buffer, directives.children[name], 0)
+	}
+}
+
+func getServiceProxyTarget(service *swarm.Service) string {
+	if proxyServiceTasks {
+		return "tasks." + service.Spec.Name
+	} else {
+		return service.Spec.Name
 	}
 }
 

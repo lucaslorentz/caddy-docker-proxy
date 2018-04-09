@@ -138,7 +138,7 @@ func TestAddServiceWithTemplates(t *testing.T) {
 		"  }\n" +
 		"}\n"
 
-	testSingleService(t, service, expected)
+	testSingleService(t, false, service, expected)
 }
 
 func TestAddServiceWithBasicLabels(t *testing.T) {
@@ -172,7 +172,7 @@ func TestAddServiceWithBasicLabels(t *testing.T) {
 		"  }\n" +
 		"}\n"
 
-	testSingleService(t, service, expected)
+	testSingleService(t, false, service, expected)
 }
 
 func TestAddServiceWithBasicLabelsAndMultipleConfigs(t *testing.T) {
@@ -215,11 +215,32 @@ func TestAddServiceWithBasicLabelsAndMultipleConfigs(t *testing.T) {
 		"  }\n" +
 		"}\n"
 
-	testSingleService(t, service, expected)
+	testSingleService(t, false, service, expected)
 }
 
-func testSingleService(t *testing.T, service *swarm.Service, expected string) {
+func TestAddServiceProxyServiceTasks(t *testing.T) {
+	var service = &swarm.Service{
+		Spec: swarm.ServiceSpec{
+			Annotations: swarm.Annotations{
+				Name: "service",
+				Labels: map[string]string{
+					"caddy.address":    "service.testdomain.com",
+					"caddy.targetport": "5000",
+				},
+			},
+		},
+	}
+
+	const expected string = "service.testdomain.com {\n" +
+		"  proxy / tasks.service:5000\n" +
+		"}\n"
+
+	testSingleService(t, true, service, expected)
+}
+
+func testSingleService(t *testing.T, shouldProxyServiceTasks bool, service *swarm.Service, expected string) {
 	var buffer bytes.Buffer
+	proxyServiceTasks = shouldProxyServiceTasks
 	addServiceToCaddyFile(&buffer, service)
 	var content = buffer.String()
 	assert.Equal(t, expected, content)
