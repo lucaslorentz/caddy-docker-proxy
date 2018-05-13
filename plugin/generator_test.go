@@ -10,6 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var caddyNetworkID = "af9700b7abaab83e0a41692e02d3f74b5f5a13af877a223e9b87bd46232ee77c"
+
+func init() {
+	caddyNetworks = map[string]bool{}
+	caddyNetworks[caddyNetworkID] = true
+}
+
 func TestAddContainerWithTemplates(t *testing.T) {
 	var container = &types.Container{
 		Names: []string{
@@ -17,14 +24,19 @@ func TestAddContainerWithTemplates(t *testing.T) {
 		},
 		NetworkSettings: &types.SummaryNetworkSettings{
 			Networks: map[string]*network.EndpointSettings{
-				"bridge": &network.EndpointSettings{
+				"other-network": &network.EndpointSettings{
+					IPAddress: "10.0.0.1",
+					NetworkID: "other-network-id",
+				},
+				"caddy-network": &network.EndpointSettings{
 					IPAddress: "172.17.0.2",
+					NetworkID: caddyNetworkID,
 				},
 			},
 		},
 		Labels: map[string]string{
 			"caddy":       "{{index .Names 0}}.testdomain.com",
-			"caddy.proxy": "/ {{(index .NetworkSettings.Networks \"bridge\").IPAddress}}:5000/api",
+			"caddy.proxy": "/ {{(index .NetworkSettings.Networks \"caddy-network\").IPAddress}}:5000/api",
 		},
 	}
 
@@ -34,13 +46,17 @@ func TestAddContainerWithTemplates(t *testing.T) {
 
 	testSingleContainer(t, container, expected)
 }
-
 func TestAddContainerWithBasicLabels(t *testing.T) {
 	var container = &types.Container{
 		NetworkSettings: &types.SummaryNetworkSettings{
 			Networks: map[string]*network.EndpointSettings{
-				"bridge": &network.EndpointSettings{
+				"other-network": &network.EndpointSettings{
+					IPAddress: "10.0.0.1",
+					NetworkID: "other-network-id",
+				},
+				"caddy-network": &network.EndpointSettings{
 					IPAddress: "172.17.0.2",
+					NetworkID: caddyNetworkID,
 				},
 			},
 		},
@@ -58,12 +74,40 @@ func TestAddContainerWithBasicLabels(t *testing.T) {
 	testSingleContainer(t, container, expected)
 }
 
+func TestAddContainerDifferentNetwork(t *testing.T) {
+	var container = &types.Container{
+		ID: "CONTAINER-ID",
+		NetworkSettings: &types.SummaryNetworkSettings{
+			Networks: map[string]*network.EndpointSettings{
+				"other-network": &network.EndpointSettings{
+					IPAddress: "10.0.0.1",
+					NetworkID: "other-network-id",
+				},
+			},
+		},
+		Labels: map[string]string{
+			"caddy.address":    "service.testdomain.com",
+			"caddy.targetport": "5000",
+			"caddy.targetpath": "/api",
+		},
+	}
+
+	const expected string = "# Container CONTAINER-ID and caddy are not in same network\n"
+
+	testSingleContainer(t, container, expected)
+}
+
 func TestAddContainerWithBasicLabelsAndMultipleConfigs(t *testing.T) {
 	var container = &types.Container{
 		NetworkSettings: &types.SummaryNetworkSettings{
 			Networks: map[string]*network.EndpointSettings{
-				"bridge": &network.EndpointSettings{
+				"other-network": &network.EndpointSettings{
+					IPAddress: "10.0.0.1",
+					NetworkID: "other-network-id",
+				},
+				"caddy-network": &network.EndpointSettings{
 					IPAddress: "172.17.0.2",
+					NetworkID: caddyNetworkID,
 				},
 			},
 		},
