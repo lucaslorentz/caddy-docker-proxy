@@ -146,11 +146,25 @@ func addServiceToCaddyFile(buffer *bytes.Buffer, service *swarm.Service) {
 }
 
 func getServiceProxyTarget(service *swarm.Service) (string, error) {
+	_, err := getServiceIPAddress(service)
+	if err != nil {
+		return "", err
+	}
+
 	if proxyServiceTasks {
 		return "tasks." + service.Spec.Name, nil
 	}
 
 	return service.Spec.Name, nil
+}
+
+func getServiceIPAddress(service *swarm.Service) (string, error) {
+	for _, virtualIP := range service.Endpoint.VirtualIPs {
+		if _, isCaddyNetwork := caddyNetworks[virtualIP.NetworkID]; isCaddyNetwork {
+			return virtualIP.Addr, nil
+		}
+	}
+	return "", fmt.Errorf("Service %v and caddy are not in same network", service.ID)
 }
 
 func parseDirectives(labels map[string]string, templateData interface{}, getProxyTarget func() (string, error)) (*directiveData, error) {

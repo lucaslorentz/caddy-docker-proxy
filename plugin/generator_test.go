@@ -160,6 +160,13 @@ func TestAddServiceWithTemplates(t *testing.T) {
 				},
 			},
 		},
+		Endpoint: swarm.Endpoint{
+			VirtualIPs: []swarm.EndpointVirtualIP{
+				swarm.EndpointVirtualIP{
+					NetworkID: caddyNetworkID,
+				},
+			},
+		},
 	}
 
 	const expected string = "service.testdomain.com {\n" +
@@ -202,6 +209,13 @@ func TestAddServiceWithBasicLabels(t *testing.T) {
 				},
 			},
 		},
+		Endpoint: swarm.Endpoint{
+			VirtualIPs: []swarm.EndpointVirtualIP{
+				swarm.EndpointVirtualIP{
+					NetworkID: caddyNetworkID,
+				},
+			},
+		},
 	}
 
 	const expected string = "service.testdomain.com {\n" +
@@ -239,6 +253,13 @@ func TestAddServiceWithBasicLabelsAndMultipleConfigs(t *testing.T) {
 				},
 			},
 		},
+		Endpoint: swarm.Endpoint{
+			VirtualIPs: []swarm.EndpointVirtualIP{
+				swarm.EndpointVirtualIP{
+					NetworkID: caddyNetworkID,
+				},
+			},
+		},
 	}
 
 	const expected string = "service1.testdomain.com {\n" +
@@ -273,6 +294,13 @@ func TestAddServiceProxyServiceTasks(t *testing.T) {
 				},
 			},
 		},
+		Endpoint: swarm.Endpoint{
+			VirtualIPs: []swarm.EndpointVirtualIP{
+				swarm.EndpointVirtualIP{
+					NetworkID: caddyNetworkID,
+				},
+			},
+		},
 	}
 
 	const expected string = "service.testdomain.com {\n" +
@@ -280,6 +308,32 @@ func TestAddServiceProxyServiceTasks(t *testing.T) {
 		"}\n"
 
 	testSingleService(t, true, service, expected)
+}
+
+func TestAddServiceDifferentNetwork(t *testing.T) {
+	var service = &swarm.Service{
+		ID: "SERVICE-ID",
+		Spec: swarm.ServiceSpec{
+			Annotations: swarm.Annotations{
+				Name: "service",
+				Labels: map[string]string{
+					"caddy.address":    "service.testdomain.com",
+					"caddy.targetport": "5000",
+				},
+			},
+		},
+		Endpoint: swarm.Endpoint{
+			VirtualIPs: []swarm.EndpointVirtualIP{
+				swarm.EndpointVirtualIP{
+					NetworkID: "other-network-id",
+				},
+			},
+		},
+	}
+
+	const expected string = "# Service SERVICE-ID and caddy are not in same network\n"
+
+	testSingleService(t, false, service, expected)
 }
 
 func testSingleService(t *testing.T, shouldProxyServiceTasks bool, service *swarm.Service, expected string) {
