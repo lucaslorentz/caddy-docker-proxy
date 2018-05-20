@@ -336,6 +336,33 @@ func TestAddServiceDifferentNetwork(t *testing.T) {
 	testSingleService(t, false, service, expected)
 }
 
+func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
+	var service = &swarm.Service{
+		Spec: swarm.ServiceSpec{
+			Annotations: swarm.Annotations{
+				Name: "service",
+				Labels: map[string]string{
+					"caddy_version":  "0.11.0",
+					"caddyversion":   "0.11.0",
+					"caddy_.version": "0.11.0",
+					"version_caddy":  "0.11.0",
+				},
+			},
+		},
+		Endpoint: swarm.Endpoint{
+			VirtualIPs: []swarm.EndpointVirtualIP{
+				swarm.EndpointVirtualIP{
+					NetworkID: caddyNetworkID,
+				},
+			},
+		},
+	}
+
+	const expected string = ""
+
+	testSingleService(t, true, service, expected)
+}
+
 func testSingleService(t *testing.T, shouldProxyServiceTasks bool, service *swarm.Service, expected string) {
 	var buffer bytes.Buffer
 	proxyServiceTasks = shouldProxyServiceTasks

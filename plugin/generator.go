@@ -25,6 +25,7 @@ func init() {
 	flag.BoolVar(&proxyServiceTasks, "proxy-service-tasks", false, "Proxy to service tasks instead of VIP")
 }
 
+var caddyLabelRegex = regexp.MustCompile("^caddy(_\\d+)?(\\.|$)")
 var suffixRegex = regexp.MustCompile("_\\d+$")
 
 // GenerateCaddyFile generates a caddy file config from docker swarm
@@ -224,7 +225,7 @@ func getOrCreateDirective(directive *directiveData, path string) *directiveData 
 
 func convertLabelsToDirectives(labels map[string]string, templateData interface{}, rootDirective *directiveData) {
 	for label, value := range labels {
-		if !strings.HasPrefix(label, "caddy") {
+		if !caddyLabelRegex.MatchString(label) {
 			continue
 		}
 		directive := rootDirective
