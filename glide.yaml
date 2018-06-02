@@ -11,7 +11,7 @@ import:
   - api/types/swarm
   - client
 - package: github.com/mholt/caddy
-  version: ^0.10.14
+  version: ^0.11.0
   subpackages:
   - caddy/caddymain
 testImport:
