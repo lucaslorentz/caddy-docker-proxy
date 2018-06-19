@@ -13,7 +13,7 @@ Every time a docker object changes, it updates the Caddyfile and triggers a cadd
 ## Basic labels
 To expose a service or container inside caddy configuration, you just need to add labels starting with caddy.
 
-Those are the main labels that configures the basic behavior of the proxying:
+Those are three main labels that configures the basic behavior of the proxying:
 
 | Label | Example | Description |
 | - | - | - |
