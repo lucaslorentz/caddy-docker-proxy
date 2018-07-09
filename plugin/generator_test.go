@@ -46,6 +46,7 @@ func TestAddContainerWithTemplates(t *testing.T) {
 
 	testSingleContainer(t, container, expected)
 }
+
 func TestAddContainerWithBasicLabels(t *testing.T) {
 	var container = &types.Container{
 		NetworkSettings: &types.SummaryNetworkSettings{
@@ -69,6 +70,31 @@ func TestAddContainerWithBasicLabels(t *testing.T) {
 
 	const expected string = "service.testdomain.com {\n" +
 		"  proxy / 172.17.0.2:5000/api\n" +
+		"}\n"
+
+	testSingleContainer(t, container, expected)
+}
+
+func TestAddContainerWithBasicLabelsAndHttps(t *testing.T) {
+	var container = &types.Container{
+		NetworkSettings: &types.SummaryNetworkSettings{
+			Networks: map[string]*network.EndpointSettings{
+				"caddy-network": &network.EndpointSettings{
+					IPAddress: "172.17.0.2",
+					NetworkID: caddyNetworkID,
+				},
+			},
+		},
+		Labels: map[string]string{
+			"caddy.address":        "service.testdomain.com",
+			"caddy.targetport":     "5000",
+			"caddy.targetpath":     "/api",
+			"caddy.targetprotocol": "https",
+		},
+	}
+
+	const expected string = "service.testdomain.com {\n" +
+		"  proxy / https://172.17.0.2:5000/api\n" +
 		"}\n"
 
 	testSingleContainer(t, container, expected)
@@ -228,6 +254,35 @@ func TestAddServiceWithBasicLabels(t *testing.T) {
 		"  tls {\n" +
 		"    dns route53\n" +
 		"  }\n" +
+		"}\n"
+
+	testSingleService(t, false, service, expected)
+}
+
+func TestAddServiceWithBasicLabelsAndHttps(t *testing.T) {
+	var service = &swarm.Service{
+		Spec: swarm.ServiceSpec{
+			Annotations: swarm.Annotations{
+				Name: "service",
+				Labels: map[string]string{
+					"caddy.address":        "service.testdomain.com",
+					"caddy.targetport":     "5000",
+					"caddy.targetpath":     "/api",
+					"caddy.targetprotocol": "https",
+				},
+			},
+		},
+		Endpoint: swarm.Endpoint{
+			VirtualIPs: []swarm.EndpointVirtualIP{
+				swarm.EndpointVirtualIP{
+					NetworkID: caddyNetworkID,
+				},
+			},
+		},
+	}
+
+	const expected string = "service.testdomain.com {\n" +
+		"  proxy / https://service:5000/api\n" +
 		"}\n"
 
 	testSingleService(t, false, service, expected)

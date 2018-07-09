@@ -15,11 +15,12 @@ To expose a service or container inside caddy configuration, you just need to ad
 
 Those are the main labels that configures the basic behavior of the proxying:
 
-| Label | Example | Description |
-| - | - | - |
-| caddy.address | service.example.com | addresses that should be proxied separated by whitespace |
-| caddy.targetport | 80 | the port being server by container |
-| caddy.targetpath | /api | the path being served by container |
+| Label | Example | Description | Required |
+| - | - | - | - |
+| caddy.address | service.example.com | addresses that should be proxied separated by whitespace | Required |
+| caddy.targetport | 80 | the port being server by container | Required |
+| caddy.targetpath | /api | the path being served by container | Required |
+| caddy.targetprotocol | https | the protocol being served by container | Optional |
 
 When added to a service, the values above will generate the following caddy configuration:
 ```
