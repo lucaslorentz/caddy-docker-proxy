@@ -182,14 +182,22 @@ func parseDirectives(labels map[string]string, templateData interface{}, getProx
 
 		targetPort := directive.children["targetport"]
 		targetPath := directive.children["targetpath"]
-		if targetPort != nil {
+		targetProtocol := directive.children["targetprotocol"]
+		if targetPort != nil || targetProtocol != nil {
 			proxyDirective := getOrCreateDirective(directive, "proxy")
 			proxyTarget, err := getProxyTarget()
 			if err != nil {
 				return nil, err
 			}
 
-			proxyDirective.args = fmt.Sprintf("/ %s:%s", proxyTarget, targetPort.args)
+			proxyDirective.args = "/ "
+
+			if targetProtocol != nil {
+				proxyDirective.args += targetProtocol.args + "://"
+			}
+
+			proxyDirective.args += fmt.Sprintf("%s:%s", proxyTarget, targetPort.args)
+
 			if targetPath != nil {
 				proxyDirective.args += targetPath.args
 			}
@@ -198,6 +206,7 @@ func parseDirectives(labels map[string]string, templateData interface{}, getProx
 		delete(directive.children, "address")
 		delete(directive.children, "targetport")
 		delete(directive.children, "targetpath")
+		delete(directive.children, "targetprotocol")
 	}
 
 	return rootDirective, nil
