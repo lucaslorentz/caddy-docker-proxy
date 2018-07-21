@@ -190,7 +190,7 @@ Clone this repository.
 
 Deploy the compose file to swarm cluster:
 ```
-docker stack deploy -c examples/demo.yaml caddy-docker-demo
+docker stack deploy -c examples/service-proxy.yaml caddy-docker-demo
 ```
 
 Wait a bit for services startup...
