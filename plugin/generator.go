@@ -98,7 +98,13 @@ func getCaddyNetworks(dockerClient *client.Client) ([]string, error) {
 
 	var networks []string
 	for _, network := range container.NetworkSettings.Networks {
-		networks = append(networks, network.NetworkID)
+		networkInfo, err := dockerClient.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
+		if err != nil {
+			return nil, err
+		}
+		if !networkInfo.Ingress {
+			networks = append(networks, network.NetworkID)
+		}
 	}
 	log.Printf("[INFO] Caddy Networks: %v\n", networks)
 

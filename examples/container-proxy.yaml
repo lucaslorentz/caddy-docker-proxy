@@ -1,0 +1,45 @@
+version: '3'
+
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:alpine
+    ports:
+      - 2015:2015
+    networks:
+      - caddy
+    command: -email email@example.com -agree=true -log stdout
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        reservations:
+          cpus: '0.1'
+          memory: 200M
+
+  whoami0:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    labels:
+      caddy.address: whoami0.example.com
+      caddy.targetport: "8000"
+      caddy.tls: "off"
+
+  whoami1:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    labels:
+      caddy.address: whoami1.example.com
+      caddy.targetport: "8000"
+      caddy.tls: "off"
+
+networks:
+  caddy:
+    driver: overlay
