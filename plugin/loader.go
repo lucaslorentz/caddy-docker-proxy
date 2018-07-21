@@ -111,12 +111,22 @@ func (dockerLoader *DockerLoader) update(reloadIfChanged bool) bool {
 		return false
 	}
 
-	dockerLoader.Input.Contents = newContents
+	newInput := caddy.CaddyfileInput{
+		ServerTypeName: "http",
+		Contents:       newContents,
+	}
 
-	log.Printf("[INFO] New CaddyFile:\n%s", dockerLoader.Input.Contents)
+	if err := caddy.ValidateAndExecuteDirectives(newInput, nil, true); err != nil {
+		log.Printf("[ERROR] CaddyFile error: %s", err)
+		log.Printf("[INFO] Wrong CaddyFile:\n%s", newContents)
+	} else {
+		log.Printf("[INFO] New CaddyFile:\n%s", newInput.Contents)
 
-	if reloadIfChanged {
-		ReloadCaddy()
+		dockerLoader.Input = newInput
+
+		if reloadIfChanged {
+			ReloadCaddy()
+		}
 	}
 
 	return true
