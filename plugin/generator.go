@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -25,7 +26,18 @@ func init() {
 	flag.BoolVar(&proxyServiceTasks, "proxy-service-tasks", false, "Proxy to service tasks instead of VIP")
 }
 
-var caddyLabelRegex = regexp.MustCompile("^caddy(_\\d+)?(\\.|$)")
+
+func getCaddyLabelPrefix() string {
+	if val := os.Getenv("CADDY_DOCKER_LABEL_PREFIX"); val != "" {
+		return val
+	}
+
+	return "caddy"
+}
+
+var caddyLabelPrefix = getCaddyLabelPrefix()
+var caddyLabelRegexString = fmt.Sprintf("^%s(_\\d+)?(\\.|$)", caddyLabelPrefix)
+var caddyLabelRegex = regexp.MustCompile(caddyLabelRegexString)
 var suffixRegex = regexp.MustCompile("_\\d+$")
 
 // GenerateCaddyFile generates a caddy file config from docker swarm
