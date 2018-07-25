@@ -20,24 +20,29 @@ import (
 )
 
 var labelPrefixFlag string
+var labelPrefixEnv string
 var proxyServiceTasksFlag bool
-var isTrue = regexp.MustCompile("^(true|True|TRUE|yes|Yes|YES|1)$")
+var proxyServiceTasksEnv string
+var isTrue = regexp.MustCompile("(?i)^(true|yes|1)$")
 
 func init() {
 	flag.StringVar(&labelPrefixFlag, "docker-label-prefix", "caddy", "Prefix for Docker labels")
 	flag.BoolVar(&proxyServiceTasksFlag, "docker-proxy-service-tasks", false, "Proxy to service tasks instead of VIP")
+
+	labelPrefixEnv = os.Getenv("CADDY_DOCKER_LABEL_PREFIX")
+	proxyServiceTasksEnv = os.Getenv("CADDY_DOCKER_PROXY_SERVICE_TASKS")
 }
 
 func getLabelPrefix() string {
-	if val := os.Getenv("CADDY_DOCKER_LABEL_PREFIX"); val != "" {
-		return val
+	if labelPrefixEnv != "" {
+		return labelPrefixEnv
 	} else {
 		return labelPrefixFlag
 	}
 }
 
 func getProxyServiceTasks() bool {
-	if val := os.Getenv("CADDY_DOCKER_PROXY_SERVICE_TASKS"); isTrue.MatchString(val) {
+	if isTrue.MatchString(proxyServiceTasksEnv) {
 		return true
 	} else {
 		return proxyServiceTasksFlag
