@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/docker/docker/api/types"
@@ -15,6 +16,10 @@ var caddyNetworkID = "af9700b7abaab83e0a41692e02d3f74b5f5a13af877a223e9b87bd4623
 func init() {
 	caddyNetworks = map[string]bool{}
 	caddyNetworks[caddyNetworkID] = true
+}
+
+func fmtLabel(s string) string {
+	return fmt.Sprintf(s, caddyLabelPrefix)
 }
 
 func TestAddContainerWithTemplates(t *testing.T) {
@@ -35,8 +40,8 @@ func TestAddContainerWithTemplates(t *testing.T) {
 			},
 		},
 		Labels: map[string]string{
-			"caddy":       "{{index .Names 0}}.testdomain.com",
-			"caddy.proxy": "/ {{(index .NetworkSettings.Networks \"caddy-network\").IPAddress}}:5000/api",
+			fmtLabel("%s"):       "{{index .Names 0}}.testdomain.com",
+			fmtLabel("%s.proxy"): "/ {{(index .NetworkSettings.Networks \"caddy-network\").IPAddress}}:5000/api",
 		},
 	}
 
@@ -62,9 +67,9 @@ func TestAddContainerWithBasicLabels(t *testing.T) {
 			},
 		},
 		Labels: map[string]string{
-			"caddy.address":    "service.testdomain.com",
-			"caddy.targetport": "5000",
-			"caddy.targetpath": "/api",
+			fmtLabel("%s.address"):    "service.testdomain.com",
+			fmtLabel("%s.targetport"): "5000",
+			fmtLabel("%s.targetpath"): "/api",
 		},
 	}
 
@@ -86,10 +91,10 @@ func TestAddContainerWithBasicLabelsAndHttps(t *testing.T) {
 			},
 		},
 		Labels: map[string]string{
-			"caddy.address":        "service.testdomain.com",
-			"caddy.targetport":     "5000",
-			"caddy.targetpath":     "/api",
-			"caddy.targetprotocol": "https",
+			fmtLabel("%s.address"):        "service.testdomain.com",
+			fmtLabel("%s.targetport"):     "5000",
+			fmtLabel("%s.targetpath"):     "/api",
+			fmtLabel("%s.targetprotocol"): "https",
 		},
 	}
 
@@ -112,9 +117,9 @@ func TestAddContainerDifferentNetwork(t *testing.T) {
 			},
 		},
 		Labels: map[string]string{
-			"caddy.address":    "service.testdomain.com",
-			"caddy.targetport": "5000",
-			"caddy.targetpath": "/api",
+			fmtLabel("%s.address"):    "service.testdomain.com",
+			fmtLabel("%s.targetport"): "5000",
+			fmtLabel("%s.targetpath"): "/api",
 		},
 	}
 
@@ -138,13 +143,13 @@ func TestAddContainerWithBasicLabelsAndMultipleConfigs(t *testing.T) {
 			},
 		},
 		Labels: map[string]string{
-			"caddy_0.address":    "service1.testdomain.com",
-			"caddy_0.targetport": "5000",
-			"caddy_0.targetpath": "/api",
-			"caddy_0.tls.dns":    "route53",
-			"caddy_1.address":    "service2.testdomain.com",
-			"caddy_1.targetport": "5001",
-			"caddy_1.tls.dns":    "route53",
+			fmtLabel("%s_0.address"):    "service1.testdomain.com",
+			fmtLabel("%s_0.targetport"): "5000",
+			fmtLabel("%s_0.targetpath"): "/api",
+			fmtLabel("%s_0.tls.dns"):    "route53",
+			fmtLabel("%s_1.address"):    "service2.testdomain.com",
+			fmtLabel("%s_1.targetport"): "5001",
+			fmtLabel("%s_1.tls.dns"):    "route53",
 		},
 	}
 
@@ -170,19 +175,19 @@ func TestAddServiceWithTemplates(t *testing.T) {
 			Annotations: swarm.Annotations{
 				Name: "service",
 				Labels: map[string]string{
-					"caddy":                    "{{.Spec.Name}}.testdomain.com",
-					"caddy.proxy":              "/ {{.Spec.Name}}:5000/api",
-					"caddy.proxy.transparent":  "",
-					"caddy.proxy.health_check": "/health",
-					"caddy.proxy.websocket":    "",
-					"caddy.gzip":               "",
-					"caddy.basicauth":          "/ user password",
-					"caddy.tls.dns":            "route53",
-					"caddy.rewrite_0":          "/path1 /path2",
-					"caddy.rewrite_1":          "/path3 /path4",
-					"caddy.limits.header":      "100kb",
-					"caddy.limits.body_0":      "/path1 2mb",
-					"caddy.limits.body_1":      "/path2 4mb",
+					fmtLabel("%s"):                    "{{.Spec.Name}}.testdomain.com",
+					fmtLabel("%s.proxy"):              "/ {{.Spec.Name}}:5000/api",
+					fmtLabel("%s.proxy.transparent"):  "",
+					fmtLabel("%s.proxy.health_check"): "/health",
+					fmtLabel("%s.proxy.websocket"):    "",
+					fmtLabel("%s.gzip"):               "",
+					fmtLabel("%s.basicauth"):          "/ user password",
+					fmtLabel("%s.tls.dns"):            "route53",
+					fmtLabel("%s.rewrite_0"):          "/path1 /path2",
+					fmtLabel("%s.rewrite_1"):          "/path3 /path4",
+					fmtLabel("%s.limits.header"):      "100kb",
+					fmtLabel("%s.limits.body_0"):      "/path1 2mb",
+					fmtLabel("%s.limits.body_1"):      "/path2 4mb",
 				},
 			},
 		},
@@ -224,14 +229,14 @@ func TestAddServiceWithBasicLabels(t *testing.T) {
 			Annotations: swarm.Annotations{
 				Name: "service",
 				Labels: map[string]string{
-					"caddy.address":            "service.testdomain.com",
-					"caddy.targetport":         "5000",
-					"caddy.targetpath":         "/api",
-					"caddy.proxy.health_check": "/health",
-					"caddy.proxy.transparent":  "",
-					"caddy.proxy.websocket":    "",
-					"caddy.basicauth":          "/ user password",
-					"caddy.tls.dns":            "route53",
+					fmtLabel("%s.address"):            "service.testdomain.com",
+					fmtLabel("%s.targetport"):         "5000",
+					fmtLabel("%s.targetpath"):         "/api",
+					fmtLabel("%s.proxy.health_check"): "/health",
+					fmtLabel("%s.proxy.transparent"):  "",
+					fmtLabel("%s.proxy.websocket"):    "",
+					fmtLabel("%s.basicauth"):          "/ user password",
+					fmtLabel("%s.tls.dns"):            "route53",
 				},
 			},
 		},
@@ -265,10 +270,10 @@ func TestAddServiceWithBasicLabelsAndHttps(t *testing.T) {
 			Annotations: swarm.Annotations{
 				Name: "service",
 				Labels: map[string]string{
-					"caddy.address":        "service.testdomain.com",
-					"caddy.targetport":     "5000",
-					"caddy.targetpath":     "/api",
-					"caddy.targetprotocol": "https",
+					fmtLabel("%s.address"):        "service.testdomain.com",
+					fmtLabel("%s.targetport"):     "5000",
+					fmtLabel("%s.targetpath"):     "/api",
+					fmtLabel("%s.targetprotocol"): "https",
 				},
 			},
 		},
@@ -294,17 +299,17 @@ func TestAddServiceWithBasicLabelsAndMultipleConfigs(t *testing.T) {
 			Annotations: swarm.Annotations{
 				Name: "service",
 				Labels: map[string]string{
-					"caddy_0.address":            "service1.testdomain.com",
-					"caddy_0.targetport":         "5000",
-					"caddy_0.targetpath":         "/api",
-					"caddy_0.proxy.health_check": "/health",
-					"caddy_0.proxy.transparent":  "",
-					"caddy_0.proxy.websocket":    "",
-					"caddy_0.basicauth":          "/ user password",
-					"caddy_0.tls.dns":            "route53",
-					"caddy_1.address":            "service2.testdomain.com",
-					"caddy_1.targetport":         "5001",
-					"caddy_1.tls.dns":            "route53",
+					fmtLabel("%s_0.address"):            "service1.testdomain.com",
+					fmtLabel("%s_0.targetport"):         "5000",
+					fmtLabel("%s_0.targetpath"):         "/api",
+					fmtLabel("%s_0.proxy.health_check"): "/health",
+					fmtLabel("%s_0.proxy.transparent"):  "",
+					fmtLabel("%s_0.proxy.websocket"):    "",
+					fmtLabel("%s_0.basicauth"):          "/ user password",
+					fmtLabel("%s_0.tls.dns"):            "route53",
+					fmtLabel("%s_1.address"):            "service2.testdomain.com",
+					fmtLabel("%s_1.targetport"):         "5001",
+					fmtLabel("%s_1.tls.dns"):            "route53",
 				},
 			},
 		},
@@ -344,8 +349,8 @@ func TestAddServiceProxyServiceTasks(t *testing.T) {
 			Annotations: swarm.Annotations{
 				Name: "service",
 				Labels: map[string]string{
-					"caddy.address":    "service.testdomain.com",
-					"caddy.targetport": "5000",
+					fmtLabel("%s.address"):    "service.testdomain.com",
+					fmtLabel("%s.targetport"): "5000",
 				},
 			},
 		},
@@ -372,8 +377,8 @@ func TestAddServiceDifferentNetwork(t *testing.T) {
 			Annotations: swarm.Annotations{
 				Name: "service",
 				Labels: map[string]string{
-					"caddy.address":    "service.testdomain.com",
-					"caddy.targetport": "5000",
+					fmtLabel("%s.address"):    "service.testdomain.com",
+					fmtLabel("%s.targetport"): "5000",
 				},
 			},
 		},
