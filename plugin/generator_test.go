@@ -425,7 +425,7 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 
 func testSingleService(t *testing.T, shouldProxyServiceTasks bool, service *swarm.Service, expected string) {
 	var buffer bytes.Buffer
-	proxyServiceTasks = shouldProxyServiceTasks
+	proxyServiceTasksFlag = shouldProxyServiceTasks
 	addServiceToCaddyFile(&buffer, service)
 	var content = buffer.String()
 	assert.Equal(t, expected, content)

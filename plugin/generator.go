@@ -19,26 +19,36 @@ import (
 	"github.com/docker/docker/client"
 )
 
-var proxyServiceTasks bool
-var caddyNetworks map[string]bool
+var labelPrefixFlag string
+var proxyServiceTasksFlag bool
+var isTrue = regexp.MustCompile("^(true|True|TRUE|yes|Yes|YES|1)$")
 
 func init() {
-	flag.BoolVar(&proxyServiceTasks, "proxy-service-tasks", false, "Proxy to service tasks instead of VIP")
+	flag.StringVar(&labelPrefixFlag, "docker-label-prefix", "caddy", "Prefix for Docker labels")
+	flag.BoolVar(&proxyServiceTasksFlag, "docker-proxy-service-tasks", false, "Proxy to service tasks instead of VIP")
 }
 
-
-func getCaddyLabelPrefix() string {
+func getLabelPrefix() string {
 	if val := os.Getenv("CADDY_DOCKER_LABEL_PREFIX"); val != "" {
 		return val
+	} else {
+		return labelPrefixFlag
 	}
-
-	return "caddy"
 }
 
-var caddyLabelPrefix = getCaddyLabelPrefix()
+func getProxyServiceTasks() bool {
+	if val := os.Getenv("CADDY_DOCKER_PROXY_SERVICE_TASKS"); isTrue.MatchString(val) {
+		return true
+	} else {
+		return proxyServiceTasksFlag
+	}
+}
+
+var caddyLabelPrefix = getLabelPrefix()
 var caddyLabelRegexString = fmt.Sprintf("^%s(_\\d+)?(\\.|$)", caddyLabelPrefix)
 var caddyLabelRegex = regexp.MustCompile(caddyLabelRegexString)
 var suffixRegex = regexp.MustCompile("_\\d+$")
+var caddyNetworks map[string]bool
 
 // GenerateCaddyFile generates a caddy file config from docker swarm
 func GenerateCaddyFile(dockerClient *client.Client) []byte {
@@ -170,7 +180,7 @@ func getServiceProxyTarget(service *swarm.Service) (string, error) {
 		return "", err
 	}
 
-	if proxyServiceTasks {
+	if getProxyServiceTasks() {
 		return "tasks." + service.Spec.Name, nil
 	}
 
