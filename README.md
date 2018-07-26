@@ -29,6 +29,31 @@ service.example.com {
 }
 ```
 
+## Proxying services vs containers
+Caddy docker proxy is able to proxy to swarm servcies or raw containers. Both features are always enabled, and what will differentiate the proxy target is where you define your labels.
+
+### Services
+To proxy swarm services, labels should be defined at service level. On a docker-compose file, that means labels should be inside deploy, like:
+```
+service:
+  ...
+  deploy:
+    caddy.address=service.example.com
+    caddy.targetport=80
+```
+
+Caddy will use service dns name as target, swarm takes care of load balancing into all containers of that service.
+
+### Containers
+To proxy containers, labels should be defined at container level. On a docker-compose file, that means labels should be outside deploy, like:
+```
+service:
+  ...
+  caddy.address=service.example.com
+  caddy.targetport=80
+```
+When proxying a container, caddy uses a single container IP as target. Currently multiple containers/replicas are not supported under the same website.
+
 ### Usage examples
 Proxying domain root to container root
 ```
