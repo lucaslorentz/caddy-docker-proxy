@@ -18,6 +18,7 @@ const poolInterval = 10 * time.Second
 type DockerLoader struct {
 	initialized  bool
 	dockerClient *client.Client
+	generator    *CaddyfileGenerator
 	timer        *time.Timer
 	skipEvents   bool
 	Input        caddy.CaddyfileInput
@@ -55,6 +56,7 @@ func (dockerLoader *DockerLoader) Load(serverType string) (caddy.Input, error) {
 		dockerClient.NegotiateAPIVersionPing(dockerPing)
 
 		dockerLoader.dockerClient = dockerClient
+		dockerLoader.generator = CreateGenerator(dockerClient, GetGeneratorOptions())
 
 		dockerLoader.timer = time.AfterFunc(poolInterval, func() {
 			dockerLoader.update(true)
@@ -105,7 +107,7 @@ func (dockerLoader *DockerLoader) update(reloadIfChanged bool) bool {
 	dockerLoader.timer.Reset(poolInterval)
 	dockerLoader.skipEvents = false
 
-	newContents := GenerateCaddyFile(dockerLoader.dockerClient)
+	newContents := dockerLoader.generator.GenerateCaddyFile()
 
 	if bytes.Equal(dockerLoader.Input.Contents, newContents) {
 		return false

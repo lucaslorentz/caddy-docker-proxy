@@ -166,7 +166,7 @@ This plugin provides these flags:
 ```
   -docker-label-prefix string
         Prefix for Docker labels (default "caddy")
-  -docker-proxy-service-tasks
+  -proxy-service-tasks
         Proxy to service tasks instead of VIP
 ```
 

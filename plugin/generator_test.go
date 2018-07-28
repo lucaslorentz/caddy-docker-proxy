@@ -13,13 +13,8 @@ import (
 
 var caddyNetworkID = "af9700b7abaab83e0a41692e02d3f74b5f5a13af877a223e9b87bd46232ee77c"
 
-func init() {
-	caddyNetworks = map[string]bool{}
-	caddyNetworks[caddyNetworkID] = true
-}
-
 func fmtLabel(s string) string {
-	return fmt.Sprintf(s, caddyLabelPrefix)
+	return fmt.Sprintf(s, defaultLabelPrefix)
 }
 
 func TestAddContainerWithTemplates(t *testing.T) {
@@ -425,15 +420,26 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 
 func testSingleService(t *testing.T, shouldProxyServiceTasks bool, service *swarm.Service, expected string) {
 	var buffer bytes.Buffer
-	proxyServiceTasksFlag = shouldProxyServiceTasks
-	addServiceToCaddyFile(&buffer, service)
+	generator := CreateGenerator(nil, &GeneratorOptions{
+		labelPrefix:       defaultLabelPrefix,
+		proxyServiceTasks: shouldProxyServiceTasks,
+	})
+	generator.caddyNetworks = map[string]bool{}
+	generator.caddyNetworks[caddyNetworkID] = true
+	generator.addServiceToCaddyFile(&buffer, service)
 	var content = buffer.String()
 	assert.Equal(t, expected, content)
 }
 
 func testSingleContainer(t *testing.T, container *types.Container, expected string) {
 	var buffer bytes.Buffer
-	addContainerToCaddyFile(&buffer, container)
+	generator := CreateGenerator(nil, &GeneratorOptions{
+		labelPrefix:       defaultLabelPrefix,
+		proxyServiceTasks: false,
+	})
+	generator.caddyNetworks = map[string]bool{}
+	generator.caddyNetworks[caddyNetworkID] = true
+	generator.addContainerToCaddyFile(&buffer, container)
 	var content = buffer.String()
 	assert.Equal(t, expected, content)
 }
