@@ -19,59 +19,98 @@ import (
 	"github.com/docker/docker/client"
 )
 
-var proxyServiceTasks bool
-var caddyNetworks map[string]bool
+var defaultLabelPrefix = "caddy"
 
-func init() {
-	flag.BoolVar(&proxyServiceTasks, "proxy-service-tasks", false, "Proxy to service tasks instead of VIP")
+// CaddyfileGenerator generates caddyfile
+type CaddyfileGenerator struct {
+	labelRegex        *regexp.Regexp
+	proxyServiceTasks bool
+	dockerClient      *client.Client
+	caddyNetworks     map[string]bool
 }
 
-
-func getCaddyLabelPrefix() string {
-	if val := os.Getenv("CADDY_DOCKER_LABEL_PREFIX"); val != "" {
-		return val
-	}
-
-	return "caddy"
-}
-
-var caddyLabelPrefix = getCaddyLabelPrefix()
-var caddyLabelRegexString = fmt.Sprintf("^%s(_\\d+)?(\\.|$)", caddyLabelPrefix)
-var caddyLabelRegex = regexp.MustCompile(caddyLabelRegexString)
+var isTrue = regexp.MustCompile("(?i)^(true|yes|1)$")
 var suffixRegex = regexp.MustCompile("_\\d+$")
 
+var labelPrefixFlag string
+var proxyServiceTasksFlag bool
+
+func init() {
+	flag.StringVar(&labelPrefixFlag, "docker-label-prefix", defaultLabelPrefix, "Prefix for Docker labels")
+	flag.BoolVar(&proxyServiceTasksFlag, "proxy-service-tasks", false, "Proxy to service tasks instead of VIP")
+}
+
+// GeneratorOptions are the options for generator
+type GeneratorOptions struct {
+	labelPrefix       string
+	proxyServiceTasks bool
+}
+
+// GetGeneratorOptions creates generator options from cli flags and environment variables
+func GetGeneratorOptions() *GeneratorOptions {
+	options := GeneratorOptions{}
+
+	if labelPrefixEnv := os.Getenv("CADDY_DOCKER_LABEL_PREFIX"); labelPrefixEnv != "" {
+		options.labelPrefix = labelPrefixEnv
+	} else {
+		options.labelPrefix = labelPrefixFlag
+	}
+
+	if proxyServiceTasksEnv := os.Getenv("CADDY_DOCKER_PROXY_SERVICE_TASKS"); proxyServiceTasksEnv != "" {
+		options.proxyServiceTasks = isTrue.MatchString(proxyServiceTasksEnv)
+	} else {
+		options.proxyServiceTasks = proxyServiceTasksFlag
+	}
+
+	return &options
+}
+
+// CreateGenerator creates a new generator
+func CreateGenerator(dockerClient *client.Client, options *GeneratorOptions) *CaddyfileGenerator {
+	generator := CaddyfileGenerator{}
+
+	generator.dockerClient = dockerClient
+
+	var labelRegexString = fmt.Sprintf("^%s(_\\d+)?(\\.|$)", options.labelPrefix)
+	generator.labelRegex = regexp.MustCompile(labelRegexString)
+
+	generator.proxyServiceTasks = options.proxyServiceTasks
+
+	return &generator
+}
+
 // GenerateCaddyFile generates a caddy file config from docker swarm
-func GenerateCaddyFile(dockerClient *client.Client) []byte {
+func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 	var buffer bytes.Buffer
 
-	if caddyNetworks == nil {
-		networks, err := getCaddyNetworks(dockerClient)
+	if g.caddyNetworks == nil {
+		networks, err := g.getCaddyNetworks()
 		if err == nil {
-			caddyNetworks = map[string]bool{}
+			g.caddyNetworks = map[string]bool{}
 			for _, network := range networks {
-				caddyNetworks[network] = true
+				g.caddyNetworks[network] = true
 			}
 		} else {
-			addComment(&buffer, err.Error())
+			g.addComment(&buffer, err.Error())
 		}
 	}
 
-	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
+	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err == nil {
 		for _, container := range containers {
-			addContainerToCaddyFile(&buffer, &container)
+			g.addContainerToCaddyFile(&buffer, &container)
 		}
 	} else {
-		addComment(&buffer, err.Error())
+		g.addComment(&buffer, err.Error())
 	}
 
-	services, err := dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
+	services, err := g.dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
 	if err == nil {
 		for _, service := range services {
-			addServiceToCaddyFile(&buffer, &service)
+			g.addServiceToCaddyFile(&buffer, &service)
 		}
 	} else {
-		addComment(&buffer, err.Error())
+		g.addComment(&buffer, err.Error())
 	}
 
 	if buffer.Len() == 0 {
@@ -97,20 +136,20 @@ func getCaddyContainerID() (string, error) {
 	return "", errors.New("Cannot find container id")
 }
 
-func getCaddyNetworks(dockerClient *client.Client) ([]string, error) {
+func (g *CaddyfileGenerator) getCaddyNetworks() ([]string, error) {
 	containerID, err := getCaddyContainerID()
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("[INFO] Caddy ContainerID: %v\n", containerID)
-	container, err := dockerClient.ContainerInspect(context.Background(), containerID)
+	container, err := g.dockerClient.ContainerInspect(context.Background(), containerID)
 	if err != nil {
 		return nil, err
 	}
 
 	var networks []string
 	for _, network := range container.NetworkSettings.Networks {
-		networkInfo, err := dockerClient.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
+		networkInfo, err := g.dockerClient.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -123,18 +162,18 @@ func getCaddyNetworks(dockerClient *client.Client) ([]string, error) {
 	return networks, nil
 }
 
-func addComment(buffer *bytes.Buffer, text string) {
+func (g *CaddyfileGenerator) addComment(buffer *bytes.Buffer, text string) {
 	for _, line := range strings.Split(text, `\n`) {
 		buffer.WriteString(fmt.Sprintf("# %s\n", line))
 	}
 }
 
-func addContainerToCaddyFile(buffer *bytes.Buffer, container *types.Container) {
-	directives, err := parseDirectives(container.Labels, container, func() (string, error) {
-		return getContainerIPAddress(container)
+func (g *CaddyfileGenerator) addContainerToCaddyFile(buffer *bytes.Buffer, container *types.Container) {
+	directives, err := g.parseDirectives(container.Labels, container, func() (string, error) {
+		return g.getContainerIPAddress(container)
 	})
 	if err != nil {
-		addComment(buffer, err.Error())
+		g.addComment(buffer, err.Error())
 		return
 	}
 	for _, name := range getSortedKeys(&directives.children) {
@@ -142,21 +181,21 @@ func addContainerToCaddyFile(buffer *bytes.Buffer, container *types.Container) {
 	}
 }
 
-func getContainerIPAddress(container *types.Container) (string, error) {
+func (g *CaddyfileGenerator) getContainerIPAddress(container *types.Container) (string, error) {
 	for _, network := range container.NetworkSettings.Networks {
-		if _, isCaddyNetwork := caddyNetworks[network.NetworkID]; isCaddyNetwork {
+		if _, isCaddyNetwork := g.caddyNetworks[network.NetworkID]; isCaddyNetwork {
 			return network.IPAddress, nil
 		}
 	}
 	return "", fmt.Errorf("Container %v and caddy are not in same network", container.ID)
 }
 
-func addServiceToCaddyFile(buffer *bytes.Buffer, service *swarm.Service) {
-	directives, err := parseDirectives(service.Spec.Labels, service, func() (string, error) {
-		return getServiceProxyTarget(service)
+func (g *CaddyfileGenerator) addServiceToCaddyFile(buffer *bytes.Buffer, service *swarm.Service) {
+	directives, err := g.parseDirectives(service.Spec.Labels, service, func() (string, error) {
+		return g.getServiceProxyTarget(service)
 	})
 	if err != nil {
-		addComment(buffer, err.Error())
+		g.addComment(buffer, err.Error())
 		return
 	}
 	for _, name := range getSortedKeys(&directives.children) {
@@ -164,32 +203,32 @@ func addServiceToCaddyFile(buffer *bytes.Buffer, service *swarm.Service) {
 	}
 }
 
-func getServiceProxyTarget(service *swarm.Service) (string, error) {
-	_, err := getServiceIPAddress(service)
+func (g *CaddyfileGenerator) getServiceProxyTarget(service *swarm.Service) (string, error) {
+	_, err := g.getServiceIPAddress(service)
 	if err != nil {
 		return "", err
 	}
 
-	if proxyServiceTasks {
+	if g.proxyServiceTasks {
 		return "tasks." + service.Spec.Name, nil
 	}
 
 	return service.Spec.Name, nil
 }
 
-func getServiceIPAddress(service *swarm.Service) (string, error) {
+func (g *CaddyfileGenerator) getServiceIPAddress(service *swarm.Service) (string, error) {
 	for _, virtualIP := range service.Endpoint.VirtualIPs {
-		if _, isCaddyNetwork := caddyNetworks[virtualIP.NetworkID]; isCaddyNetwork {
+		if _, isCaddyNetwork := g.caddyNetworks[virtualIP.NetworkID]; isCaddyNetwork {
 			return virtualIP.Addr, nil
 		}
 	}
 	return "", fmt.Errorf("Service %v and caddy are not in same network", service.ID)
 }
 
-func parseDirectives(labels map[string]string, templateData interface{}, getProxyTarget func() (string, error)) (*directiveData, error) {
+func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateData interface{}, getProxyTarget func() (string, error)) (*directiveData, error) {
 	rootDirective := &directiveData{}
 
-	convertLabelsToDirectives(labels, templateData, rootDirective)
+	g.convertLabelsToDirectives(labels, templateData, rootDirective)
 
 	//Convert basic labels
 	for _, directive := range rootDirective.children {
@@ -250,9 +289,9 @@ func getOrCreateDirective(directive *directiveData, path string) *directiveData 
 	return currentDirective
 }
 
-func convertLabelsToDirectives(labels map[string]string, templateData interface{}, rootDirective *directiveData) {
+func (g *CaddyfileGenerator) convertLabelsToDirectives(labels map[string]string, templateData interface{}, rootDirective *directiveData) {
 	for label, value := range labels {
-		if !caddyLabelRegex.MatchString(label) {
+		if !g.labelRegex.MatchString(label) {
 			continue
 		}
 		directive := rootDirective

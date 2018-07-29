@@ -186,6 +186,22 @@ https://caddyserver.com/docs/cli
 
 Check **examples** folder to see how to set them on a docker compose file.
 
+This plugin provides these flags:
+
+```
+  -docker-label-prefix string
+        Prefix for Docker labels (default "caddy")
+  -proxy-service-tasks
+        Proxy to service tasks instead of VIP
+```
+
+Those flags can also be set via environment variables:
+
+```
+CADDY_DOCKER_LABEL_PREFIX=<string>
+CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
+```
+
 ## Connecting to Docker Host
 The default connection to docker host varies per platform:
 * At Unix: `unix:///var/run/docker.sock`
