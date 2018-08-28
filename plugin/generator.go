@@ -104,10 +104,20 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 		g.addComment(&buffer, err.Error())
 	}
 
-	services, err := g.dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
+	info, err := g.dockerClient.Info(context.Background())
 	if err == nil {
-		for _, service := range services {
-			g.addServiceToCaddyFile(&buffer, &service)
+		swarmIsAvailable := info.Swarm.LocalNodeState == swarm.LocalNodeStateActive
+		if swarmIsAvailable {
+			services, err := g.dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
+			if err == nil {
+				for _, service := range services {
+					g.addServiceToCaddyFile(&buffer, &service)
+				}
+			} else {
+				g.addComment(&buffer, err.Error())
+			}
+		} else {
+			g.addComment(&buffer, "Skipping services because swarm is not active")
 		}
 	} else {
 		g.addComment(&buffer, err.Error())
