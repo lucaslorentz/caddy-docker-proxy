@@ -23,10 +23,12 @@ var defaultLabelPrefix = "caddy"
 
 // CaddyfileGenerator generates caddyfile
 type CaddyfileGenerator struct {
-	labelRegex        *regexp.Regexp
-	proxyServiceTasks bool
-	dockerClient      *client.Client
-	caddyNetworks     map[string]bool
+	labelRegex               *regexp.Regexp
+	proxyServiceTasks        bool
+	dockerClient             *client.Client
+	caddyNetworks            map[string]bool
+	swarmIsAvailable         bool
+	checkedSwarmAvailability bool
 }
 
 var isTrue = regexp.MustCompile("(?i)^(true|yes|1)$")
@@ -95,6 +97,17 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 		}
 	}
 
+	if !g.checkedSwarmAvailability {
+		info, err := g.dockerClient.Info(context.Background())
+		if err == nil {
+			g.swarmIsAvailable = info.Swarm.LocalNodeState == swarm.LocalNodeStateActive
+			g.checkedSwarmAvailability = true
+			log.Printf("[INFO] Swarm is available: %v\n", g.swarmIsAvailable)
+		} else {
+			g.addComment(&buffer, err.Error())
+		}
+	}
+
 	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err == nil {
 		for _, container := range containers {
@@ -104,23 +117,15 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 		g.addComment(&buffer, err.Error())
 	}
 
-	info, err := g.dockerClient.Info(context.Background())
-	if err == nil {
-		swarmIsAvailable := info.Swarm.LocalNodeState == swarm.LocalNodeStateActive
-		if swarmIsAvailable {
-			services, err := g.dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
-			if err == nil {
-				for _, service := range services {
-					g.addServiceToCaddyFile(&buffer, &service)
-				}
-			} else {
-				g.addComment(&buffer, err.Error())
+	if g.swarmIsAvailable {
+		services, err := g.dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
+		if err == nil {
+			for _, service := range services {
+				g.addServiceToCaddyFile(&buffer, &service)
 			}
 		} else {
-			g.addComment(&buffer, "Skipping services because swarm is not active")
+			g.addComment(&buffer, err.Error())
 		}
-	} else {
-		g.addComment(&buffer, err.Error())
 	}
 
 	if buffer.Len() == 0 {
