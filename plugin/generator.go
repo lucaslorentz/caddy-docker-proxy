@@ -13,22 +13,25 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
 )
 
+var swarmAvailabilityCacheInterval = 1 * time.Minute
+
 var defaultLabelPrefix = "caddy"
 
 // CaddyfileGenerator generates caddyfile
 type CaddyfileGenerator struct {
-	labelRegex               *regexp.Regexp
-	proxyServiceTasks        bool
-	dockerClient             *client.Client
-	caddyNetworks            map[string]bool
-	swarmIsAvailable         bool
-	checkedSwarmAvailability bool
+	labelRegex           *regexp.Regexp
+	proxyServiceTasks    bool
+	dockerClient         *client.Client
+	caddyNetworks        map[string]bool
+	swarmIsAvailable     bool
+	swarmIsAvailableTime time.Time
 }
 
 var isTrue = regexp.MustCompile("(?i)^(true|yes|1)$")
@@ -97,15 +100,9 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 		}
 	}
 
-	if !g.checkedSwarmAvailability {
-		info, err := g.dockerClient.Info(context.Background())
-		if err == nil {
-			g.swarmIsAvailable = info.Swarm.LocalNodeState == swarm.LocalNodeStateActive
-			g.checkedSwarmAvailability = true
-			log.Printf("[INFO] Swarm is available: %v\n", g.swarmIsAvailable)
-		} else {
-			g.addComment(&buffer, err.Error())
-		}
+	if time.Since(g.swarmIsAvailableTime) > swarmAvailabilityCacheInterval {
+		g.checkSwarmAvailability(time.Time.IsZero(g.swarmIsAvailableTime))
+		g.swarmIsAvailableTime = time.Now()
 	}
 
 	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
@@ -126,6 +123,8 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 		} else {
 			g.addComment(&buffer, err.Error())
 		}
+	} else {
+		g.addComment(&buffer, "Skipping services because swarm is not available")
 	}
 
 	if buffer.Len() == 0 {
@@ -149,6 +148,20 @@ func getCaddyContainerID() (string, error) {
 		}
 	}
 	return "", errors.New("Cannot find container id")
+}
+
+func (g *CaddyfileGenerator) checkSwarmAvailability(isFirstCheck bool) {
+	info, err := g.dockerClient.Info(context.Background())
+	if err == nil {
+		newSwarmIsAvailable := info.Swarm.LocalNodeState == swarm.LocalNodeStateActive
+		if isFirstCheck || newSwarmIsAvailable != g.swarmIsAvailable {
+			log.Printf("[INFO] Swarm is available: %v\n", newSwarmIsAvailable)
+		}
+		g.swarmIsAvailable = newSwarmIsAvailable
+	} else {
+		log.Printf("[ERROR] Swarm availability check failed: %v\n", err.Error())
+		g.swarmIsAvailable = false
+	}
 }
 
 func (g *CaddyfileGenerator) getCaddyNetworks() ([]string, error) {
