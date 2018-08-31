@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"regexp"
 	"sort"
@@ -105,10 +106,17 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 		g.swarmIsAvailableTime = time.Now()
 	}
 
+	directives := make(map[string][]byte)
+
 	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err == nil {
 		for _, container := range containers {
-			g.addContainerToCaddyFile(&buffer, &container)
+			dContent := g.addContainerToCaddyFile(&container)
+			for _, d := range dContent {
+				if d.name != "" {
+					directives[d.name] = d.content.Bytes()
+				}
+			}
 		}
 	} else {
 		g.addComment(&buffer, err.Error())
@@ -118,13 +126,29 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 		services, err := g.dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
 		if err == nil {
 			for _, service := range services {
-				g.addServiceToCaddyFile(&buffer, &service)
+				dContent := g.addServiceToCaddyFile(&service)
+				for _, d := range dContent {
+					if d.name != "" {
+						directives[d.name] = d.content.Bytes()
+					}
+				}
 			}
 		} else {
 			g.addComment(&buffer, err.Error())
 		}
 	} else {
 		g.addComment(&buffer, "Skipping services because swarm is not available")
+	}
+
+	var d_keys []string
+	for key, _ := range directives {
+		d_keys = append(d_keys, key)
+	}
+
+	sort.Strings(d_keys)
+
+	for _, k := range d_keys {
+		buffer.Write(directives[k])
 	}
 
 	if buffer.Len() == 0 {
@@ -196,17 +220,25 @@ func (g *CaddyfileGenerator) addComment(buffer *bytes.Buffer, text string) {
 	}
 }
 
-func (g *CaddyfileGenerator) addContainerToCaddyFile(buffer *bytes.Buffer, container *types.Container) {
+func (g *CaddyfileGenerator) addContainerToCaddyFile(container *types.Container) (dContent []directiveContent) {
 	directives, err := g.parseDirectives(container.Labels, container, func() (string, error) {
 		return g.getContainerIPAddress(container)
 	})
 	if err != nil {
-		g.addComment(buffer, err.Error())
+		var d directiveContent
+		d.name = fmt.Sprintf("%d", rand.Int())
+		g.addComment(&d.content, err.Error())
+		dContent = append(dContent, d)
 		return
 	}
 	for _, name := range getSortedKeys(&directives.children) {
-		writeDirective(buffer, directives.children[name], 0)
+		var d directiveContent
+		d.name = directives.children[name].name
+		writeDirective(&d.content, directives.children[name], 0)
+		dContent = append(dContent, d)
 	}
+
+	return
 }
 
 func (g *CaddyfileGenerator) getContainerIPAddress(container *types.Container) (string, error) {
@@ -218,17 +250,25 @@ func (g *CaddyfileGenerator) getContainerIPAddress(container *types.Container) (
 	return "", fmt.Errorf("Container %v and caddy are not in same network", container.ID)
 }
 
-func (g *CaddyfileGenerator) addServiceToCaddyFile(buffer *bytes.Buffer, service *swarm.Service) {
+func (g *CaddyfileGenerator) addServiceToCaddyFile(service *swarm.Service) (dContent []directiveContent) {
 	directives, err := g.parseDirectives(service.Spec.Labels, service, func() (string, error) {
 		return g.getServiceProxyTarget(service)
 	})
 	if err != nil {
-		g.addComment(buffer, err.Error())
+		var d directiveContent
+		d.name = fmt.Sprintf("%d", rand.Int())
+		g.addComment(&d.content, err.Error())
+		dContent = append(dContent, d)
 		return
 	}
 	for _, name := range getSortedKeys(&directives.children) {
-		writeDirective(buffer, directives.children[name], 0)
+		var d directiveContent
+		d.name = directives.children[name].name
+		writeDirective(&d.content, directives.children[name], 0)
+		dContent = append(dContent, d)
 	}
+
+	return
 }
 
 func (g *CaddyfileGenerator) getServiceProxyTarget(service *swarm.Service) (string, error) {
@@ -250,6 +290,7 @@ func (g *CaddyfileGenerator) getServiceIPAddress(service *swarm.Service) (string
 			return virtualIP.Addr, nil
 		}
 	}
+
 	return "", fmt.Errorf("Service %v and caddy are not in same network", service.ID)
 }
 
@@ -398,4 +439,9 @@ type directiveData struct {
 	name     string
 	args     string
 	children map[string]*directiveData
+}
+
+type directiveContent struct {
+	name    string
+	content bytes.Buffer
 }

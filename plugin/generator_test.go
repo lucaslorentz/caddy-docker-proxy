@@ -426,7 +426,10 @@ func testSingleService(t *testing.T, shouldProxyServiceTasks bool, service *swar
 	})
 	generator.caddyNetworks = map[string]bool{}
 	generator.caddyNetworks[caddyNetworkID] = true
-	generator.addServiceToCaddyFile(&buffer, service)
+	dContent := generator.addServiceToCaddyFile(service)
+	for _, d := range dContent {
+		buffer.Write(d.content.Bytes())
+	}
 	var content = buffer.String()
 	assert.Equal(t, expected, content)
 }
@@ -439,7 +442,10 @@ func testSingleContainer(t *testing.T, container *types.Container, expected stri
 	})
 	generator.caddyNetworks = map[string]bool{}
 	generator.caddyNetworks[caddyNetworkID] = true
-	generator.addContainerToCaddyFile(&buffer, container)
+	dContent := generator.addContainerToCaddyFile(container)
+	for _, d := range dContent {
+		buffer.Write(d.content.Bytes())
+	}
 	var content = buffer.String()
 	assert.Equal(t, expected, content)
 }
