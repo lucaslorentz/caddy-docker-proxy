@@ -18,8 +18,8 @@ Those are the main labels that configures the basic behavior of the proxying:
 | Label | Example | Description | Required |
 | - | - | - | - |
 | caddy.address | service.example.com | addresses that should be proxied separated by whitespace | Required |
-| caddy.targetport | 80 | the port being server by container | Required |
-| caddy.targetpath | /api | the path being served by container | Required |
+| caddy.targetport | 80 | the port being server by container | Optional |
+| caddy.targetpath | /api | the path being served by container | Optional |
 | caddy.targetprotocol | https | the protocol being served by container | Optional |
 
 When added to a service, the values above will generate the following caddy configuration:
