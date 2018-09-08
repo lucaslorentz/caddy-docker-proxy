@@ -221,7 +221,7 @@ func (g *CaddyfileGenerator) addComment(buffer *bytes.Buffer, text string) {
 }
 
 func (g *CaddyfileGenerator) addContainerToCaddyFile(container *types.Container) (dContent []directiveContent) {
-	directives, err := g.parseDirectives(container.Labels, container, func() (string, error) {
+	directiveMap, err := g.parseDirectives(container.Labels, container, func() (string, error) {
 		return g.getContainerIPAddress(container)
 	})
 	if err != nil {
@@ -231,10 +231,10 @@ func (g *CaddyfileGenerator) addContainerToCaddyFile(container *types.Container)
 		dContent = append(dContent, d)
 		return
 	}
-	for _, name := range getSortedKeys(&directives.children) {
+	for _, name := range getSortedKeys(directiveMap) {
 		var d directiveContent
-		d.name = directives.children[name].name
-		writeDirective(&d.content, directives.children[name], 0)
+		d.name = directiveMap[name].name
+		writeDirective(&d.content, directiveMap[name], 0)
 		dContent = append(dContent, d)
 	}
 
@@ -251,7 +251,7 @@ func (g *CaddyfileGenerator) getContainerIPAddress(container *types.Container) (
 }
 
 func (g *CaddyfileGenerator) addServiceToCaddyFile(service *swarm.Service) (dContent []directiveContent) {
-	directives, err := g.parseDirectives(service.Spec.Labels, service, func() (string, error) {
+	directiveMap, err := g.parseDirectives(service.Spec.Labels, service, func() (string, error) {
 		return g.getServiceProxyTarget(service)
 	})
 	if err != nil {
@@ -261,10 +261,10 @@ func (g *CaddyfileGenerator) addServiceToCaddyFile(service *swarm.Service) (dCon
 		dContent = append(dContent, d)
 		return
 	}
-	for _, name := range getSortedKeys(&directives.children) {
+	for _, name := range getSortedKeys(directiveMap) {
 		var d directiveContent
-		d.name = directives.children[name].name
-		writeDirective(&d.content, directives.children[name], 0)
+		d.name = directiveMap[name].name
+		writeDirective(&d.content, directiveMap[name], 0)
 		dContent = append(dContent, d)
 	}
 
@@ -294,13 +294,13 @@ func (g *CaddyfileGenerator) getServiceIPAddress(service *swarm.Service) (string
 	return "", fmt.Errorf("Service %v and caddy are not in same network", service.ID)
 }
 
-func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateData interface{}, getProxyTarget func() (string, error)) (*directiveData, error) {
-	rootDirective := &directiveData{}
+func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateData interface{}, getProxyTarget func() (string, error)) (map[string]*directiveData, error) {
+	originalMap := g.convertLabelsToDirectives(labels, templateData)
 
-	g.convertLabelsToDirectives(labels, templateData, rootDirective)
+	convertedMap := map[string]*directiveData{}
 
 	//Convert basic labels
-	for _, directive := range rootDirective.children {
+	for _, directive := range originalMap {
 		address := directive.children["address"]
 
 		if address != nil {
@@ -310,7 +310,7 @@ func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateD
 			targetPath := directive.children["targetpath"]
 			targetProtocol := directive.children["targetprotocol"]
 
-			proxyDirective := getOrCreateDirective(directive, "proxy")
+			proxyDirective := getOrCreateDirective(directive.children, "proxy", false)
 			proxyTarget, err := getProxyTarget()
 			if err != nil {
 				return nil, err
@@ -337,55 +337,45 @@ func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateD
 		delete(directive.children, "targetport")
 		delete(directive.children, "targetpath")
 		delete(directive.children, "targetprotocol")
+
+		convertedMap[directive.name] = directive
 	}
 
-	return rootDirective, nil
+	return convertedMap, nil
 }
 
-func getOrCreateDirective(directive *directiveData, path string) *directiveData {
-	currentDirective := directive
-
-	for _, p := range strings.Split(path, ".") {
-		if d, ok := currentDirective.children[p]; ok {
-			currentDirective = d
+func getOrCreateDirective(directiveMap map[string]*directiveData, path string, skipFirstDirectiveName bool) (directive *directiveData) {
+	currentMap := directiveMap
+	for i, p := range strings.Split(path, ".") {
+		if d, ok := currentMap[p]; ok {
+			directive = d
+			currentMap = d.children
 		} else {
-			if currentDirective.children == nil {
-				currentDirective.children = map[string]*directiveData{}
+			directive = &directiveData{
+				children: map[string]*directiveData{},
 			}
-			var newDirective = directiveData{}
-			newDirective.name = removeSuffix(p)
-			currentDirective.children[p] = &newDirective
-			currentDirective = &newDirective
+			if !skipFirstDirectiveName || i > 0 {
+				directive.name = removeSuffix(p)
+			}
+			currentMap[p] = directive
+			currentMap = directive.children
 		}
 	}
-
-	return currentDirective
+	return
 }
 
-func (g *CaddyfileGenerator) convertLabelsToDirectives(labels map[string]string, templateData interface{}, rootDirective *directiveData) {
+func (g *CaddyfileGenerator) convertLabelsToDirectives(labels map[string]string, templateData interface{}) map[string]*directiveData {
+	directiveMap := map[string]*directiveData{}
+
 	for label, value := range labels {
 		if !g.labelRegex.MatchString(label) {
 			continue
 		}
-		directive := rootDirective
-		path := strings.Split(label, ".")
-		for i, p := range path {
-			if d, ok := directive.children[p]; ok {
-				directive = d
-			} else {
-				if directive.children == nil {
-					directive.children = map[string]*directiveData{}
-				}
-				var newDirective = directiveData{}
-				if i > 0 {
-					newDirective.name = removeSuffix(p)
-				}
-				directive.children[p] = &newDirective
-				directive = &newDirective
-			}
-		}
+		directive := getOrCreateDirective(directiveMap, label, true)
 		directive.args = processVariables(templateData, value)
 	}
+
+	return directiveMap
 }
 
 func processVariables(data interface{}, content string) string {
@@ -410,9 +400,9 @@ func writeDirective(buffer *bytes.Buffer, directive *directiveData, level int) {
 	if directive.args != "" {
 		buffer.WriteString(directive.args)
 	}
-	if directive.children != nil {
+	if len(directive.children) > 0 {
 		buffer.WriteString(" {\n")
-		for _, name := range getSortedKeys(&directive.children) {
+		for _, name := range getSortedKeys(directive.children) {
 			subdirective := directive.children[name]
 			writeDirective(buffer, subdirective, level+1)
 		}
@@ -425,15 +415,15 @@ func removeSuffix(name string) string {
 	return suffixRegex.ReplaceAllString(name, "")
 }
 
-func getSortedKeys(m *map[string]*directiveData) []string {
+func getSortedKeys(m map[string]*directiveData) []string {
 	var keys = getKeys(m)
 	sort.Strings(keys)
 	return keys
 }
 
-func getKeys(m *map[string]*directiveData) []string {
+func getKeys(m map[string]*directiveData) []string {
 	var keys []string
-	for k := range *m {
+	for k := range m {
 		keys = append(keys, k)
 	}
 	return keys
