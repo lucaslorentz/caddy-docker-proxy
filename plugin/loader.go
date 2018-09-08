@@ -56,7 +56,11 @@ func (dockerLoader *DockerLoader) Load(serverType string) (caddy.Input, error) {
 		dockerClient.NegotiateAPIVersionPing(dockerPing)
 
 		dockerLoader.dockerClient = dockerClient
-		dockerLoader.generator = CreateGenerator(dockerClient, GetGeneratorOptions())
+		dockerLoader.generator = CreateGenerator(
+			WrapDockerClient(dockerClient),
+			CreateDockerUtils(),
+			GetGeneratorOptions(),
+		)
 
 		dockerLoader.timer = time.AfterFunc(poolInterval, func() {
 			dockerLoader.update(true)
