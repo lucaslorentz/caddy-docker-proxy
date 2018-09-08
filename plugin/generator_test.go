@@ -62,20 +62,18 @@ func TestAddContainerWithBasicLabels(t *testing.T) {
 			},
 		},
 		Labels: map[string]string{
-			fmtLabel("%s.address"):    "service.testdomain.com",
-			fmtLabel("%s.targetport"): "5000",
-			fmtLabel("%s.targetpath"): "/api",
+			fmtLabel("%s.address"): "service.testdomain.com",
 		},
 	}
 
 	const expected string = "service.testdomain.com {\n" +
-		"  proxy / 172.17.0.2:5000/api\n" +
+		"  proxy / 172.17.0.2\n" +
 		"}\n"
 
 	testSingleContainer(t, container, expected)
 }
 
-func TestAddContainerWithBasicLabelsAndHttps(t *testing.T) {
+func TestAddContainerWithBasicLabelsProtocolAndPort(t *testing.T) {
 	var container = &types.Container{
 		NetworkSettings: &types.SummaryNetworkSettings{
 			Networks: map[string]*network.EndpointSettings{
@@ -225,8 +223,6 @@ func TestAddServiceWithBasicLabels(t *testing.T) {
 				Name: "service",
 				Labels: map[string]string{
 					fmtLabel("%s.address"):            "service.testdomain.com",
-					fmtLabel("%s.targetport"):         "5000",
-					fmtLabel("%s.targetpath"):         "/api",
 					fmtLabel("%s.proxy.health_check"): "/health",
 					fmtLabel("%s.proxy.transparent"):  "",
 					fmtLabel("%s.proxy.websocket"):    "",
@@ -246,7 +242,7 @@ func TestAddServiceWithBasicLabels(t *testing.T) {
 
 	const expected string = "service.testdomain.com {\n" +
 		"  basicauth / user password\n" +
-		"  proxy / service:5000/api {\n" +
+		"  proxy / service {\n" +
 		"    health_check /health\n" +
 		"    transparent\n" +
 		"    websocket\n" +
@@ -259,7 +255,7 @@ func TestAddServiceWithBasicLabels(t *testing.T) {
 	testSingleService(t, false, service, expected)
 }
 
-func TestAddServiceWithBasicLabelsAndHttps(t *testing.T) {
+func TestAddServiceWithBasicLabelsProtocolAndPort(t *testing.T) {
 	var service = &swarm.Service{
 		Spec: swarm.ServiceSpec{
 			Annotations: swarm.Annotations{
