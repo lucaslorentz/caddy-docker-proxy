@@ -241,6 +241,8 @@ Now you can access both services using different urls
 curl -H Host:whoami0.example.com http://localhost:2015
 
 curl -H Host:whoami1.example.com http://localhost:2015
+
+curl -H Host:config.example.com http://localhost:2015
 ```
 
 After testing, delete the demo stack:

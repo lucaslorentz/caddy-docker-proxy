@@ -23,6 +23,7 @@ var defaultLabelPrefix = "caddy"
 
 // CaddyfileGenerator generates caddyfile
 type CaddyfileGenerator struct {
+	labelPrefix          string
 	labelRegex           *regexp.Regexp
 	proxyServiceTasks    bool
 	dockerClient         DockerClient
@@ -75,6 +76,7 @@ func CreateGenerator(dockerClient DockerClient, dockerUtils DockerUtils, options
 	return &CaddyfileGenerator{
 		dockerClient:      dockerClient,
 		dockerUtils:       dockerUtils,
+		labelPrefix:       options.labelPrefix,
 		labelRegex:        regexp.MustCompile(labelRegexString),
 		proxyServiceTasks: options.proxyServiceTasks,
 	}
@@ -137,6 +139,27 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 		}
 	} else {
 		g.addComment(&buffer, "Skipping services because swarm is not available")
+	}
+
+	if g.swarmIsAvailable {
+		configs, err := g.dockerClient.ConfigList(context.Background(), types.ConfigListOptions{})
+		if err == nil {
+			for _, config := range configs {
+				if _, hasLabel := config.Spec.Labels[g.labelPrefix]; hasLabel {
+					fullConfig, _, err := g.dockerClient.ConfigInspectWithRaw(context.Background(), config.ID)
+					if err == nil {
+						buffer.Write(fullConfig.Spec.Data)
+						buffer.WriteRune('\n')
+					} else {
+						g.addComment(&buffer, err.Error())
+					}
+				}
+			}
+		} else {
+			g.addComment(&buffer, err.Error())
+		}
+	} else {
+		g.addComment(&buffer, "Skipping configs because swarm is not available")
 	}
 
 	writeDirectives(&buffer, directives, 0)

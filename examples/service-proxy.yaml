@@ -1,4 +1,10 @@
-version: '3'
+version: '3.7'
+
+configs:
+  caddy-basic-content:
+    file: ./Caddyfile
+    labels:
+        caddy:
 
 services:
   caddy:
