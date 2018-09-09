@@ -237,6 +237,47 @@ func TestAddContainerWithReplicas(t *testing.T) {
 	testGeneration(t, dockerClient, false, expected)
 }
 
+func TestDoNotMergeProxiesWithDifferentLabelKey(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []types.Container{
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.2",
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):         "service.testdomain.com",
+				fmtLabel("%s.proxy_0"): "/a service-a",
+			},
+		},
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.3",
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):         "service.testdomain.com",
+				fmtLabel("%s.proxy_1"): "/b service-b",
+			},
+		},
+	}
+
+	const expected string = "service.testdomain.com {\n" +
+		"  proxy /a service-a\n" +
+		"  proxy /b service-b\n" +
+		"}\n"
+
+	testGeneration(t, dockerClient, false, expected)
+}
+
 func TestAddContainersWithSnippets(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{

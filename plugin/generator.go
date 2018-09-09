@@ -175,15 +175,15 @@ func mergeDirectives(directiveA *directiveData, directiveB *directiveData) *dire
 		return directiveA
 	}
 
-	for key, value := range directiveB.children {
-		if key == "proxy" {
-			if proxyA, exists := directiveA.children[key]; exists {
-				proxyA.addArgs(value.args[1:]...)
+	for keyB, subDirectiveB := range directiveB.children {
+		if subDirectiveB.name == "proxy" {
+			if proxyA, exists := directiveA.children[keyB]; exists {
+				proxyA.addArgs(subDirectiveB.args[1:]...)
 				continue
 			}
 		}
 
-		directiveA.children[key] = value
+		directiveA.children[keyB] = subDirectiveB
 	}
 
 	return directiveA
