@@ -538,7 +538,35 @@ func TestAddServiceSwarmDisable(t *testing.T) {
 		},
 	}
 
-	const expected string = "# Skipping services because swarm is not available\n"
+	const expected string = "# Skipping services because swarm is not available\n" +
+		"# Skipping configs because swarm is not available\n"
+
+	testGeneration(t, dockerClient, false, expected)
+}
+
+func TestAddDockerConfigContent(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ConfigsData = []swarm.Config{
+		swarm.Config{
+			ID: "CONFIG-ID",
+			Spec: swarm.ConfigSpec{
+				Annotations: swarm.Annotations{
+					Labels: map[string]string{
+						fmtLabel("%s"): "",
+					},
+				},
+				Data: []byte(
+					"example.com {\n" +
+						"  tls off+\n" +
+						"}",
+				),
+			},
+		},
+	}
+
+	const expected string = "example.com {\n" +
+		"  tls off+\n" +
+		"}\n"
 
 	testGeneration(t, dockerClient, false, expected)
 }
@@ -595,6 +623,7 @@ func createBasicDockerClientMock() *dockerClientMock {
 	return &dockerClientMock{
 		ContainersData: []types.Container{},
 		ServicesData:   []swarm.Service{},
+		ConfigsData:    []swarm.Config{},
 		InfoData: types.Info{
 			Swarm: swarm.Info{
 				LocalNodeState: swarm.LocalNodeStateActive,
@@ -630,6 +659,7 @@ func createDockerUtilsMock() *dockerUtilsMock {
 type dockerClientMock struct {
 	ContainersData       []types.Container
 	ServicesData         []swarm.Service
+	ConfigsData          []swarm.Config
 	InfoData             types.Info
 	ContainerInspectData map[string]types.ContainerJSON
 	NetworkInspectData   map[string]types.NetworkResource
@@ -653,6 +683,19 @@ func (mock *dockerClientMock) ContainerInspect(ctx context.Context, containerID 
 
 func (mock *dockerClientMock) NetworkInspect(ctx context.Context, networkID string, options types.NetworkInspectOptions) (types.NetworkResource, error) {
 	return mock.NetworkInspectData[networkID], nil
+}
+
+func (mock *dockerClientMock) ConfigList(ctx context.Context, options types.ConfigListOptions) ([]swarm.Config, error) {
+	return mock.ConfigsData, nil
+}
+
+func (mock *dockerClientMock) ConfigInspectWithRaw(ctx context.Context, id string) (swarm.Config, []byte, error) {
+	for _, config := range mock.ConfigsData {
+		if config.ID == id {
+			return config, nil, nil
+		}
+	}
+	return swarm.Config{}, nil, nil
 }
 
 type dockerUtilsMock struct {

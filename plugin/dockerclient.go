@@ -15,6 +15,8 @@ type DockerClient interface {
 	Info(ctx context.Context) (types.Info, error)
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
 	NetworkInspect(ctx context.Context, networkID string, options types.NetworkInspectOptions) (types.NetworkResource, error)
+	ConfigList(ctx context.Context, options types.ConfigListOptions) ([]swarm.Config, error)
+	ConfigInspectWithRaw(ctx context.Context, id string) (swarm.Config, []byte, error)
 }
 
 func WrapDockerClient(client *client.Client) *dockerClientWrapper {
@@ -45,4 +47,12 @@ func (wrapper *dockerClientWrapper) ContainerInspect(ctx context.Context, contai
 
 func (wrapper *dockerClientWrapper) NetworkInspect(ctx context.Context, networkID string, options types.NetworkInspectOptions) (types.NetworkResource, error) {
 	return wrapper.client.NetworkInspect(ctx, networkID, options)
+}
+
+func (wrapper *dockerClientWrapper) ConfigList(ctx context.Context, options types.ConfigListOptions) ([]swarm.Config, error) {
+	return wrapper.client.ConfigList(ctx, options)
+}
+
+func (wrapper *dockerClientWrapper) ConfigInspectWithRaw(ctx context.Context, id string) (swarm.Config, []byte, error) {
+	return wrapper.client.ConfigInspectWithRaw(ctx, id)
 }

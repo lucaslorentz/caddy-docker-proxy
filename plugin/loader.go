@@ -79,6 +79,7 @@ func (dockerLoader *DockerLoader) monitorEvents() {
 	args.Add("scope", "local")
 	args.Add("type", "service")
 	args.Add("type", "container")
+	args.Add("type", "config")
 
 	eventsChan, errorChan := dockerLoader.dockerClient.Events(context.Background(), types.EventsOptions{
 		Filters: args,
@@ -95,7 +96,9 @@ func (dockerLoader *DockerLoader) monitorEvents() {
 				(event.Type == "container" && event.Action == "stop") ||
 				(event.Type == "service" && event.Action == "create") ||
 				(event.Type == "service" && event.Action == "update") ||
-				(event.Type == "service" && event.Action == "remove")
+				(event.Type == "service" && event.Action == "remove") ||
+				(event.Type == "config" && event.Action == "create") ||
+				(event.Type == "config" && event.Action == "remove")
 
 			if update {
 				dockerLoader.skipEvents = true
