@@ -1,8 +1,10 @@
 package plugin
 
 import (
-	"bytes"
+	"context"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"testing"
 
 	"github.com/docker/docker/api/types"
@@ -11,32 +13,36 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var caddyNetworkID = "af9700b7abaab83e0a41692e02d3f74b5f5a13af877a223e9b87bd46232ee77c"
+var caddyContainerID = "container-id"
+var caddyNetworkID = "network-id"
+
+func init() {
+	log.SetOutput(ioutil.Discard)
+}
 
 func fmtLabel(s string) string {
 	return fmt.Sprintf(s, defaultLabelPrefix)
 }
 
 func TestAddContainerWithTemplates(t *testing.T) {
-	var container = &types.Container{
-		Names: []string{
-			"container-name",
-		},
-		NetworkSettings: &types.SummaryNetworkSettings{
-			Networks: map[string]*network.EndpointSettings{
-				"other-network": &network.EndpointSettings{
-					IPAddress: "10.0.0.1",
-					NetworkID: "other-network-id",
-				},
-				"caddy-network": &network.EndpointSettings{
-					IPAddress: "172.17.0.2",
-					NetworkID: caddyNetworkID,
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []types.Container{
+		types.Container{
+			Names: []string{
+				"container-name",
+			},
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.2",
+						NetworkID: caddyNetworkID,
+					},
 				},
 			},
-		},
-		Labels: map[string]string{
-			fmtLabel("%s"):       "{{index .Names 0}}.testdomain.com",
-			fmtLabel("%s.proxy"): "/ {{(index .NetworkSettings.Networks \"caddy-network\").IPAddress}}:5000/api",
+			Labels: map[string]string{
+				fmtLabel("%s"):       "{{index .Names 0}}.testdomain.com",
+				fmtLabel("%s.proxy"): "/ {{(index .NetworkSettings.Networks \"caddy-network\").IPAddress}}:5000/api",
+			},
 		},
 	}
 
@@ -44,25 +50,28 @@ func TestAddContainerWithTemplates(t *testing.T) {
 		"  proxy / 172.17.0.2:5000/api\n" +
 		"}\n"
 
-	testSingleContainer(t, container, expected)
+	testGeneration(t, dockerClient, false, expected)
 }
 
-func TestAddContainerWithBasicLabels(t *testing.T) {
-	var container = &types.Container{
-		NetworkSettings: &types.SummaryNetworkSettings{
-			Networks: map[string]*network.EndpointSettings{
-				"other-network": &network.EndpointSettings{
-					IPAddress: "10.0.0.1",
-					NetworkID: "other-network-id",
-				},
-				"caddy-network": &network.EndpointSettings{
-					IPAddress: "172.17.0.2",
-					NetworkID: caddyNetworkID,
+func TestAddContainerPicksRightNetwork(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []types.Container{
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"other-network": &network.EndpointSettings{
+						IPAddress: "10.0.0.1",
+						NetworkID: "other-network-id",
+					},
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.2",
+						NetworkID: caddyNetworkID,
+					},
 				},
 			},
-		},
-		Labels: map[string]string{
-			fmtLabel("%s.address"): "service.testdomain.com",
+			Labels: map[string]string{
+				fmtLabel("%s.address"): "service.testdomain.com",
+			},
 		},
 	}
 
@@ -70,24 +79,52 @@ func TestAddContainerWithBasicLabels(t *testing.T) {
 		"  proxy / 172.17.0.2\n" +
 		"}\n"
 
-	testSingleContainer(t, container, expected)
+	testGeneration(t, dockerClient, false, expected)
 }
 
-func TestAddContainerWithBasicLabelsProtocolAndPort(t *testing.T) {
-	var container = &types.Container{
-		NetworkSettings: &types.SummaryNetworkSettings{
-			Networks: map[string]*network.EndpointSettings{
-				"caddy-network": &network.EndpointSettings{
-					IPAddress: "172.17.0.2",
-					NetworkID: caddyNetworkID,
+func TestAddContainerWithMinimumBasicLabels(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []types.Container{
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.2",
+						NetworkID: caddyNetworkID,
+					},
 				},
 			},
+			Labels: map[string]string{
+				fmtLabel("%s.address"): "service.testdomain.com",
+			},
 		},
-		Labels: map[string]string{
-			fmtLabel("%s.address"):        "service.testdomain.com",
-			fmtLabel("%s.targetport"):     "5000",
-			fmtLabel("%s.targetpath"):     "/api",
-			fmtLabel("%s.targetprotocol"): "https",
+	}
+
+	const expected string = "service.testdomain.com {\n" +
+		"  proxy / 172.17.0.2\n" +
+		"}\n"
+
+	testGeneration(t, dockerClient, false, expected)
+}
+
+func TestAddContainerWithAllBasicLabels(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []types.Container{
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.2",
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s.address"):        "service.testdomain.com",
+				fmtLabel("%s.targetport"):     "5000",
+				fmtLabel("%s.targetpath"):     "/api",
+				fmtLabel("%s.targetprotocol"): "https",
+			},
 		},
 	}
 
@@ -95,54 +132,54 @@ func TestAddContainerWithBasicLabelsProtocolAndPort(t *testing.T) {
 		"  proxy / https://172.17.0.2:5000/api\n" +
 		"}\n"
 
-	testSingleContainer(t, container, expected)
+	testGeneration(t, dockerClient, false, expected)
 }
 
-func TestAddContainerDifferentNetwork(t *testing.T) {
-	var container = &types.Container{
-		ID: "CONTAINER-ID",
-		NetworkSettings: &types.SummaryNetworkSettings{
-			Networks: map[string]*network.EndpointSettings{
-				"other-network": &network.EndpointSettings{
-					IPAddress: "10.0.0.1",
-					NetworkID: "other-network-id",
+func TestAddContainerFromDifferentNetwork(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []types.Container{
+		types.Container{
+			ID: "CONTAINER-ID",
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"other-network": &network.EndpointSettings{
+						IPAddress: "10.0.0.1",
+						NetworkID: "other-network-id",
+					},
 				},
 			},
-		},
-		Labels: map[string]string{
-			fmtLabel("%s.address"):    "service.testdomain.com",
-			fmtLabel("%s.targetport"): "5000",
-			fmtLabel("%s.targetpath"): "/api",
+			Labels: map[string]string{
+				fmtLabel("%s.address"): "service.testdomain.com",
+			},
 		},
 	}
 
 	const expected string = "# Container CONTAINER-ID and caddy are not in same network\n"
 
-	testSingleContainer(t, container, expected)
+	testGeneration(t, dockerClient, false, expected)
 }
 
-func TestAddContainerWithBasicLabelsAndMultipleConfigs(t *testing.T) {
-	var container = &types.Container{
-		NetworkSettings: &types.SummaryNetworkSettings{
-			Networks: map[string]*network.EndpointSettings{
-				"other-network": &network.EndpointSettings{
-					IPAddress: "10.0.0.1",
-					NetworkID: "other-network-id",
-				},
-				"caddy-network": &network.EndpointSettings{
-					IPAddress: "172.17.0.2",
-					NetworkID: caddyNetworkID,
+func TestAddContainerWithMultipleConfigs(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []types.Container{
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.2",
+						NetworkID: caddyNetworkID,
+					},
 				},
 			},
-		},
-		Labels: map[string]string{
-			fmtLabel("%s_0.address"):    "service1.testdomain.com",
-			fmtLabel("%s_0.targetport"): "5000",
-			fmtLabel("%s_0.targetpath"): "/api",
-			fmtLabel("%s_0.tls.dns"):    "route53",
-			fmtLabel("%s_1.address"):    "service2.testdomain.com",
-			fmtLabel("%s_1.targetport"): "5001",
-			fmtLabel("%s_1.tls.dns"):    "route53",
+			Labels: map[string]string{
+				fmtLabel("%s_0.address"):    "service1.testdomain.com",
+				fmtLabel("%s_0.targetport"): "5000",
+				fmtLabel("%s_0.targetpath"): "/api",
+				fmtLabel("%s_0.tls.dns"):    "route53",
+				fmtLabel("%s_1.address"):    "service2.testdomain.com",
+				fmtLabel("%s_1.targetport"): "5001",
+				fmtLabel("%s_1.tls.dns"):    "route53",
+			},
 		},
 	}
 
@@ -159,35 +196,120 @@ func TestAddContainerWithBasicLabelsAndMultipleConfigs(t *testing.T) {
 		"  }\n" +
 		"}\n"
 
-	testSingleContainer(t, container, expected)
+	testGeneration(t, dockerClient, false, expected)
+}
+
+func TestAddContainerWithReplicas(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []types.Container{
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.2",
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s.address"): "service.testdomain.com",
+			},
+		},
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.3",
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s.address"): "service.testdomain.com",
+			},
+		},
+	}
+
+	const expected string = "service.testdomain.com {\n" +
+		"  proxy / 172.17.0.2 172.17.0.3\n" +
+		"}\n"
+
+	testGeneration(t, dockerClient, false, expected)
+}
+
+func TestAddContainersWithSnippets(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []types.Container{
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.3",
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s.address"): "service.testdomain.com",
+				fmtLabel("%s.import"):  "mysnippet",
+			},
+		},
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.2",
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):     "(mysnippet)",
+				fmtLabel("%s.tls"): "off",
+			},
+		},
+	}
+
+	const expected string = "(mysnippet) {\n" +
+		"  tls off\n" +
+		"}\n" +
+		"service.testdomain.com {\n" +
+		"  import mysnippet\n" +
+		"  proxy / 172.17.0.3\n" +
+		"}\n"
+
+	testGeneration(t, dockerClient, false, expected)
 }
 
 func TestAddServiceWithTemplates(t *testing.T) {
-	var service = &swarm.Service{
-		Spec: swarm.ServiceSpec{
-			Annotations: swarm.Annotations{
-				Name: "service",
-				Labels: map[string]string{
-					fmtLabel("%s"):                    "{{.Spec.Name}}.testdomain.com",
-					fmtLabel("%s.proxy"):              "/ {{.Spec.Name}}:5000/api",
-					fmtLabel("%s.proxy.transparent"):  "",
-					fmtLabel("%s.proxy.health_check"): "/health",
-					fmtLabel("%s.proxy.websocket"):    "",
-					fmtLabel("%s.gzip"):               "",
-					fmtLabel("%s.basicauth"):          "/ user password",
-					fmtLabel("%s.tls.dns"):            "route53",
-					fmtLabel("%s.rewrite_0"):          "/path1 /path2",
-					fmtLabel("%s.rewrite_1"):          "/path3 /path4",
-					fmtLabel("%s.limits.header"):      "100kb",
-					fmtLabel("%s.limits.body_0"):      "/path1 2mb",
-					fmtLabel("%s.limits.body_1"):      "/path2 4mb",
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		swarm.Service{
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s"):                    "{{.Spec.Name}}.testdomain.com",
+						fmtLabel("%s.proxy"):              "/ {{.Spec.Name}}:5000/api",
+						fmtLabel("%s.proxy.transparent"):  "",
+						fmtLabel("%s.proxy.health_check"): "/health",
+						fmtLabel("%s.proxy.websocket"):    "",
+						fmtLabel("%s.gzip"):               "",
+						fmtLabel("%s.basicauth"):          "/ user password",
+						fmtLabel("%s.tls.dns"):            "route53",
+						fmtLabel("%s.rewrite_0"):          "/path1 /path2",
+						fmtLabel("%s.rewrite_1"):          "/path3 /path4",
+						fmtLabel("%s.limits.header"):      "100kb",
+						fmtLabel("%s.limits.body_0"):      "/path1 2mb",
+						fmtLabel("%s.limits.body_1"):      "/path2 4mb",
+					},
 				},
 			},
-		},
-		Endpoint: swarm.Endpoint{
-			VirtualIPs: []swarm.EndpointVirtualIP{
-				swarm.EndpointVirtualIP{
-					NetworkID: caddyNetworkID,
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					swarm.EndpointVirtualIP{
+						NetworkID: caddyNetworkID,
+					},
 				},
 			},
 		},
@@ -213,65 +335,58 @@ func TestAddServiceWithTemplates(t *testing.T) {
 		"  }\n" +
 		"}\n"
 
-	testSingleService(t, false, service, expected)
+	testGeneration(t, dockerClient, false, expected)
 }
 
-func TestAddServiceWithBasicLabels(t *testing.T) {
-	var service = &swarm.Service{
-		Spec: swarm.ServiceSpec{
-			Annotations: swarm.Annotations{
-				Name: "service",
-				Labels: map[string]string{
-					fmtLabel("%s.address"):            "service.testdomain.com",
-					fmtLabel("%s.proxy.health_check"): "/health",
-					fmtLabel("%s.proxy.transparent"):  "",
-					fmtLabel("%s.proxy.websocket"):    "",
-					fmtLabel("%s.basicauth"):          "/ user password",
-					fmtLabel("%s.tls.dns"):            "route53",
+func TestAddServiceWithMinimumBasicLabels(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		swarm.Service{
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s.address"): "service.testdomain.com",
+					},
 				},
 			},
-		},
-		Endpoint: swarm.Endpoint{
-			VirtualIPs: []swarm.EndpointVirtualIP{
-				swarm.EndpointVirtualIP{
-					NetworkID: caddyNetworkID,
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					swarm.EndpointVirtualIP{
+						NetworkID: caddyNetworkID,
+					},
 				},
 			},
 		},
 	}
 
 	const expected string = "service.testdomain.com {\n" +
-		"  basicauth / user password\n" +
-		"  proxy / service {\n" +
-		"    health_check /health\n" +
-		"    transparent\n" +
-		"    websocket\n" +
-		"  }\n" +
-		"  tls {\n" +
-		"    dns route53\n" +
-		"  }\n" +
+		"  proxy / service\n" +
 		"}\n"
 
-	testSingleService(t, false, service, expected)
+	testGeneration(t, dockerClient, false, expected)
 }
 
-func TestAddServiceWithBasicLabelsProtocolAndPort(t *testing.T) {
-	var service = &swarm.Service{
-		Spec: swarm.ServiceSpec{
-			Annotations: swarm.Annotations{
-				Name: "service",
-				Labels: map[string]string{
-					fmtLabel("%s.address"):        "service.testdomain.com",
-					fmtLabel("%s.targetport"):     "5000",
-					fmtLabel("%s.targetpath"):     "/api",
-					fmtLabel("%s.targetprotocol"): "https",
+func TestAddServiceWithAllBasicLabels(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		swarm.Service{
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s.address"):        "service.testdomain.com",
+						fmtLabel("%s.targetport"):     "5000",
+						fmtLabel("%s.targetpath"):     "/api",
+						fmtLabel("%s.targetprotocol"): "https",
+					},
 				},
 			},
-		},
-		Endpoint: swarm.Endpoint{
-			VirtualIPs: []swarm.EndpointVirtualIP{
-				swarm.EndpointVirtualIP{
-					NetworkID: caddyNetworkID,
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					swarm.EndpointVirtualIP{
+						NetworkID: caddyNetworkID,
+					},
 				},
 			},
 		},
@@ -281,33 +396,36 @@ func TestAddServiceWithBasicLabelsProtocolAndPort(t *testing.T) {
 		"  proxy / https://service:5000/api\n" +
 		"}\n"
 
-	testSingleService(t, false, service, expected)
+	testGeneration(t, dockerClient, false, expected)
 }
 
-func TestAddServiceWithBasicLabelsAndMultipleConfigs(t *testing.T) {
-	var service = &swarm.Service{
-		Spec: swarm.ServiceSpec{
-			Annotations: swarm.Annotations{
-				Name: "service",
-				Labels: map[string]string{
-					fmtLabel("%s_0.address"):            "service1.testdomain.com",
-					fmtLabel("%s_0.targetport"):         "5000",
-					fmtLabel("%s_0.targetpath"):         "/api",
-					fmtLabel("%s_0.proxy.health_check"): "/health",
-					fmtLabel("%s_0.proxy.transparent"):  "",
-					fmtLabel("%s_0.proxy.websocket"):    "",
-					fmtLabel("%s_0.basicauth"):          "/ user password",
-					fmtLabel("%s_0.tls.dns"):            "route53",
-					fmtLabel("%s_1.address"):            "service2.testdomain.com",
-					fmtLabel("%s_1.targetport"):         "5001",
-					fmtLabel("%s_1.tls.dns"):            "route53",
+func TestAddServiceWithMultipleConfigs(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		swarm.Service{
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s_0.address"):            "service1.testdomain.com",
+						fmtLabel("%s_0.targetport"):         "5000",
+						fmtLabel("%s_0.targetpath"):         "/api",
+						fmtLabel("%s_0.proxy.health_check"): "/health",
+						fmtLabel("%s_0.proxy.transparent"):  "",
+						fmtLabel("%s_0.proxy.websocket"):    "",
+						fmtLabel("%s_0.basicauth"):          "/ user password",
+						fmtLabel("%s_0.tls.dns"):            "route53",
+						fmtLabel("%s_1.address"):            "service2.testdomain.com",
+						fmtLabel("%s_1.targetport"):         "5001",
+						fmtLabel("%s_1.tls.dns"):            "route53",
+					},
 				},
 			},
-		},
-		Endpoint: swarm.Endpoint{
-			VirtualIPs: []swarm.EndpointVirtualIP{
-				swarm.EndpointVirtualIP{
-					NetworkID: caddyNetworkID,
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					swarm.EndpointVirtualIP{
+						NetworkID: caddyNetworkID,
+					},
 				},
 			},
 		},
@@ -331,24 +449,27 @@ func TestAddServiceWithBasicLabelsAndMultipleConfigs(t *testing.T) {
 		"  }\n" +
 		"}\n"
 
-	testSingleService(t, false, service, expected)
+	testGeneration(t, dockerClient, false, expected)
 }
 
 func TestAddServiceProxyServiceTasks(t *testing.T) {
-	var service = &swarm.Service{
-		Spec: swarm.ServiceSpec{
-			Annotations: swarm.Annotations{
-				Name: "service",
-				Labels: map[string]string{
-					fmtLabel("%s.address"):    "service.testdomain.com",
-					fmtLabel("%s.targetport"): "5000",
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		swarm.Service{
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s.address"):    "service.testdomain.com",
+						fmtLabel("%s.targetport"): "5000",
+					},
 				},
 			},
-		},
-		Endpoint: swarm.Endpoint{
-			VirtualIPs: []swarm.EndpointVirtualIP{
-				swarm.EndpointVirtualIP{
-					NetworkID: caddyNetworkID,
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					swarm.EndpointVirtualIP{
+						NetworkID: caddyNetworkID,
+					},
 				},
 			},
 		},
@@ -358,25 +479,27 @@ func TestAddServiceProxyServiceTasks(t *testing.T) {
 		"  proxy / tasks.service:5000\n" +
 		"}\n"
 
-	testSingleService(t, true, service, expected)
+	testGeneration(t, dockerClient, true, expected)
 }
 
-func TestAddServiceDifferentNetwork(t *testing.T) {
-	var service = &swarm.Service{
-		ID: "SERVICE-ID",
-		Spec: swarm.ServiceSpec{
-			Annotations: swarm.Annotations{
-				Name: "service",
-				Labels: map[string]string{
-					fmtLabel("%s.address"):    "service.testdomain.com",
-					fmtLabel("%s.targetport"): "5000",
+func TestAddServiceFromDifferentNetwork(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		swarm.Service{
+			ID: "SERVICE-ID",
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s.address"): "service.testdomain.com",
+					},
 				},
 			},
-		},
-		Endpoint: swarm.Endpoint{
-			VirtualIPs: []swarm.EndpointVirtualIP{
-				swarm.EndpointVirtualIP{
-					NetworkID: "other-network-id",
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					swarm.EndpointVirtualIP{
+						NetworkID: "other-network-id",
+					},
 				},
 			},
 		},
@@ -384,26 +507,62 @@ func TestAddServiceDifferentNetwork(t *testing.T) {
 
 	const expected string = "# Service SERVICE-ID and caddy are not in same network\n"
 
-	testSingleService(t, false, service, expected)
+	testGeneration(t, dockerClient, false, expected)
 }
 
-func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
-	var service = &swarm.Service{
-		Spec: swarm.ServiceSpec{
-			Annotations: swarm.Annotations{
-				Name: "service",
-				Labels: map[string]string{
-					"caddy_version":  "0.11.0",
-					"caddyversion":   "0.11.0",
-					"caddy_.version": "0.11.0",
-					"version_caddy":  "0.11.0",
+func TestAddServiceSwarmDisable(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		swarm.Service{
+			ID: "SERVICE-ID",
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s.address"): "service.testdomain.com",
+					},
+				},
+			},
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					swarm.EndpointVirtualIP{
+						NetworkID: caddyNetworkID,
+					},
 				},
 			},
 		},
-		Endpoint: swarm.Endpoint{
-			VirtualIPs: []swarm.EndpointVirtualIP{
-				swarm.EndpointVirtualIP{
-					NetworkID: caddyNetworkID,
+	}
+	dockerClient.InfoData = types.Info{
+		Swarm: swarm.Info{
+			LocalNodeState: swarm.LocalNodeStateInactive,
+		},
+	}
+
+	const expected string = "# Skipping services because swarm is not available\n"
+
+	testGeneration(t, dockerClient, false, expected)
+}
+
+func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		swarm.Service{
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						"caddy_version":  "0.11.0",
+						"caddyversion":   "0.11.0",
+						"caddy_.version": "0.11.0",
+						"version_caddy":  "0.11.0",
+					},
+				},
+			},
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					swarm.EndpointVirtualIP{
+						NetworkID: caddyNetworkID,
+					},
 				},
 			},
 		},
@@ -411,37 +570,96 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 
 	const expected string = ""
 
-	testSingleService(t, true, service, expected)
+	testGeneration(t, dockerClient, true, expected)
 }
 
-func testSingleService(t *testing.T, shouldProxyServiceTasks bool, service *swarm.Service, expected string) {
-	var buffer bytes.Buffer
-	generator := CreateGenerator(nil, &GeneratorOptions{
+func testGeneration(
+	t *testing.T,
+	dockerClient DockerClient,
+	proxyServiceTasks bool,
+	expected string,
+) {
+	dockerUtils := createDockerUtilsMock()
+
+	generator := CreateGenerator(dockerClient, dockerUtils, &GeneratorOptions{
 		labelPrefix:       defaultLabelPrefix,
-		proxyServiceTasks: shouldProxyServiceTasks,
+		proxyServiceTasks: proxyServiceTasks,
 	})
-	generator.caddyNetworks = map[string]bool{}
-	generator.caddyNetworks[caddyNetworkID] = true
-	dContent := generator.addServiceToCaddyFile(service)
-	for _, d := range dContent {
-		buffer.Write(d.content.Bytes())
-	}
-	var content = buffer.String()
+
+	bytes := generator.GenerateCaddyFile()
+	var content = string(bytes[:])
 	assert.Equal(t, expected, content)
 }
 
-func testSingleContainer(t *testing.T, container *types.Container, expected string) {
-	var buffer bytes.Buffer
-	generator := CreateGenerator(nil, &GeneratorOptions{
-		labelPrefix:       defaultLabelPrefix,
-		proxyServiceTasks: false,
-	})
-	generator.caddyNetworks = map[string]bool{}
-	generator.caddyNetworks[caddyNetworkID] = true
-	dContent := generator.addContainerToCaddyFile(container)
-	for _, d := range dContent {
-		buffer.Write(d.content.Bytes())
+func createBasicDockerClientMock() *dockerClientMock {
+	return &dockerClientMock{
+		ContainersData: []types.Container{},
+		ServicesData:   []swarm.Service{},
+		InfoData: types.Info{
+			Swarm: swarm.Info{
+				LocalNodeState: swarm.LocalNodeStateActive,
+			},
+		},
+		ContainerInspectData: map[string]types.ContainerJSON{
+			caddyContainerID: types.ContainerJSON{
+				NetworkSettings: &types.NetworkSettings{
+					Networks: map[string]*network.EndpointSettings{
+						"overlay": &network.EndpointSettings{
+							NetworkID: caddyNetworkID,
+						},
+					},
+				},
+			},
+		},
+		NetworkInspectData: map[string]types.NetworkResource{
+			caddyNetworkID: types.NetworkResource{
+				Ingress: false,
+			},
+		},
 	}
-	var content = buffer.String()
-	assert.Equal(t, expected, content)
+}
+
+func createDockerUtilsMock() *dockerUtilsMock {
+	return &dockerUtilsMock{
+		MockGetCurrentContainerID: func() (string, error) {
+			return caddyContainerID, nil
+		},
+	}
+}
+
+type dockerClientMock struct {
+	ContainersData       []types.Container
+	ServicesData         []swarm.Service
+	InfoData             types.Info
+	ContainerInspectData map[string]types.ContainerJSON
+	NetworkInspectData   map[string]types.NetworkResource
+}
+
+func (mock *dockerClientMock) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
+	return mock.ContainersData, nil
+}
+
+func (mock *dockerClientMock) ServiceList(ctx context.Context, options types.ServiceListOptions) ([]swarm.Service, error) {
+	return mock.ServicesData, nil
+}
+
+func (mock *dockerClientMock) Info(ctx context.Context) (types.Info, error) {
+	return mock.InfoData, nil
+}
+
+func (mock *dockerClientMock) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
+	return mock.ContainerInspectData[containerID], nil
+}
+
+func (mock *dockerClientMock) NetworkInspect(ctx context.Context, networkID string, options types.NetworkInspectOptions) (types.NetworkResource, error) {
+	return mock.NetworkInspectData[networkID], nil
+}
+
+type dockerUtilsMock struct {
+	MockGetCurrentContainerID func() (string, error)
+}
+
+// GetCurrentContainerID returns the id of the container running this application
+func (mock *dockerUtilsMock) GetCurrentContainerID() (string, error) {
+	return mock.MockGetCurrentContainerID()
 }
