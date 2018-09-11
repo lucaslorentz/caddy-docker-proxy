@@ -27,17 +27,17 @@ if [[ "${TRAVIS_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
     docker push lucaslorentz/caddy-docker-proxy:${MINOR_VERSION}-alpine
 
     # scratch arm32v6
-    docker tag lucaslorentz/caddy-docker-proxy:ci lucaslorentz/caddy-docker-proxy:latest-arm32v6
-    docker tag lucaslorentz/caddy-docker-proxy:ci lucaslorentz/caddy-docker-proxy:${PATCH_VERSION}-arm32v6
-    docker tag lucaslorentz/caddy-docker-proxy:ci lucaslorentz/caddy-docker-proxy:${MINOR_VERSION}-arm32v6
+    docker tag lucaslorentz/caddy-docker-proxy:ci-arm32v6 lucaslorentz/caddy-docker-proxy:latest-arm32v6
+    docker tag lucaslorentz/caddy-docker-proxy:ci-arm32v6 lucaslorentz/caddy-docker-proxy:${PATCH_VERSION}-arm32v6
+    docker tag lucaslorentz/caddy-docker-proxy:ci-arm32v6 lucaslorentz/caddy-docker-proxy:${MINOR_VERSION}-arm32v6
     docker push lucaslorentz/caddy-docker-proxy:latest-arm32v6
     docker push lucaslorentz/caddy-docker-proxy:${PATCH_VERSION}-arm32v6
     docker push lucaslorentz/caddy-docker-proxy:${MINOR_VERSION}-arm32v6
 
-    # alpine
-    docker tag lucaslorentz/caddy-docker-proxy:ci-alpine lucaslorentz/caddy-docker-proxy:alpine-arm32v6
-    docker tag lucaslorentz/caddy-docker-proxy:ci-alpine lucaslorentz/caddy-docker-proxy:${PATCH_VERSION}-alpine-arm32v6
-    docker tag lucaslorentz/caddy-docker-proxy:ci-alpine lucaslorentz/caddy-docker-proxy:${MINOR_VERSION}-alpine-arm32v6
+    # alpine arm32v6
+    docker tag lucaslorentz/caddy-docker-proxy:ci-alpine-arm32v6 lucaslorentz/caddy-docker-proxy:alpine-arm32v6
+    docker tag lucaslorentz/caddy-docker-proxy:ci-alpine-arm32v6 lucaslorentz/caddy-docker-proxy:${PATCH_VERSION}-alpine-arm32v6
+    docker tag lucaslorentz/caddy-docker-proxy:ci-alpine-arm32v6 lucaslorentz/caddy-docker-proxy:${MINOR_VERSION}-alpine-arm32v6
     docker push lucaslorentz/caddy-docker-proxy:alpine-arm32v6
     docker push lucaslorentz/caddy-docker-proxy:${PATCH_VERSION}-alpine-arm32v6
     docker push lucaslorentz/caddy-docker-proxy:${MINOR_VERSION}-alpine-arm32v6
