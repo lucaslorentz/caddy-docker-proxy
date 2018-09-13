@@ -292,7 +292,7 @@ func TestAddContainersWithSnippets(t *testing.T) {
 			},
 			Labels: map[string]string{
 				fmtLabel("%s.address"): "service.testdomain.com",
-				fmtLabel("%s.import"):  "mysnippet",
+				fmtLabel("%s.import"):  "mysnippet-1",
 			},
 		},
 		types.Container{
@@ -305,17 +305,22 @@ func TestAddContainersWithSnippets(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s"):     "(mysnippet)",
-				fmtLabel("%s.tls"): "off",
+				fmtLabel("%s_1"):     "(mysnippet-1)",
+				fmtLabel("%s_1.tls"): "off",
+				fmtLabel("%s_2"):     "(mysnippet-2)",
+				fmtLabel("%s_2.tls"): "off",
 			},
 		},
 	}
 
-	const expected string = "(mysnippet) {\n" +
+	const expected string = "(mysnippet-1) {\n" +
+		"  tls off\n" +
+		"}\n" +
+		"(mysnippet-2) {\n" +
 		"  tls off\n" +
 		"}\n" +
 		"service.testdomain.com {\n" +
-		"  import mysnippet\n" +
+		"  import mysnippet-1\n" +
 		"  proxy / 172.17.0.3\n" +
 		"}\n"
 
@@ -521,6 +526,67 @@ func TestAddServiceProxyServiceTasks(t *testing.T) {
 		"}\n"
 
 	testGeneration(t, dockerClient, true, expected)
+}
+
+func TestAddServiceMultipleAddresses(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		swarm.Service{
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s.address"): "a.testdomain.com b.testdomain.com",
+					},
+				},
+			},
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					swarm.EndpointVirtualIP{
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+		},
+	}
+
+	const expected string = "a.testdomain.com b.testdomain.com {\n" +
+		"  proxy / service\n" +
+		"}\n"
+
+	testGeneration(t, dockerClient, false, expected)
+}
+
+func TestAutomaticProxyDoesntOverrideCustomWithSameKey(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		swarm.Service{
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s.address"): "testdomain.com",
+						fmtLabel("%s.proxy"):   "/ something",
+						fmtLabel("%s.proxy_1"): "/api external-api",
+					},
+				},
+			},
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					swarm.EndpointVirtualIP{
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+		},
+	}
+
+	const expected string = "testdomain.com {\n" +
+		"  proxy / something\n" +
+		"  proxy /api external-api\n" +
+		"}\n"
+
+	testGeneration(t, dockerClient, false, expected)
 }
 
 func TestAddServiceFromDifferentNetwork(t *testing.T) {

@@ -177,9 +177,12 @@ func mergeDirectives(directiveA *directiveData, directiveB *directiveData) *dire
 
 	for keyB, subDirectiveB := range directiveB.children {
 		if subDirectiveB.name == "proxy" {
+			proxyB := subDirectiveB
 			if proxyA, exists := directiveA.children[keyB]; exists {
-				proxyA.addArgs(subDirectiveB.args[1:]...)
-				continue
+				if len(proxyA.args) > 0 && len(proxyB.args) > 0 && proxyA.args[0] == proxyB.args[0] {
+					proxyA.addArgs(proxyB.args[1:]...)
+					continue
+				}
 			}
 		}
 
@@ -289,39 +292,46 @@ func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateD
 		address := directive.children["address"]
 
 		if address != nil && len(address.args) > 0 {
-			directive.name = address.args[0]
+			directive.args = address.args
 
 			targetPort := directive.children["targetport"]
 			targetPath := directive.children["targetpath"]
 			targetProtocol := directive.children["targetprotocol"]
 
 			proxyDirective := getOrCreateDirective(directive.children, "proxy", false)
-			proxyTarget, err := getProxyTarget()
-			if err != nil {
-				return nil, err
-			}
 
-			proxyDirective.addArgs("/")
+			if len(proxyDirective.args) == 0 {
+				proxyTarget, err := getProxyTarget()
+				if err != nil {
+					return nil, err
+				}
 
-			targetArg := ""
-			if targetProtocol != nil && len(targetProtocol.args) > 0 {
-				targetArg += targetProtocol.args[0] + "://"
-			}
-			targetArg += proxyTarget
-			if targetPort != nil && len(targetPort.args) > 0 {
-				targetArg += ":" + targetPort.args[0]
-			}
-			if targetPath != nil && len(targetPath.args) > 0 {
-				targetArg += targetPath.args[0]
-			}
+				proxyDirective.addArgs("/")
 
-			proxyDirective.addArgs(targetArg)
+				targetArg := ""
+				if targetProtocol != nil && len(targetProtocol.args) > 0 {
+					targetArg += targetProtocol.args[0] + "://"
+				}
+				targetArg += proxyTarget
+				if targetPort != nil && len(targetPort.args) > 0 {
+					targetArg += ":" + targetPort.args[0]
+				}
+				if targetPath != nil && len(targetPath.args) > 0 {
+					targetArg += targetPath.args[0]
+				}
+
+				proxyDirective.addArgs(targetArg)
+			}
 		}
 
 		delete(directive.children, "address")
 		delete(directive.children, "targetport")
 		delete(directive.children, "targetpath")
 		delete(directive.children, "targetprotocol")
+
+		//Move sites directive to main
+		directive.name = strings.Join(directive.args, " ")
+		directive.args = []string{}
 
 		convertedMap[directive.name] = directive
 	}
