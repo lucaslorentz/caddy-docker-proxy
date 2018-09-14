@@ -3,7 +3,9 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"flag"
 	"log"
+	"os"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -12,7 +14,11 @@ import (
 	"github.com/mholt/caddy"
 )
 
-const poolInterval = 10 * time.Second
+var pollingInterval = 30 * time.Second
+
+func init() {
+	flag.DurationVar(&pollingInterval, "docker-polling-interval", 30*time.Second, "Interval caddy should manually check docker for a new caddyfile")
+}
 
 // DockerLoader generates caddy files from docker swarm information
 type DockerLoader struct {
@@ -62,7 +68,15 @@ func (dockerLoader *DockerLoader) Load(serverType string) (caddy.Input, error) {
 			GetGeneratorOptions(),
 		)
 
-		dockerLoader.timer = time.AfterFunc(poolInterval, func() {
+		if pollingIntervalEnv := os.Getenv("CADDY_DOCKER_POLLING_INTERVAL"); pollingIntervalEnv != "" {
+			if p, err := time.ParseDuration(pollingIntervalEnv); err != nil {
+				log.Printf("Failed to parse CADDY_DOCKER_POLLING_INTERVAL: %v", err)
+			} else {
+				pollingInterval = p
+			}
+		}
+		log.Printf("[INFO] Docker polling interval: %v", pollingInterval)
+		dockerLoader.timer = time.AfterFunc(pollingInterval, func() {
 			dockerLoader.update(true)
 		})
 
@@ -111,7 +125,7 @@ func (dockerLoader *DockerLoader) monitorEvents() {
 }
 
 func (dockerLoader *DockerLoader) update(reloadIfChanged bool) bool {
-	dockerLoader.timer.Reset(poolInterval)
+	dockerLoader.timer.Reset(pollingInterval)
 	dockerLoader.skipEvents = false
 
 	newContents := dockerLoader.generator.GenerateCaddyFile()
