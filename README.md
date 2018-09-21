@@ -1,4 +1,4 @@
-# CADDY-DOCKER-PROXY [![Build Status](https://travis-ci.org/lucaslorentz/caddy-docker-proxy.svg?branch=master)](https://travis-ci.org/lucaslorentz/caddy-docker-proxy)
+# CADDY-DOCKER-PROXY [![Build Status](https://dev.azure.com/lucaslorentzlara/lucaslorentzlara/_apis/build/status/lucaslorentz.caddy-docker-proxy?branchName=master)](https://dev.azure.com/lucaslorentzlara/lucaslorentzlara/_build/latest?definitionId=1)
 
 ## Introduction
 This plugin enables caddy to be used as a reverse proxy for Docker.
