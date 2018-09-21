@@ -164,6 +164,10 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 
 	writeDirectives(&buffer, directives, 0)
 
+	if buffer.Len() == 0 {
+		g.addComment(&buffer, "Empty caddyfile")
+	}
+
 	return buffer.Bytes()
 }
 

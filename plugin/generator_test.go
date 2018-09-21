@@ -703,7 +703,7 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 		},
 	}
 
-	const expected string = ""
+	const expected string = "# Empty caddyfile\n"
 
 	testGeneration(t, dockerClient, true, expected)
 }

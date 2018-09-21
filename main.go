@@ -12,4 +12,7 @@ import (
 
 func main() {
 	caddymain.Run()
+
+	// Keep caddy running after main instance is stopped
+	select {}
 }
