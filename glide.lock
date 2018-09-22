@@ -1,5 +1,5 @@
-hash: 23e579656be088ef8eb4693ae9ab4c4b771684c85de21d2a272b5212ebe093d5
-updated: 2018-05-21T00:18:20.8204494+02:00
+hash: d97da8ff0830d33c50cb566cf55630db474498303d51ada149a30be282fc23ad
+updated: 2018-09-12T19:28:48.9889188+02:00
 imports:
 - name: github.com/aead/chacha20
   version: 8d6ce0550041f9d97e7f15ec27ed489f8bbbb0fb
@@ -54,7 +54,7 @@ imports:
   - digestset
   - reference
 - name: github.com/docker/docker
-  version: 635f359f8b61887faa9427d9c673be96faf992b5
+  version: caca40c8ecfc67dbb02c8eb95db2a5db4b8db10f
   subpackages:
   - api
   - api/types
@@ -73,6 +73,7 @@ imports:
   - api/types/versions
   - api/types/volume
   - client
+  - errdefs
 - name: github.com/docker/go-connections
   version: 7395e3f8aa162843a74ed6d48e79627d9792ac55
   subpackages:
@@ -276,6 +277,6 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 12b6f73e6084dad08a7c6e575284b177ecafbc71
+  version: f35b8ab0b5a2cef36673838d662e249dd9c94686
   subpackages:
   - assert

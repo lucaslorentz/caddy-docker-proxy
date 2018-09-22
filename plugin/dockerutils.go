@@ -3,7 +3,9 @@ package plugin
 import (
 	"errors"
 	"io/ioutil"
+	"os"
 	"regexp"
+	"runtime"
 )
 
 // DockerUtils is an interface with docker utilities
@@ -20,6 +22,10 @@ func CreateDockerUtils() DockerUtils {
 
 // GetCurrentContainerID returns the id of the container running this application
 func (wrapper *dockerUtils) GetCurrentContainerID() (string, error) {
+	if runtime.GOOS == "windows" {
+		return os.Hostname()
+	}
+
 	bytes, err := ioutil.ReadFile("/proc/self/cgroup")
 	if err != nil {
 		return "", err
