@@ -2,7 +2,7 @@
 
 set -e
 
-docker login -u lucaslorentz -p "%DOCKER_PASSWORD%"
+docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
 
 docker push lucaslorentz/caddy-docker-proxy:ci-nanoserver-1803
 

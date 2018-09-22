@@ -53,6 +53,8 @@ jobs:
 
   - bash: |
       ./push-images-linux.sh
+    env:
+      DOCKER_PASSWORD: '$(DOCKER_PASSWORD)'
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
     displayName: 'Push images'
 
@@ -73,5 +75,7 @@ jobs:
 
   - bash: |
       ./push-images-windows.sh
+    env:
+      DOCKER_PASSWORD: '$(DOCKER_PASSWORD)'
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
     displayName: 'Push images'
