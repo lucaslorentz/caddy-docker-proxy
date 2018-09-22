@@ -82,6 +82,21 @@ directive value1
 directive value2
 ```
 
+You can also set the website address section by adding value to caddy label.
+
+Example:
+```
+caddy=example.com
+caddy.status=200 /
+```
+
+Generates:
+```
+example.com {
+    status 200 /
+}
+```
+
 ### Automatic Proxy Generation
 To automatically generate a website and a proxy directive pointing to a service or container, add the special label `caddy.address` to it.
 
