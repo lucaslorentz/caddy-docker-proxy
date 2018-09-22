@@ -5,6 +5,6 @@ EXPOSE 80 443 2015
 
 RUN apk add --no-cache ca-certificates curl
 
-ADD caddy /bin/
+COPY artifacts/binaries/linux/amd64/caddy /bin/
 
 ENTRYPOINT ["/bin/caddy"]

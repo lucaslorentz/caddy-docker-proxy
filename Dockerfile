@@ -11,6 +11,6 @@ ENV HOME /root
 WORKDIR /
 COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-ADD caddy /bin/
+COPY artifacts/binaries/linux/amd64/caddy /bin/
 
 ENTRYPOINT ["/bin/caddy"]
