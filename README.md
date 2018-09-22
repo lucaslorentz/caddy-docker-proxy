@@ -239,16 +239,19 @@ Check **examples** folder to see how to set them on a docker compose file.
 This plugin provides these flags:
 
 ```
-  -docker-label-prefix string
-        Prefix for Docker labels (default "caddy")
-  -proxy-service-tasks
-        Proxy to service tasks instead of VIP
+-docker-label-prefix string
+      Prefix for Docker labels (default "caddy")
+-docker-polling-interval duration
+      Interval caddy should manually check docker for a new caddyfile (default 30s)
+-proxy-service-tasks
+      Proxy to service tasks instead of VIP
 ```
 
 Those flags can also be set via environment variables:
 
 ```
 CADDY_DOCKER_LABEL_PREFIX=<string>
+CADDY_DOCKER_POLLING_INTERVAL=<duration>
 CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
 ```
 
