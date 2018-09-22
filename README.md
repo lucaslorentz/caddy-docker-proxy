@@ -187,6 +187,13 @@ service:
 ```
 When proxying a container, caddy uses a single container IP as target. Currently multiple containers/replicas are not supported under the same website.
 
+## Docker configs
+You can also add raw text to your caddyfile using docker configs. Just add caddy label prefix to your configs and the whole config content will be prepended to the generated caddyfile.
+
+Example at:  
+https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/examples/service-proxy.yaml#L4  
+https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/examples/Caddyfile
+
 ## Docker images
 Docker images are available at Docker hub:
 https://hub.docker.com/r/lucaslorentz/caddy-docker-proxy/
