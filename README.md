@@ -117,14 +117,30 @@ You can customize the automatic generated proxy with the following special label
 | Label | Example | Description | Required |
 | - | - | - | - |
 | caddy.address | service.example.com | addresses that should be proxied separated by whitespace | Required |
-| caddy.targetport | 80 | the port being server by container | Optional |
+| caddy.targetport | 8080 | the port being server by container | Optional |
 | caddy.targetpath | /api | the path being served by container | Optional |
 | caddy.targetprotocol | https | the protocol being served by container | Optional |
 
 When all the values above are added to a service, the following configuration will be generated:
 ```
 service.example.com {
-	proxy / https://servicename:80/api
+	proxy / https://servicename:8080/api
+}
+```
+
+It's possible to add directives to the automatically created proxy directive.
+
+Example:
+```
+caddy.proxy.websocket=
+```
+
+Generates:
+```
+service.example.com {
+	proxy / https://servicename:8080/api {
+		websocket
+	}
 }
 ```
 
@@ -177,6 +193,11 @@ admin.example.com {
 }
 ```
 
+### Docker configs
+You can also add raw text to your caddyfile using docker configs. Just add caddy label prefix to your configs and the whole config content will be prepended to the generated caddyfile.
+
+[Here is an example](examples/service-proxy.yaml#L4)
+
 ## Proxying services vs containers
 Caddy docker proxy is able to proxy to swarm servcies or raw containers. Both features are always enabled, and what will differentiate the proxy target is where you define your labels.
 
@@ -201,11 +222,6 @@ service:
   caddy.targetport=80
 ```
 When proxying a container, caddy uses a single container IP as target. Currently multiple containers/replicas are not supported under the same website.
-
-## Docker configs
-You can also add raw text to your caddyfile using docker configs. Just add caddy label prefix to your configs and the whole config content will be prepended to the generated caddyfile.
-
-[Here is an example](examples/service-proxy.yaml#L4)
 
 ## Docker images
 Docker images are available at Docker hub:
