@@ -13,4 +13,6 @@ COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 COPY artifacts/binaries/linux/amd64/caddy /bin/
 
+RUN chmod +x /bin/caddy
+
 ENTRYPOINT ["/bin/caddy"]
