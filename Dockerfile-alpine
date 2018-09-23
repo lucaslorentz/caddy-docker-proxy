@@ -7,6 +7,4 @@ RUN apk add --no-cache ca-certificates curl
 
 COPY artifacts/binaries/linux/amd64/caddy /bin/
 
-RUN chmod +x /bin/caddy
-
 ENTRYPOINT ["/bin/caddy"]
