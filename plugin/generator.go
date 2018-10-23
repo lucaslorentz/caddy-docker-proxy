@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -23,6 +24,7 @@ var defaultLabelPrefix = "caddy"
 
 // CaddyfileGenerator generates caddyfile
 type CaddyfileGenerator struct {
+	caddyFilePath        string
 	labelPrefix          string
 	labelRegex           *regexp.Regexp
 	proxyServiceTasks    bool
@@ -37,15 +39,18 @@ var isTrue = regexp.MustCompile("(?i)^(true|yes|1)$")
 var suffixRegex = regexp.MustCompile("_\\d+$")
 
 var labelPrefixFlag string
+var caddyFilePath string
 var proxyServiceTasksFlag bool
 
 func init() {
 	flag.StringVar(&labelPrefixFlag, "docker-label-prefix", defaultLabelPrefix, "Prefix for Docker labels")
+	flag.StringVar(&caddyFilePath, "docker-caddyfile-path", "", "Path to a default CaddyFile")
 	flag.BoolVar(&proxyServiceTasksFlag, "proxy-service-tasks", false, "Proxy to service tasks instead of VIP")
 }
 
 // GeneratorOptions are the options for generator
 type GeneratorOptions struct {
+	caddyFilePath     string
 	labelPrefix       string
 	proxyServiceTasks bool
 }
@@ -53,6 +58,12 @@ type GeneratorOptions struct {
 // GetGeneratorOptions creates generator options from cli flags and environment variables
 func GetGeneratorOptions() *GeneratorOptions {
 	options := GeneratorOptions{}
+
+	if caddyFilePathEnv := os.Getenv("CADDY_DOCKER_CADDYFILE_PATH"); caddyFilePathEnv != "" {
+		options.caddyFilePath = caddyFilePathEnv
+	} else {
+		options.caddyFilePath = caddyFilePath
+	}
 
 	if labelPrefixEnv := os.Getenv("CADDY_DOCKER_LABEL_PREFIX"); labelPrefixEnv != "" {
 		options.labelPrefix = labelPrefixEnv
@@ -74,6 +85,7 @@ func CreateGenerator(dockerClient DockerClient, dockerUtils DockerUtils, options
 	var labelRegexString = fmt.Sprintf("^%s(_\\d+)?(\\.|$)", options.labelPrefix)
 
 	return &CaddyfileGenerator{
+		caddyFilePath:     options.caddyFilePath,
 		dockerClient:      dockerClient,
 		dockerUtils:       dockerUtils,
 		labelPrefix:       options.labelPrefix,
@@ -104,6 +116,19 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 	}
 
 	directives := map[string]*directiveData{}
+
+	if g.caddyFilePath != "" {
+		dat, err := ioutil.ReadFile(g.caddyFilePath)
+		if err != nil {
+			if _, err := buffer.Write(dat) {
+				g.addComment(&buffer, err.Error())
+			}
+		} else {
+			g.addComment(&buffer, err.Error())
+		}
+	} else {
+		g.addComment(&buffer, "Skipping default CaddyFile because no path are set")
+	}
 
 	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err == nil {
