@@ -270,6 +270,8 @@ This plugin provides these flags:
 ```
 -docker-label-prefix string
       Prefix for Docker labels (default "caddy")
+-docker-caddyfile-path string
+      Path to a default CaddyFile (default "")
 -docker-polling-interval duration
       Interval caddy should manually check docker for a new caddyfile (default 30s)
 -proxy-service-tasks
@@ -280,6 +282,7 @@ Those flags can also be set via environment variables:
 
 ```
 CADDY_DOCKER_LABEL_PREFIX=<string>
+CADDY_DOCKER_CADDYFILE_PATH=<string>
 CADDY_DOCKER_POLLING_INTERVAL=<duration>
 CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
 ```
