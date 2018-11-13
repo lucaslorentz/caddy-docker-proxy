@@ -119,8 +119,8 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 
 	if g.caddyFilePath != "" {
 		dat, err := ioutil.ReadFile(g.caddyFilePath)
-		if err != nil {
-			if _, err := buffer.Write(dat); err {
+		if err == nil {
+			if _, err := buffer.Write(dat); err != nil {
 				g.addComment(&buffer, err.Error())
 			}
 		} else {
