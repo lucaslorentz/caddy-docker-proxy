@@ -118,12 +118,11 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 	directives := map[string]*directiveData{}
 
 	if g.caddyFilePath != "" {
-		dat, err := ioutil.ReadFile(g.caddyFilePath)
-		if err == nil {
-			if _, err := buffer.Write(dat); err != nil {
-				g.addComment(&buffer, err.Error())
-			}
-		} else {
+		if dat, err := ioutil.ReadFile(g.caddyFilePath); err == nil {
+			_, err = buffer.Write(dat);
+		}
+
+		if err != nil {
 			g.addComment(&buffer, err.Error())
 		}
 	} else {
