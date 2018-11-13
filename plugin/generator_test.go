@@ -16,6 +16,8 @@ import (
 var caddyContainerID = "container-id"
 var caddyNetworkID = "network-id"
 
+const skipCaddyfileText = "# Skipping default CaddyFile because no path are set\n"
+
 func init() {
 	log.SetOutput(ioutil.Discard)
 }
@@ -46,7 +48,8 @@ func TestAddContainerWithTemplates(t *testing.T) {
 		},
 	}
 
-	const expected string = "container-name.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"container-name.testdomain.com {\n" +
 		"  proxy / 172.17.0.2:5000/api\n" +
 		"}\n"
 
@@ -75,7 +78,8 @@ func TestAddContainerPicksRightNetwork(t *testing.T) {
 		},
 	}
 
-	const expected string = "service.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"service.testdomain.com {\n" +
 		"  proxy / 172.17.0.2\n" +
 		"}\n"
 
@@ -100,7 +104,8 @@ func TestAddContainerWithMinimumBasicLabels(t *testing.T) {
 		},
 	}
 
-	const expected string = "service.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"service.testdomain.com {\n" +
 		"  proxy / 172.17.0.2\n" +
 		"}\n"
 
@@ -128,7 +133,8 @@ func TestAddContainerWithAllBasicLabels(t *testing.T) {
 		},
 	}
 
-	const expected string = "service.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"service.testdomain.com {\n" +
 		"  proxy / https://172.17.0.2:5000/api\n" +
 		"}\n"
 
@@ -154,7 +160,8 @@ func TestAddContainerFromDifferentNetwork(t *testing.T) {
 		},
 	}
 
-	const expected string = "# Container CONTAINER-ID and caddy are not in same network\n"
+	const expected string = skipCaddyfileText +
+		"# Container CONTAINER-ID and caddy are not in same network\n"
 
 	testGeneration(t, dockerClient, false, expected)
 }
@@ -183,7 +190,8 @@ func TestAddContainerWithMultipleConfigs(t *testing.T) {
 		},
 	}
 
-	const expected string = "service1.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"service1.testdomain.com {\n" +
 		"  proxy / 172.17.0.2:5000/api\n" +
 		"  tls {\n" +
 		"    dns route53\n" +
@@ -230,7 +238,8 @@ func TestAddContainerWithReplicas(t *testing.T) {
 		},
 	}
 
-	const expected string = "service.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"service.testdomain.com {\n" +
 		"  proxy / 172.17.0.2 172.17.0.3\n" +
 		"}\n"
 
@@ -270,7 +279,8 @@ func TestDoNotMergeProxiesWithDifferentLabelKey(t *testing.T) {
 		},
 	}
 
-	const expected string = "service.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"service.testdomain.com {\n" +
 		"  proxy /a service-a\n" +
 		"  proxy /b service-b\n" +
 		"}\n"
@@ -313,7 +323,8 @@ func TestAddContainersWithSnippets(t *testing.T) {
 		},
 	}
 
-	const expected string = "(mysnippet-1) {\n" +
+	const expected string = skipCaddyfileText +
+		"(mysnippet-1) {\n" +
 		"  tls off\n" +
 		"}\n" +
 		"(mysnippet-2) {\n" +
@@ -361,7 +372,8 @@ func TestAddServiceWithTemplates(t *testing.T) {
 		},
 	}
 
-	const expected string = "service.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"service.testdomain.com {\n" +
 		"  basicauth / user password\n" +
 		"  gzip\n" +
 		"  limits {\n" +
@@ -406,7 +418,8 @@ func TestAddServiceWithMinimumBasicLabels(t *testing.T) {
 		},
 	}
 
-	const expected string = "service.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"service.testdomain.com {\n" +
 		"  proxy / service\n" +
 		"}\n"
 
@@ -438,7 +451,8 @@ func TestAddServiceWithAllBasicLabels(t *testing.T) {
 		},
 	}
 
-	const expected string = "service.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"service.testdomain.com {\n" +
 		"  proxy / https://service:5000/api\n" +
 		"}\n"
 
@@ -477,7 +491,8 @@ func TestAddServiceWithMultipleConfigs(t *testing.T) {
 		},
 	}
 
-	const expected string = "service1.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"service1.testdomain.com {\n" +
 		"  basicauth / user password\n" +
 		"  proxy / service:5000/api {\n" +
 		"    health_check /health\n" +
@@ -521,7 +536,8 @@ func TestAddServiceProxyServiceTasks(t *testing.T) {
 		},
 	}
 
-	const expected string = "service.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"service.testdomain.com {\n" +
 		"  proxy / tasks.service:5000\n" +
 		"}\n"
 
@@ -550,7 +566,8 @@ func TestAddServiceMultipleAddresses(t *testing.T) {
 		},
 	}
 
-	const expected string = "a.testdomain.com b.testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"a.testdomain.com b.testdomain.com {\n" +
 		"  proxy / service\n" +
 		"}\n"
 
@@ -581,7 +598,8 @@ func TestAutomaticProxyDoesntOverrideCustomWithSameKey(t *testing.T) {
 		},
 	}
 
-	const expected string = "testdomain.com {\n" +
+	const expected string = skipCaddyfileText +
+		"testdomain.com {\n" +
 		"  proxy / something\n" +
 		"  proxy /api external-api\n" +
 		"}\n"
@@ -612,7 +630,8 @@ func TestAddServiceFromDifferentNetwork(t *testing.T) {
 		},
 	}
 
-	const expected string = "# Service SERVICE-ID and caddy are not in same network\n"
+	const expected string = skipCaddyfileText +
+		"# Service SERVICE-ID and caddy are not in same network\n"
 
 	testGeneration(t, dockerClient, false, expected)
 }
@@ -645,7 +664,8 @@ func TestAddServiceSwarmDisable(t *testing.T) {
 		},
 	}
 
-	const expected string = "# Skipping services because swarm is not available\n" +
+	const expected string = skipCaddyfileText +
+		"# Skipping services because swarm is not available\n" +
 		"# Skipping configs because swarm is not available\n"
 
 	testGeneration(t, dockerClient, false, expected)
@@ -671,7 +691,8 @@ func TestAddDockerConfigContent(t *testing.T) {
 		},
 	}
 
-	const expected string = "example.com {\n" +
+	const expected string = skipCaddyfileText +
+		"example.com {\n" +
 		"  tls off+\n" +
 		"}\n"
 
@@ -703,7 +724,7 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 		},
 	}
 
-	const expected string = "# Empty caddyfile\n"
+	const expected string = skipCaddyfileText
 
 	testGeneration(t, dockerClient, true, expected)
 }
