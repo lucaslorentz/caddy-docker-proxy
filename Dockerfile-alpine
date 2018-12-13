@@ -1,10 +1,12 @@
 FROM alpine:3.7
 LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
 
+ARG CADDY_EXEC=caddy 
+
 EXPOSE 80 443 2015
 
 RUN apk add --no-cache ca-certificates curl
 
-COPY artifacts/binaries/linux/amd64/caddy /bin/
+COPY artifacts/binaries/linux/amd64/$CADDY_EXEC /bin/caddy
 
 ENTRYPOINT ["/bin/caddy"]

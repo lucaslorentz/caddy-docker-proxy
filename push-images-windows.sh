@@ -21,4 +21,11 @@ if [[ "${RELEASE_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
     docker push lucaslorentz/caddy-docker-proxy:nanoserver-1803
     docker push lucaslorentz/caddy-docker-proxy:${PATCH_VERSION}-nanoserver-1803
     docker push lucaslorentz/caddy-docker-proxy:${MINOR_VERSION}-nanoserver-1803
+
+    docker tag lucaslorentz/caddy-docker-proxy:ci-no-telemetry-nanoserver-1803 lucaslorentz/caddy-docker-proxy:no-telemetry-nanoserver-1803
+    docker tag lucaslorentz/caddy-docker-proxy:ci-no-telemetry-nanoserver-1803 lucaslorentz/caddy-docker-proxy:${PATCH_VERSION}-no-telemetry-nanoserver-1803
+    docker tag lucaslorentz/caddy-docker-proxy:ci-no-telemetry-nanoserver-1803 lucaslorentz/caddy-docker-proxy:${MINOR_VERSION}-no-telemetry-nanoserver-1803
+    docker push lucaslorentz/caddy-docker-proxy:no-telemetry-nanoserver-1803
+    docker push lucaslorentz/caddy-docker-proxy:${PATCH_VERSION}-no-telemetry-nanoserver-1803
+    docker push lucaslorentz/caddy-docker-proxy:${MINOR_VERSION}-no-telemetry-nanoserver-1803
 fi
