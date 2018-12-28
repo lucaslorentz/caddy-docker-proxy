@@ -5,10 +5,10 @@ set -e
 echo ==PARAMETERS==
 echo ARTIFACTS: "${ARTIFACTS:=./artifacts}"
 
-glide install
+dep ensure
 
-go vet $(glide novendor)
-go test -race -v $(glide novendor)
+go vet $(go list ./... | grep -v vendor)
+go test -race -v $(go list ./... | grep -v vendor)
 
 CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -o ${ARTIFACTS}/binaries/linux/amd64/caddy
 CGO_ENABLED=0 GOARCH=arm GOARM=6 GOOS=linux go build -o ${ARTIFACTS}/binaries/linux/arm32v6/caddy

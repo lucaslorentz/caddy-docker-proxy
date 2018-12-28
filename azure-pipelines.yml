@@ -21,8 +21,8 @@ jobs:
     displayName: 'Set up the Go workspace'
 
   - bash: |
-      curl https://glide.sh/get | sh
-    displayName: Install Glide
+      curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+    displayName: Install Dep
 
   - bash: ./build.sh
     workingDirectory: '$(modulePath)'
