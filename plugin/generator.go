@@ -416,13 +416,13 @@ func processVariables(data interface{}, content string) string {
 }
 
 func parseArgs(text string) []string {
+	text = strings.Replace(text, "[0xNULLx0]", "", -1)
 	args := regSplit(text, "\\s+")
 	if len(args) == 1 && args[0] == "" {
 		return []string{}
 	}
 	return args
 }
-
 func regSplit(text string, delimeter string) []string {
 	reg := regexp.MustCompile(delimeter)
 	indexes := reg.FindAllStringIndex(text, -1)
