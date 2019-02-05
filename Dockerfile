@@ -1,16 +1,18 @@
-FROM alpine:3.7 as alpine
-RUN apk add -U --no-cache ca-certificates
+FROM golang:alpine3.9 as build
+RUN apk add -U --no-cache ca-certificates git
+
+WORKDIR /src
+COPY main.go go.* ./
+RUN CGO_ENABLED=0 GOARCH=arm GOARM=7 GOOS=linux go build -o /build/caddy
 
 # Image starts here
-FROM scratch
-LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
+FROM alpine:3.9
 
 EXPOSE 80 443 2015
 ENV HOME /root
 
-WORKDIR /
-COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-
-COPY artifacts/binaries/linux/amd64/caddy /bin/
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=build /build/caddy /bin/
 
 ENTRYPOINT ["/bin/caddy"]
+CMD [ "-agree", "-log", "stdout" ]
