@@ -68,6 +68,18 @@ Generates:
 directive
 ```
 
+Sometimes it's not possile to have labels with empty values, like when using some UI to manage docker. If that's the case, you can also use our support for go lang templates to generate empty labels.
+
+Example:
+```
+caddy.directive={{nil}}
+```
+
+Generates:
+```
+directive
+```
+
 Any _# suffix on labels is removed when generating caddyfile configuration, that allows you to write repeating directives with same name.
 
 Example:
