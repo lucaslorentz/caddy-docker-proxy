@@ -396,6 +396,44 @@ func TestAddServiceWithTemplates(t *testing.T) {
 	testGeneration(t, dockerClient, false, expected)
 }
 
+func TestUseTemplatesToGenerateEmptyValues(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		swarm.Service{
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s"):                   "{{.Spec.Name}}.testdomain.com",
+						fmtLabel("%s.proxy"):             "/ {{.Spec.Name}}:5000/api",
+						fmtLabel("%s.proxy.transparent"): "{{nil}}",
+						fmtLabel("%s.proxy.websocket"):   "{{nil}}",
+						fmtLabel("%s.gzip"):              "{{nil}}",
+					},
+				},
+			},
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					swarm.EndpointVirtualIP{
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+		},
+	}
+
+	const expected string = skipCaddyfileText +
+		"service.testdomain.com {\n" +
+		"  gzip\n" +
+		"  proxy / service:5000/api {\n" +
+		"    transparent\n" +
+		"    websocket\n" +
+		"  }\n" +
+		"}\n"
+
+	testGeneration(t, dockerClient, false, expected)
+}
+
 func TestAddServiceWithMinimumBasicLabels(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
