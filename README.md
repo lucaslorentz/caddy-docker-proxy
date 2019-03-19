@@ -3,7 +3,7 @@
 ## 🍴IN THIS FORK
 Literally all we are doing is adding the `http.ipfilter` plugin. See [Building it](#building-it) below.
 
-###Update
+**Update**
 Docker Hub only builds the docker image; not the `caddy` binary. We have downloaded it directly from `caddyserver.com` and placed it in the appropriate `artifacts/` directory.
 
 ## Introduction
