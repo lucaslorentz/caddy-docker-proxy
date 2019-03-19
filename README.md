@@ -1,4 +1,7 @@
-# CADDY-DOCKER-PROXY [![Build Status](https://dev.azure.com/lucaslorentzlara/lucaslorentzlara/_apis/build/status/lucaslorentz.caddy-docker-proxy?branchName=master)](https://dev.azure.com/lucaslorentzlara/lucaslorentzlara/_build/latest?definitionId=1)
+# CADDY-DOCKER-PROXY
+
+## 🍴IN THIS FORK
+Literally all we are doing is adding the `http.ipfilter` plugin. See [Building it](#building-it) below.
 
 ## Introduction
 This plugin enables caddy to be used as a reverse proxy for Docker.
