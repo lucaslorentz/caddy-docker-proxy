@@ -5,8 +5,6 @@ set -e
 echo ==PARAMETERS==
 echo ARTIFACTS: "${ARTIFACTS:=./artifacts}"
 
-dep ensure
-
 go vet $(go list ./... | grep -v vendor)
 go test -race -v $(go list ./... | grep -v vendor)
 
