@@ -299,6 +299,10 @@ CADDY_DOCKER_POLLING_INTERVAL=<duration>
 CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
 ```
 
+## Caddy Telemetry
+
+We decided to disable telemetry by default in caddy-docker-proxy images. You can enable telemetry by setting environment variable **CADDY_ENABLE_TELEMETRY** to **true**. Or with CLI option **-enable-telemetry**.
+
 ## Connecting to Docker Host
 The default connection to docker host varies per platform:
 * At Unix: `unix:///var/run/docker.sock`
