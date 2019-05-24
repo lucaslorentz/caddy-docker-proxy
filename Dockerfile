@@ -2,8 +2,10 @@ FROM golang:alpine3.9 as build
 RUN apk add -U --no-cache ca-certificates git
 
 WORKDIR /src
+RUN mkdir vendor
 COPY main.go go.* ./
-RUN CGO_ENABLED=0 GOARCH=arm GOARM=7 GOOS=linux go build -o /build/caddy
+COPY vendor ./vendor/
+RUN CGO_ENABLED=0 GOARCH=arm GOARM=7 GOOS=linux go build -mod=vendor -o /build/caddy
 
 # Image starts here
 FROM alpine:3.9
