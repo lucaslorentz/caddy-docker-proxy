@@ -25,7 +25,7 @@ Generates:
 directive valueA valueB
 ```
 
-Dots inside labels keys represents neted levels inside caddyfile.
+Dots inside labels keys represents nested levels inside caddyfile.
 
 Example:  
 ```
