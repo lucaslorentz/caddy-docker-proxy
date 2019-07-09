@@ -18,7 +18,7 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/gorilla/mux v1.7.1 // indirect
-	github.com/mholt/caddy v1.0.0
+	github.com/caddyserver/caddy v1.0.1
 	github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c // indirect
 	github.com/nicolasazrak/caddy-cache v0.3.1
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect

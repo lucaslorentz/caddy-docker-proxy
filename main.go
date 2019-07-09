@@ -20,7 +20,7 @@ import (
 	_ "github.com/nicolasazrak/caddy-cache"
 
 	// Caddy
-	"github.com/mholt/caddy/caddy/caddymain"
+	"github.com/caddyserver/caddy/caddy/caddymain"
 )
 
 var enableTelemetryFlag bool

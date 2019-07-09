@@ -354,7 +354,7 @@ docker stack rm caddy-docker-demo
 ## Building it
 You can use our caddy build wrapper **build.sh** and include additional plugins on https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/main.go#L5
 
-Or, you can build from caddy repository and import  **caddy-docker-proxy** plugin on file https://github.com/mholt/caddy/blob/master/caddy/caddymain/run.go :
+Or, you can build from caddy repository and import  **caddy-docker-proxy** plugin on file https://github.com/caddyserver/caddy/blob/master/caddy/caddymain/run.go :
 ```
 import (
   _ "github.com/lucaslorentz/caddy-docker-proxy/plugin"
