@@ -1,7 +1,7 @@
 package plugin
 
 import (
-	"github.com/mholt/caddy"
+	"github.com/caddyserver/caddy"
 )
 
 func init() {

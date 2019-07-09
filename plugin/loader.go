@@ -11,7 +11,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/mholt/caddy"
+	"github.com/caddyserver/caddy"
 )
 
 var pollingInterval = 30 * time.Second

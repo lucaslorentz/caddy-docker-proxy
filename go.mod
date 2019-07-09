@@ -10,7 +10,7 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.1.0 // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/aws/aws-sdk-go v1.19.19 // indirect
-	github.com/caddyserver/dnsproviders v0.1.4
+	github.com/caddyserver/dnsproviders v0.3.0
 	github.com/cloudflare/cloudflare-go v0.9.0 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190427035354-32daacb40dd6
@@ -18,9 +18,9 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/gorilla/mux v1.7.1 // indirect
-	github.com/mholt/caddy v1.0.0
+	github.com/caddyserver/caddy v1.0.1
 	github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c // indirect
-	github.com/nicolasazrak/caddy-cache v0.3.1
+	github.com/nicolasazrak/caddy-cache v0.3.4
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
@@ -31,3 +31,5 @@ require (
 	google.golang.org/grpc v1.20.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
+
+replace github.com/h2non/gock => gopkg.in/h2non/gock.v1 v1.0.14

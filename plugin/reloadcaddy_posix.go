@@ -6,7 +6,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/mholt/caddy"
+	"github.com/caddyserver/caddy"
 )
 
 func ReloadCaddy(loader caddy.Loader) {

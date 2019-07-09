@@ -4,9 +4,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/mholt/caddy"
+	"github.com/caddyserver/caddy"
 
-	httpserver "github.com/mholt/caddy/caddyhttp/httpserver"
+	httpserver "github.com/caddyserver/caddy/caddyhttp/httpserver"
 )
 
 // ReloadCaddy reloads caddy
