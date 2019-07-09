@@ -20,7 +20,7 @@ require (
 	github.com/gorilla/mux v1.7.1 // indirect
 	github.com/caddyserver/caddy v1.0.1
 	github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c // indirect
-	github.com/nicolasazrak/caddy-cache v0.3.1
+	github.com/nicolasazrak/caddy-cache 0540bb00038bb0a61528d939387470c3ee10bcef
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
@@ -31,3 +31,5 @@ require (
 	google.golang.org/grpc v1.20.1 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )
+
+replace github.com/h2non/gock => gopkg.in/h2non/gock.v1 v1.0.14
