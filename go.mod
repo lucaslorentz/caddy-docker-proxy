@@ -10,7 +10,7 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.1.0 // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/aws/aws-sdk-go v1.19.19 // indirect
-	github.com/caddyserver/dnsproviders v0.1.4
+	github.com/caddyserver/dnsproviders v0.3.0
 	github.com/cloudflare/cloudflare-go v0.9.0 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190427035354-32daacb40dd6
