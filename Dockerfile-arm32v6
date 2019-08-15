@@ -1,4 +1,4 @@
-FROM alpine:3.7 as alpine
+FROM alpine:3.10 as alpine
 RUN apk add -U --no-cache ca-certificates
 
 # Image starts here

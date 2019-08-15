@@ -1,8 +1,8 @@
-FROM alpine:3.7 as alpine
+FROM alpine:3.10 as alpine
 RUN apk add -U --no-cache ca-certificates
 
 # Image starts here
-FROM arm32v6/alpine:3.7
+FROM arm32v6/alpine:3.10
 LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
 
 EXPOSE 80 443 2015
