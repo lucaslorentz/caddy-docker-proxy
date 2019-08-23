@@ -95,8 +95,9 @@ func CreateGenerator(dockerClient DockerClient, dockerUtils DockerUtils, options
 }
 
 // GenerateCaddyFile generates a caddy file config from docker swarm
-func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
-	var buffer bytes.Buffer
+func (g *CaddyfileGenerator) GenerateCaddyFile() ([]byte, string) {
+	var caddyfileBuffer bytes.Buffer
+	var logsBuffer bytes.Buffer
 
 	if g.caddyNetworks == nil {
 		networks, err := g.getCaddyNetworks()
@@ -106,7 +107,7 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 				g.caddyNetworks[network] = true
 			}
 		} else {
-			g.addComment(&buffer, err.Error())
+			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 		}
 	}
 
@@ -118,17 +119,17 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 	directives := map[string]*directiveData{}
 
 	if g.caddyFilePath != "" {
-		dat, err := ioutil.ReadFile(g.caddyFilePath);
-		
+		dat, err := ioutil.ReadFile(g.caddyFilePath)
+
 		if err == nil {
-			_, err = buffer.Write(dat);
+			_, err = caddyfileBuffer.Write(dat)
 		}
 
 		if err != nil {
-			g.addComment(&buffer, err.Error())
+			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 		}
 	} else {
-		g.addComment(&buffer, "Skipping default CaddyFile because no path are set")
+		logsBuffer.WriteString("[INFO] Skipping default CaddyFile because no path is set\n")
 	}
 
 	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
@@ -140,11 +141,11 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 					directives[k] = mergeDirectives(directives[k], directive)
 				}
 			} else {
-				g.addComment(&buffer, err.Error())
+				logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 			}
 		}
 	} else {
-		g.addComment(&buffer, err.Error())
+		logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 	}
 
 	if g.swarmIsAvailable {
@@ -157,14 +158,14 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 						directives[k] = mergeDirectives(directives[k], directive)
 					}
 				} else {
-					g.addComment(&buffer, err.Error())
+					logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 				}
 			}
 		} else {
-			g.addComment(&buffer, err.Error())
+			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 		}
 	} else {
-		g.addComment(&buffer, "Skipping services because swarm is not available")
+		logsBuffer.WriteString("[INFO] Skipping services because swarm is not available\n")
 	}
 
 	if g.swarmIsAvailable {
@@ -174,27 +175,23 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() []byte {
 				if _, hasLabel := config.Spec.Labels[g.labelPrefix]; hasLabel {
 					fullConfig, _, err := g.dockerClient.ConfigInspectWithRaw(context.Background(), config.ID)
 					if err == nil {
-						buffer.Write(fullConfig.Spec.Data)
-						buffer.WriteRune('\n')
+						caddyfileBuffer.Write(fullConfig.Spec.Data)
+						caddyfileBuffer.WriteRune('\n')
 					} else {
-						g.addComment(&buffer, err.Error())
+						logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 					}
 				}
 			}
 		} else {
-			g.addComment(&buffer, err.Error())
+			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 		}
 	} else {
-		g.addComment(&buffer, "Skipping configs because swarm is not available")
+		logsBuffer.WriteString("[INFO] Skipping configs because swarm is not available\n")
 	}
 
-	writeDirectives(&buffer, directives, 0)
+	writeDirectives(&caddyfileBuffer, directives, 0)
 
-	if buffer.Len() == 0 {
-		g.addComment(&buffer, "Empty caddyfile")
-	}
-
-	return buffer.Bytes()
+	return caddyfileBuffer.Bytes(), logsBuffer.String()
 }
 
 func mergeDirectives(directiveA *directiveData, directiveB *directiveData) *directiveData {
@@ -260,12 +257,6 @@ func (g *CaddyfileGenerator) getCaddyNetworks() ([]string, error) {
 	log.Printf("[INFO] Caddy Networks: %v\n", networks)
 
 	return networks, nil
-}
-
-func (g *CaddyfileGenerator) addComment(buffer *bytes.Buffer, text string) {
-	for _, line := range strings.Split(text, `\n`) {
-		buffer.WriteString(fmt.Sprintf("# %s\n", line))
-	}
 }
 
 func (g *CaddyfileGenerator) getContainerDirectives(container *types.Container) (map[string]*directiveData, error) {

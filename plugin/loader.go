@@ -8,26 +8,31 @@ import (
 	"os"
 	"time"
 
+	"github.com/caddyserver/caddy"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/caddyserver/caddy"
 )
 
 var pollingInterval = 30 * time.Second
+var processCaddyfileFlag bool
 
 func init() {
 	flag.DurationVar(&pollingInterval, "docker-polling-interval", 30*time.Second, "Interval caddy should manually check docker for a new caddyfile")
+	flag.BoolVar(&processCaddyfileFlag, "docker-process-caddyfile", false, "Process caddyfile, removing invalid servers")
 }
 
 // DockerLoader generates caddy files from docker swarm information
 type DockerLoader struct {
-	initialized  bool
-	dockerClient *client.Client
-	generator    *CaddyfileGenerator
-	timer        *time.Timer
-	skipEvents   bool
-	input        caddy.CaddyfileInput
+	initialized       bool
+	dockerClient      *client.Client
+	generator         *CaddyfileGenerator
+	timer             *time.Timer
+	skipEvents        bool
+	input             caddy.CaddyfileInput
+	processCaddyfile  bool
+	previousCaddyfile []byte
+	previousLogs      string
 }
 
 // CreateDockerLoader creates a docker loader
@@ -68,6 +73,13 @@ func (dockerLoader *DockerLoader) Load(serverType string) (caddy.Input, error) {
 			GetGeneratorOptions(),
 		)
 
+		if processCaddyfileEnv := os.Getenv("CADDY_DOCKER_PROCESS_CADDYFILE"); processCaddyfileEnv != "" {
+			dockerLoader.processCaddyfile = isTrue.MatchString(processCaddyfileEnv)
+		} else {
+			dockerLoader.processCaddyfile = processCaddyfileFlag
+		}
+		log.Printf("[INFO] Docker process caddyfile: %v", dockerLoader.processCaddyfile)
+
 		if pollingIntervalEnv := os.Getenv("CADDY_DOCKER_POLLING_INTERVAL"); pollingIntervalEnv != "" {
 			if p, err := time.ParseDuration(pollingIntervalEnv); err != nil {
 				log.Printf("Failed to parse CADDY_DOCKER_POLLING_INTERVAL: %v", err)
@@ -106,9 +118,11 @@ func (dockerLoader *DockerLoader) monitorEvents() {
 				continue
 			}
 
-			update := (event.Type == "container" && event.Action == "start") ||
+			update := (event.Type == "container" && event.Action == "create") ||
+				(event.Type == "container" && event.Action == "start") ||
 				(event.Type == "container" && event.Action == "stop") ||
 				(event.Type == "container" && event.Action == "die") ||
+				(event.Type == "container" && event.Action == "destroy") ||
 				(event.Type == "service" && event.Action == "create") ||
 				(event.Type == "service" && event.Action == "update") ||
 				(event.Type == "service" && event.Action == "remove") ||
@@ -129,20 +143,37 @@ func (dockerLoader *DockerLoader) update(reloadIfChanged bool) bool {
 	dockerLoader.timer.Reset(pollingInterval)
 	dockerLoader.skipEvents = false
 
-	newContents := dockerLoader.generator.GenerateCaddyFile()
+	caddyfile, logs := dockerLoader.generator.GenerateCaddyFile()
+	caddyfileChanged := !bytes.Equal(dockerLoader.previousCaddyfile, caddyfile)
+	logsChanged := dockerLoader.previousLogs != logs
+	dockerLoader.previousCaddyfile = caddyfile
+	dockerLoader.previousLogs = logs
 
-	if bytes.Equal(dockerLoader.input.Contents, newContents) {
+	if logsChanged || caddyfileChanged {
+		log.Print(logs)
+	}
+
+	if !caddyfileChanged {
 		return false
+	}
+
+	if dockerLoader.processCaddyfile {
+		log.Printf("[INFO] Processing caddyfile")
+		caddyfile = ProcessCaddyfile(caddyfile)
+	}
+
+	if len(caddyfile) == 0 {
+		caddyfile = []byte("# Empty caddyfile")
 	}
 
 	newInput := caddy.CaddyfileInput{
 		ServerTypeName: "http",
-		Contents:       newContents,
+		Contents:       caddyfile,
 	}
 
 	if err := caddy.ValidateAndExecuteDirectives(newInput, nil, true); err != nil {
 		log.Printf("[ERROR] CaddyFile error: %s", err)
-		log.Printf("[INFO] Wrong CaddyFile:\n%s", newContents)
+		log.Printf("[INFO] Wrong CaddyFile:\n%s", caddyfile)
 	} else {
 		log.Printf("[INFO] New CaddyFile:\n%s", newInput.Contents)
 
