@@ -328,6 +328,8 @@ For resilient production deployments, use multiple caddy replicas and map a`/roo
 
 ## Trying it
 
+### With compose file
+
 Clone this repository.
 
 Deploy the compose file to swarm cluster:
@@ -349,6 +351,21 @@ curl -H Host:config.example.com http://localhost:2015
 After testing, delete the demo stack:
 ```
 docker stack rm caddy-docker-demo
+```
+
+### With run commands
+
+```
+docker run --name caddy -d -p 2015:2015 -v /var/run/docker.sock:/var/run/docker.sock lucaslorentz/caddy-docker-proxy:ci-alpine -agree -email email@example.com -log stdout -docker-process-caddyfile
+
+docker run --name whoami0 -d -l caddy.address=whoami0.example.com -l caddy.targetport=8000 -l caddy.tls=off jwilder/whoami
+
+docker run --name whoami1 -d -l caddy.address=whoami1.example.com -l caddy.targetport=8000 -l caddy.tls=off jwilder/whoami
+
+curl -H Host:whoami0.example.com http://localhost:2015
+curl -H Host:whoami1.example.com http://localhost:2015
+
+docker rm -f caddy whoami0 whoami1
 ```
 
 ## Building it
