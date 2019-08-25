@@ -21,7 +21,7 @@ func ProcessCaddyfile(caddyfileContent []byte) []byte {
 		log.Printf("[ERROR] Error parsing caddyfile:%s\n", err)
 	}
 
-	var validServerBlocks []caddyfile.ServerBlock
+	var newCaddyfileBuffer bytes.Buffer
 	for _, serverBlock := range serverBlocks {
 		serverBlockContent := serializeServerBlock(&serverBlock)
 
@@ -32,22 +32,12 @@ func ProcessCaddyfile(caddyfileContent []byte) []byte {
 
 		err := caddy.ValidateAndExecuteDirectives(newInput, nil, true)
 		if err == nil {
-			validServerBlocks = append(validServerBlocks, serverBlock)
+			newCaddyfileBuffer.Write(serverBlockContent)
 		} else {
 			log.Printf("[WARN] Removing invalid server block: %s\n%s\n", err, serverBlockContent)
 		}
 	}
-	return serializeServerBlocks(validServerBlocks)
-}
-
-func serializeServerBlocks(serverBlocks []caddyfile.ServerBlock) []byte {
-	var writer bytes.Buffer
-
-	for _, serverBlock := range serverBlocks {
-		writeServerBlock(&writer, &serverBlock)
-	}
-
-	return writer.Bytes()
+	return newCaddyfileBuffer.Bytes()
 }
 
 func serializeServerBlock(serverBlock *caddyfile.ServerBlock) []byte {
