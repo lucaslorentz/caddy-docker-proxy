@@ -13,5 +13,6 @@ require (
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
+	github.com/stretchr/testify v1.3.0
 	google.golang.org/grpc v1.23.0 // indirect
 )
