@@ -28,6 +28,7 @@ type CaddyfileGenerator struct {
 	labelPrefix          string
 	labelRegex           *regexp.Regexp
 	proxyServiceTasks    bool
+	validateNetwork      bool
 	dockerClient         DockerClient
 	dockerUtils          DockerUtils
 	caddyNetworks        map[string]bool
@@ -41,11 +42,13 @@ var suffixRegex = regexp.MustCompile("_\\d+$")
 var labelPrefixFlag string
 var caddyFilePath string
 var proxyServiceTasksFlag bool
+var validateNetworkFlag bool
 
 func init() {
 	flag.StringVar(&labelPrefixFlag, "docker-label-prefix", defaultLabelPrefix, "Prefix for Docker labels")
 	flag.StringVar(&caddyFilePath, "docker-caddyfile-path", "", "Path to a default CaddyFile")
 	flag.BoolVar(&proxyServiceTasksFlag, "proxy-service-tasks", false, "Proxy to service tasks instead of VIP")
+	flag.BoolVar(&validateNetworkFlag, "docker-validate-network", true, "Validates if caddy container and target are in same network")
 }
 
 // GeneratorOptions are the options for generator
@@ -53,6 +56,7 @@ type GeneratorOptions struct {
 	caddyFilePath     string
 	labelPrefix       string
 	proxyServiceTasks bool
+	validateNetwork   bool
 }
 
 // GetGeneratorOptions creates generator options from cli flags and environment variables
@@ -77,6 +81,12 @@ func GetGeneratorOptions() *GeneratorOptions {
 		options.proxyServiceTasks = proxyServiceTasksFlag
 	}
 
+	if validateNetworkEnv := os.Getenv("CADDY_DOCKER_VALIDATE_NETWORK"); validateNetworkEnv != "" {
+		options.validateNetwork = isTrue.MatchString(validateNetworkEnv)
+	} else {
+		options.validateNetwork = validateNetworkFlag
+	}
+
 	return &options
 }
 
@@ -91,6 +101,7 @@ func CreateGenerator(dockerClient DockerClient, dockerUtils DockerUtils, options
 		labelPrefix:       options.labelPrefix,
 		labelRegex:        regexp.MustCompile(labelRegexString),
 		proxyServiceTasks: options.proxyServiceTasks,
+		validateNetwork:   options.validateNetwork,
 	}
 }
 
@@ -99,7 +110,7 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() ([]byte, string) {
 	var caddyfileBuffer bytes.Buffer
 	var logsBuffer bytes.Buffer
 
-	if g.caddyNetworks == nil {
+	if g.validateNetwork && g.caddyNetworks == nil {
 		networks, err := g.getCaddyNetworks()
 		if err == nil {
 			g.caddyNetworks = map[string]bool{}
@@ -266,6 +277,13 @@ func (g *CaddyfileGenerator) getContainerDirectives(container *types.Container) 
 }
 
 func (g *CaddyfileGenerator) getContainerIPAddress(container *types.Container) (string, error) {
+	if !g.validateNetwork {
+		for _, network := range container.NetworkSettings.Networks {
+			return network.IPAddress, nil
+		}
+		return "", fmt.Errorf("Container %v doesn't have any network", container.ID)
+	}
+
 	for _, network := range container.NetworkSettings.Networks {
 		if _, isCaddyNetwork := g.caddyNetworks[network.NetworkID]; isCaddyNetwork {
 			return network.IPAddress, nil
@@ -294,6 +312,13 @@ func (g *CaddyfileGenerator) getServiceProxyTarget(service *swarm.Service) (stri
 }
 
 func (g *CaddyfileGenerator) getServiceIPAddress(service *swarm.Service) (string, error) {
+	if !g.validateNetwork {
+		for _, virtualIP := range service.Endpoint.VirtualIPs {
+			return virtualIP.Addr, nil
+		}
+		return "", fmt.Errorf("Service %v doesn't have any virtual IP", service.ID)
+	}
+
 	for _, virtualIP := range service.Endpoint.VirtualIPs {
 		if _, isCaddyNetwork := g.caddyNetworks[virtualIP.NetworkID]; isCaddyNetwork {
 			return virtualIP.Addr, nil

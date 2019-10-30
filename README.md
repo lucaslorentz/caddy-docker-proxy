@@ -287,7 +287,9 @@ This plugin provides these flags:
 -docker-polling-interval duration
       Interval caddy should manually check docker for a new caddyfile (default 30s)
 -proxy-service-tasks
-      Proxy to service tasks instead of VIP
+      Proxy to service tasks instead of VIP (default false)
+-docker-validate-network
+      Validates if caddy container and target are in same network (default true)
 ```
 
 Those flags can also be set via environment variables:
@@ -297,6 +299,7 @@ CADDY_DOCKER_LABEL_PREFIX=<string>
 CADDY_DOCKER_CADDYFILE_PATH=<string>
 CADDY_DOCKER_POLLING_INTERVAL=<duration>
 CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
+CADDY_DOCKER_VALIDATE_NETWORK=<bool>
 ```
 
 ## Caddy Telemetry
