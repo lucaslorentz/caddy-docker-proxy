@@ -5,7 +5,7 @@ WORKDIR /src
 RUN mkdir vendor
 COPY main.go go.* ./
 COPY vendor ./vendor/
-RUN CGO_ENABLED=0 GOARCH=arm GOARM=7 GOOS=linux go build -mod=vendor -o /build/caddy
+RUN CGO_ENABLED=0 go build -mod=vendor -o /build/caddy
 
 # Image starts here
 FROM alpine:3.9

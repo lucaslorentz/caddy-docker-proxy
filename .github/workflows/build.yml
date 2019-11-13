@@ -1,0 +1,19 @@
+name: Build image
+on:
+  push:
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v1
+    - name: Setup docker buildx
+      uses: crazy-max/ghaction-docker-buildx@v1
+    - name: Build image
+      run: |
+        docker login -u vlkoti -p ${{ secrets.DOCKERHUB_PASSWORD }}
+        docker buildx build . \
+          --output "type=image,push=${{ github.ref == 'refs/heads/master' }}" \
+          --platform linux/arm/v7,linux/amd64 \
+          --tag vlkoti/caddy-docker-proxy:latest
