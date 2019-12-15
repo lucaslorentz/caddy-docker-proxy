@@ -47,7 +47,7 @@ var validateNetworkFlag bool
 func init() {
 	flag.StringVar(&labelPrefixFlag, "docker-label-prefix", defaultLabelPrefix, "Prefix for Docker labels")
 	flag.StringVar(&caddyFilePath, "docker-caddyfile-path", "", "Path to a default CaddyFile")
-	flag.BoolVar(&proxyServiceTasksFlag, "proxy-service-tasks", false, "Proxy to service tasks instead of VIP")
+	flag.BoolVar(&proxyServiceTasksFlag, "proxy-service-tasks", false, "Proxy to service tasks instead of service load balancer")
 	flag.BoolVar(&validateNetworkFlag, "docker-validate-network", true, "Validates if caddy container and target are in same network")
 }
 
@@ -270,65 +270,7 @@ func (g *CaddyfileGenerator) getCaddyNetworks() ([]string, error) {
 	return networks, nil
 }
 
-func (g *CaddyfileGenerator) getContainerDirectives(container *types.Container) (map[string]*directiveData, error) {
-	return g.parseDirectives(container.Labels, container, func() (string, error) {
-		return g.getContainerIPAddress(container)
-	})
-}
-
-func (g *CaddyfileGenerator) getContainerIPAddress(container *types.Container) (string, error) {
-	if !g.validateNetwork {
-		for _, network := range container.NetworkSettings.Networks {
-			return network.IPAddress, nil
-		}
-		return "", fmt.Errorf("Container %v doesn't have any network", container.ID)
-	}
-
-	for _, network := range container.NetworkSettings.Networks {
-		if _, isCaddyNetwork := g.caddyNetworks[network.NetworkID]; isCaddyNetwork {
-			return network.IPAddress, nil
-		}
-	}
-	return "", fmt.Errorf("Container %v and caddy are not in same network", container.ID)
-}
-
-func (g *CaddyfileGenerator) getServiceDirectives(service *swarm.Service) (map[string]*directiveData, error) {
-	return g.parseDirectives(service.Spec.Labels, service, func() (string, error) {
-		return g.getServiceProxyTarget(service)
-	})
-}
-
-func (g *CaddyfileGenerator) getServiceProxyTarget(service *swarm.Service) (string, error) {
-	_, err := g.getServiceIPAddress(service)
-	if err != nil {
-		return "", err
-	}
-
-	if g.proxyServiceTasks {
-		return "tasks." + service.Spec.Name, nil
-	}
-
-	return service.Spec.Name, nil
-}
-
-func (g *CaddyfileGenerator) getServiceIPAddress(service *swarm.Service) (string, error) {
-	if !g.validateNetwork {
-		for _, virtualIP := range service.Endpoint.VirtualIPs {
-			return virtualIP.Addr, nil
-		}
-		return "", fmt.Errorf("Service %v doesn't have any virtual IP", service.ID)
-	}
-
-	for _, virtualIP := range service.Endpoint.VirtualIPs {
-		if _, isCaddyNetwork := g.caddyNetworks[virtualIP.NetworkID]; isCaddyNetwork {
-			return virtualIP.Addr, nil
-		}
-	}
-
-	return "", fmt.Errorf("Service %v and caddy are not in same network", service.ID)
-}
-
-func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateData interface{}, getProxyTarget func() (string, error)) (map[string]*directiveData, error) {
+func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateData interface{}, getProxyTargets func() ([]string, error)) (map[string]*directiveData, error) {
 	originalMap := g.convertLabelsToDirectives(labels, templateData)
 
 	convertedMap := map[string]*directiveData{}
@@ -347,26 +289,30 @@ func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateD
 			proxyDirective := getOrCreateDirective(directive.children, "proxy", false)
 
 			if len(proxyDirective.args) == 0 {
-				proxyTarget, err := getProxyTarget()
+				proxyTargets, err := getProxyTargets()
 				if err != nil {
 					return nil, err
 				}
 
 				proxyDirective.addArgs("/")
 
-				targetArg := ""
-				if targetProtocol != nil && len(targetProtocol.args) > 0 {
-					targetArg += targetProtocol.args[0] + "://"
-				}
-				targetArg += proxyTarget
-				if targetPort != nil && len(targetPort.args) > 0 {
-					targetArg += ":" + targetPort.args[0]
-				}
-				if targetPath != nil && len(targetPath.args) > 0 {
-					targetArg += targetPath.args[0]
-				}
+				for _, target := range proxyTargets {
+					targetArg := ""
+					if targetProtocol != nil && len(targetProtocol.args) > 0 {
+						targetArg += targetProtocol.args[0] + "://"
+					}
 
-				proxyDirective.addArgs(targetArg)
+					targetArg += target
+
+					if targetPort != nil && len(targetPort.args) > 0 {
+						targetArg += ":" + targetPort.args[0]
+					}
+					if targetPath != nil && len(targetPath.args) > 0 {
+						targetArg += targetPath.args[0]
+					}
+
+					proxyDirective.addArgs(targetArg)
+				}
 			}
 		}
 
