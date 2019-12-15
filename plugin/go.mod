@@ -15,4 +15,5 @@ require (
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/stretchr/testify v1.3.0
 	google.golang.org/grpc v1.23.0 // indirect
+	gotest.tools v2.2.0+incompatible // indirect
 )
