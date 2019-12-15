@@ -4,10 +4,13 @@ set -e
 
 docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
 
-docker push lucaslorentz/caddy-docker-proxy:ci
-docker push lucaslorentz/caddy-docker-proxy:ci-alpine
-docker push lucaslorentz/caddy-docker-proxy:ci-arm32v6
-docker push lucaslorentz/caddy-docker-proxy:ci-alpine-arm32v6
+if [[ "${BUILD_SOURCEBRANCH}" == "refs/heads/master" ]]; then
+    echo "Pushing CI images"
+    docker push lucaslorentz/caddy-docker-proxy:ci
+    docker push lucaslorentz/caddy-docker-proxy:ci-alpine
+    docker push lucaslorentz/caddy-docker-proxy:ci-arm32v6
+    docker push lucaslorentz/caddy-docker-proxy:ci-alpine-arm32v6
+fi
 
 if [[ "${RELEASE_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
     echo "Releasing version ${RELEASE_VERSION}..."

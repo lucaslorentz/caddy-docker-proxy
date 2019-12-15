@@ -4,7 +4,10 @@ set -e
 
 docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
 
-docker push lucaslorentz/caddy-docker-proxy:ci-nanoserver-1803
+if [[ "${BUILD_SOURCEBRANCH}" == "refs/heads/master" ]]; then
+    echo "Pushing CI images"
+    docker push lucaslorentz/caddy-docker-proxy:ci-nanoserver-1803
+fi
 
 if [[ "${RELEASE_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
     echo "Releasing version ${RELEASE_VERSION}..."
