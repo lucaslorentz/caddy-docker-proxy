@@ -402,7 +402,7 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
-					Addresses: []string{"10.0.0.1"},
+					Addresses: []string{"10.0.0.1/24"},
 				},
 			},
 			DesiredState: swarm.TaskStateShutdown,
@@ -415,7 +415,7 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
-					Addresses: []string{"10.0.0.2"},
+					Addresses: []string{"10.0.0.2/24"},
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,
@@ -462,7 +462,7 @@ func TestServiceTasks_DifferentNetwork(t *testing.T) {
 					Network: swarm.Network{
 						ID: "other-network-id",
 					},
-					Addresses: []string{"10.0.0.1"},
+					Addresses: []string{"10.0.0.1/24"},
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,
@@ -509,7 +509,7 @@ func TestServiceTasks_DifferentNetworkSkipValidation(t *testing.T) {
 					Network: swarm.Network{
 						ID: "other-network-id",
 					},
-					Addresses: []string{"10.0.0.1"},
+					Addresses: []string{"10.0.0.1/24"},
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,
@@ -555,7 +555,7 @@ func TestServiceTasks_Running(t *testing.T) {
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
-					Addresses: []string{"10.0.0.1"},
+					Addresses: []string{"10.0.0.1/24"},
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,
@@ -568,7 +568,7 @@ func TestServiceTasks_Running(t *testing.T) {
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
-					Addresses: []string{"10.0.0.2"},
+					Addresses: []string{"10.0.0.2/24"},
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,

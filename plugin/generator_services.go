@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -61,7 +62,10 @@ func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service) ([]strin
 			hasRunningTasks = true
 			for _, networkAttachment := range task.NetworksAttachments {
 				if !g.validateNetwork || g.caddyNetworks[networkAttachment.Network.ID] {
-					tasksIps = append(tasksIps, networkAttachment.Addresses...)
+					for _, address := range networkAttachment.Addresses {
+						ipAddress, _, _ := net.ParseCIDR(address)
+						tasksIps = append(tasksIps, ipAddress.String())
+					}
 				}
 			}
 		}
