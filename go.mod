@@ -1,8 +1,6 @@
 module github.com/lucaslorentz/caddy-docker-proxy
 
-go 1.12
-
-replace github.com/h2non/gock => gopkg.in/h2non/gock.v1 v1.0.14
+go 1.13
 
 replace github.com/lucaslorentz/caddy-docker-proxy/plugin => ./plugin
 
