@@ -47,7 +47,7 @@ var validateNetworkFlag bool
 func init() {
 	flag.StringVar(&labelPrefixFlag, "docker-label-prefix", defaultLabelPrefix, "Prefix for Docker labels")
 	flag.StringVar(&caddyFilePath, "docker-caddyfile-path", "", "Path to a default CaddyFile")
-	flag.BoolVar(&proxyServiceTasksFlag, "proxy-service-tasks", true, "Proxy to service tasks instead of service load balancer")
+	flag.BoolVar(&proxyServiceTasksFlag, "proxy-service-tasks", false, "Proxy to service tasks instead of service load balancer")
 	flag.BoolVar(&validateNetworkFlag, "docker-validate-network", true, "Validates if caddy container and target are in same network")
 }
 

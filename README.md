@@ -287,7 +287,7 @@ This plugin provides these flags:
 -docker-polling-interval duration
       Interval caddy should manually check docker for a new caddyfile (default 30s)
 -proxy-service-tasks
-      Proxy to service tasks instead of service load balancer (default true)
+      Proxy to service tasks instead of service load balancer (default false)
 -docker-validate-network
       Validates if caddy container and target are in same network (default true)
 ```
