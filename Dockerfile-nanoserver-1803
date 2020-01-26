@@ -1,4 +1,4 @@
-FROM microsoft/nanoserver:1803
+FROM mcr.microsoft.com/windows/nanoserver:1803
 LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
 
 EXPOSE 80 443 2015
