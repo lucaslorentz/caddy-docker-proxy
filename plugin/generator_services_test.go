@@ -102,6 +102,7 @@ func TestServices_AllBasicLabels(t *testing.T) {
 					Name: "service",
 					Labels: map[string]string{
 						fmtLabel("%s.address"):        "service.testdomain.com",
+						fmtLabel("%s.sourcepath"):     "/source",
 						fmtLabel("%s.targetport"):     "5000",
 						fmtLabel("%s.targetpath"):     "/api",
 						fmtLabel("%s.targetprotocol"): "https",
@@ -119,7 +120,7 @@ func TestServices_AllBasicLabels(t *testing.T) {
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy / https://service:5000/api\n" +
+		"  proxy /source https://service:5000/api\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)

@@ -282,6 +282,7 @@ func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateD
 		if address != nil && len(address.args) > 0 {
 			directive.args = address.args
 
+			sourcePath := directive.children["sourcepath"]
 			targetPort := directive.children["targetport"]
 			targetPath := directive.children["targetpath"]
 			targetProtocol := directive.children["targetprotocol"]
@@ -294,7 +295,11 @@ func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateD
 					return nil, err
 				}
 
-				proxyDirective.addArgs("/")
+				if sourcePath != nil && len(sourcePath.args) > 0 {
+					proxyDirective.addArgs(sourcePath.args[0])
+				} else {
+					proxyDirective.addArgs("/")
+				}
 
 				for _, target := range proxyTargets {
 					targetArg := ""
@@ -317,6 +322,7 @@ func (g *CaddyfileGenerator) parseDirectives(labels map[string]string, templateD
 		}
 
 		delete(directive.children, "address")
+		delete(directive.children, "sourcepath")
 		delete(directive.children, "targetport")
 		delete(directive.children, "targetpath")
 		delete(directive.children, "targetprotocol")
