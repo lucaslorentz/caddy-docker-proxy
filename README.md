@@ -137,7 +137,7 @@ You can customize the automatic generated proxy with the following special label
 When all the values above are added to a service, the following configuration will be generated:
 ```
 service.example.com {
-	proxy / https://servicename:8080/api
+	proxy /source https://servicename:8080/api
 }
 ```
 
