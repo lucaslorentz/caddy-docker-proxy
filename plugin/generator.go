@@ -218,16 +218,16 @@ func mergeDirectives(directiveA *directiveData, directiveB *directiveData) *dire
 	}
 
 	for keyB, subDirectiveB := range directiveB.children {
-		if subDirectiveB.name == "proxy" {
-			proxyB := subDirectiveB
-			if proxyA, exists := directiveA.children[keyB]; exists {
-				if len(proxyA.args) > 0 && len(proxyB.args) > 0 && proxyA.args[0] == proxyB.args[0] {
-					proxyA.addArgs(proxyB.args[1:]...)
-					continue
-				}
-
-				keyB = "proxy_" + createUniqueSuffix()
+		if subDirectiveA, exists := directiveA.children[keyB]; exists {
+			if subDirectiveB.name == "proxy" &&
+				len(subDirectiveA.args) > 0 &&
+				len(subDirectiveB.args) > 0 &&
+				subDirectiveA.args[0] == subDirectiveB.args[0] {
+				subDirectiveA.addArgs(subDirectiveB.args[1:]...)
+				continue
 			}
+
+			keyB = "proxy_" + createUniqueSuffix()
 		}
 
 		directiveA.children[keyB] = subDirectiveB
