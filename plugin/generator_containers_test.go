@@ -292,6 +292,47 @@ func TestContainers_DoNotMergeProxiesWithDifferentLabelKey(t *testing.T) {
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
 }
 
+func TestContainers_DoNotMergeProxiesWithDifferentSourcePath(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []types.Container{
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.2",
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s.address"):    "service.testdomain.com",
+				fmtLabel("%s.sourcepath"): "/a",
+			},
+		},
+		types.Container{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": &network.EndpointSettings{
+						IPAddress: "172.17.0.3",
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s.address"):    "service.testdomain.com",
+				fmtLabel("%s.sourcepath"): "/b",
+			},
+		},
+	}
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"  proxy /a 172.17.0.2\n" +
+		"  proxy /b 172.17.0.3\n" +
+		"}\n"
+
+	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
+}
+
 func TestContainers_WithSnippets(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{

@@ -3,11 +3,15 @@ package plugin
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
 	"flag"
 	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
+	"math"
+	"math/big"
+	rand "math/rand"
 	"os"
 	"regexp"
 	"sort"
@@ -217,9 +221,13 @@ func mergeDirectives(directiveA *directiveData, directiveB *directiveData) *dire
 		if subDirectiveB.name == "proxy" {
 			proxyB := subDirectiveB
 			if proxyA, exists := directiveA.children[keyB]; exists {
-				if len(proxyA.args) > 0 && len(proxyB.args) > 0 && proxyA.args[0] == proxyB.args[0] {
-					proxyA.addArgs(proxyB.args[1:]...)
-					continue
+				if len(proxyA.args) > 0 && len(proxyB.args) > 0 {
+					if proxyA.args[0] == proxyB.args[0] {
+						proxyA.addArgs(proxyB.args[1:]...)
+						continue
+					}
+
+					keyB = "proxy_" + createUniqueSuffix()
 				}
 			}
 		}
@@ -228,6 +236,14 @@ func mergeDirectives(directiveA *directiveData, directiveB *directiveData) *dire
 	}
 
 	return directiveA
+}
+
+func createUniqueSuffix() string {
+	val, err := crand.Int(crand.Reader, big.NewInt(int64(math.MaxInt64)))
+	if err != nil {
+		return string(rand.Uint64())
+	}
+	return string(val.Uint64())
 }
 
 func (g *CaddyfileGenerator) checkSwarmAvailability(isFirstCheck bool) {
