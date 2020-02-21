@@ -292,7 +292,7 @@ func TestContainers_DoNotMergeProxiesWithDifferentLabelKey(t *testing.T) {
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
 }
 
-func TestContainers_DoNotMergeProxiesWithDifferentSourcePath(t *testing.T) {
+func TestContainers_ComplexMerge(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
 		types.Container{
@@ -305,8 +305,11 @@ func TestContainers_DoNotMergeProxiesWithDifferentSourcePath(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"):    "service.testdomain.com",
-				fmtLabel("%s.sourcepath"): "/a",
+				fmtLabel("%s.address"):           "service.testdomain.com",
+				fmtLabel("%s.sourcepath"):        "/a",
+				fmtLabel("%s.proxy.transparent"): "",
+				fmtLabel("%s.redir"):             "/a /a1",
+				fmtLabel("%s.tls"):               "off",
 			},
 		},
 		types.Container{
@@ -319,15 +322,25 @@ func TestContainers_DoNotMergeProxiesWithDifferentSourcePath(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"):    "service.testdomain.com",
-				fmtLabel("%s.sourcepath"): "/b",
+				fmtLabel("%s.address"):           "service.testdomain.com",
+				fmtLabel("%s.sourcepath"):        "/b",
+				fmtLabel("%s.proxy.transparent"): "",
+				fmtLabel("%s.redir"):             "/b /b1",
+				fmtLabel("%s.tls"):               "off",
 			},
 		},
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy /a 172.17.0.2\n" +
-		"  proxy /b 172.17.0.3\n" +
+		"  proxy /a 172.17.0.2 {\n" +
+		"    transparent\n" +
+		"  }\n" +
+		"  proxy /b 172.17.0.3 {\n" +
+		"    transparent\n" +
+		"  }\n" +
+		"  redir /a /a1\n" +
+		"  redir /b /b1\n" +
+		"  tls off\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
