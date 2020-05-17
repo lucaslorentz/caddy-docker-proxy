@@ -4,7 +4,8 @@ services:
   caddy:
     image: lucaslorentz/caddy-docker-proxy
     ports:
-      - 2015:2015
+      - 80:80
+      - 443:443
     networks:
       - caddy
     volumes:
