@@ -317,7 +317,7 @@ You can modify docker connection using the following environment variables:
 ## Volumes
 On a production docker swarm cluster, it's **very important** to store Caddy folder on a persistent storage. Otherwise Caddy will re-issue certificates every time it is restarted, exceeding let's encrypt quota.
 
-To do that map a persistent docker volume to `/data` folder.
+To do that, map a persistent docker volume to `/data` folder.
 
 For resilient production deployments, use multiple caddy replicas and map `/data` folder to a volume that supports multiple mounts, like Network File Sharing docker volumes plugins.
 
