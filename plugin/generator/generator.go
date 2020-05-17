@@ -135,7 +135,7 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() ([]byte, string) {
 		logsBuffer.WriteString("[INFO] Skipping configs because swarm is not available\n")
 	}
 
-	caddyfileBlock.Write(&caddyfileBuffer, 0)
+	caddyfileBlock.Write(&caddyfileBuffer, true, 0)
 
 	caddyfileContent := caddyfileBuffer.Bytes()
 

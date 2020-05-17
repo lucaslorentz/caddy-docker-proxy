@@ -1,5 +1,13 @@
 # CADDY-DOCKER-PROXY [![Build Status](https://dev.azure.com/lucaslorentzlara/lucaslorentzlara/_apis/build/status/lucaslorentz.caddy-docker-proxy?branchName=master)](https://dev.azure.com/lucaslorentzlara/lucaslorentzlara/_build/latest?definitionId=1) [![Go Report Card](https://goreportcard.com/badge/github.com/lucaslorentz/caddy-docker-proxy)](https://goreportcard.com/report/github.com/lucaslorentz/caddy-docker-proxy)
 
+## CADDY V2!
+
+This plugin has been updated to Caddy V2.  
+
+**Master branch** and **docker CI images** are now dedicated to V2.
+
+[Go to Caddy V1 readme](https://github.com/lucaslorentz/caddy-docker-proxy/blob/v0/README.md)
+
 ## Introduction
 This plugin enables caddy to be used as a reverse proxy for Docker.
 
@@ -11,116 +19,106 @@ Then it generates an in memory Caddyfile with website entries and proxies direct
 Every time a docker object changes, it updates the Caddyfile and triggers a caddy zero-downtime reload.
 
 ## Labels to Caddyfile conversion
-Any label prefixed with caddy, will be converted to caddyfile configuration.
+Any label prefixed with caddy, will be converted to caddyfile configuration following those rules:
 
-Label's keys are transformed into a directive name and its value becomes the directive arguments.
-
-Example:
+Keys becomes directive name and value becomes arguments:
 ```
-caddy.directive=valueA valueB
-```
-
-Generates:
-```
-directive valueA valueB
+caddy.directive=arg1 arg2
+↓
+directive arg1 arg2
 ```
 
-Dots inside labels keys represents nested levels inside caddyfile.
-
-Example:  
+Dots represents nesting and grouping is done automatically:
 ```
 caddy.directive=argA  
 caddy.directive.subdirA=valueA  
 caddy.directive.subdirB=valueB1 valueB2
-```
-
-Generates:
-```
+↓
 directive argA {  
 	subdirA valueA  
 	subdirB valueB1 valueB2  
 }
 ```
 
-Labels for parent directives are not required.
-
-Example:
+Labels for parent directives are optional:
 ```
 caddy.directive.subdirA=valueA
-```
-
-Generates:
-```
+↓
 directive {
 	subdirA valueA
 }
 ```
 
-Labels with empty values generates directives without arguments.
-
-Example:
+Labels with empty values generates directives without arguments:
 ```
 caddy.directive=
-```
-
-Generates:
-```
+↓
 directive
 ```
 
-Sometimes it's not possile to have labels with empty values, like when using some UI to manage docker. If that's the case, you can also use our support for go lang templates to generate empty labels.
-
-Example:
+Directives are ordered alphabetically by default:
 ```
-caddy.directive={{nil}}
-```
-
-Generates:
-```
-directive
+caddy.bbb=value
+caddy.aaa=value
+↓
+aaa value 
+bbb value
 ```
 
-Any #_ prefix or _# suffix on labels are removed when generating caddyfile configuration, that allows you to order your directives with same name or different directives. By default, directives created by labels are sorted alphabetically in caddyfile.
-
-Example:
+Prefix &lt;number&gt;_ defines a custom ordering for directives, and directives without order prefix will go last:
 ```
-caddy.1_rewrite_1=value1
-caddy.1_rewrite_2=value2
-caddy.2_reverse_proxy=value3
-```
-
-Generates:
-```
-rewrite=value1
-rewrite=value2
-reverse_proxyx=value3
+caddy.1_bbb=value
+caddy.2_aaa=value
+↓
+bbb value
+aaa value
 ```
 
-You can also set the website address section by adding value to caddy label.
+Suffix _&lt;number&gt; isolates directives that otherwise would be grouped:
+```
+caddy.group.a=value
+caddy.group.b=value
+↓
+group {
+  a value
+}
+group {
+  b value
+}
+```
 
-Example:
+Caddy label args creates a server block:
 ```
 caddy=example.com
 caddy.respond=200 /
-```
-
-Generates:
-```
+↓
 example.com {
     respond 200 /
 }
 ```
 
-### Automatic Reverse Proxy Generation
-To automatically generate a website and a reverse_proxy directive pointing to a service or container, add the special label `caddy.address` to it.
+Or a snippet:
+```
+caddy=(snippet)
+caddy.respond=200 /
+↓
+(snippet) {
+    respond 200 /
+}
+```
 
-Example:
+Sometimes it's not possile to have labels with empty values, like when using some UI to manage docker. If that's the case, you can also use our support for go lang templates to generate empty labels.
+```
+caddy.directive={{nil}}
+↓
+directive
+```
+
+### Automatic Reverse Proxy Generation
+To automatically generate a server block and a reverse_proxy directive pointing to a service or container, add the special label `caddy.address` to it:
 ```
 caddy.address=service.example.com
-```
-
-Generates:
-```
+↓
 service.example.com {
 	reverse_proxy / servicename
 }
@@ -139,19 +137,18 @@ You can customize the automatic generated reverse proxy with the following speci
 When all the values above are added to a service, the following configuration will be generated:
 ```
 service.example.com {
-	reverse_proxy /source https://servicename:8080/api
+  route /source/* {
+    uri strip_prefix /source
+    rewrite * /api{uri}
+    reverse_proxy https://servicename:8080
+  }
 }
 ```
 
-It's possible to add directives to the automatically created reverse proxy directive.
-
-Example:
+It's possible to add directives to the automatically created reverse proxy directive:
 ```
 caddy.reverse_proxy.health_path=/health
-```
-
-Generates:
-```
+↓
 service.example.com {
 	proxy / https://servicename:8080/api {
 		health_path /health
@@ -189,17 +186,12 @@ caddy.address=service1.example.com service2.example.com
 
 ### Multiple caddyfile sections from one service/container
 It's possible to generate multiple caddyfile sections for the same service/container by suffixing the caddy prefix with _#. That's usefull to expose multiple service ports at different urls.
-
-Example:
 ```
 caddy_0.address = portal.example.com
 caddy_0.targetport = 80
 caddy_1.address = admin.example.com
 caddy_1.targetport = 81
-```
-
-Generates:
-```
+↓
 portal.example.com {
 	reverse_proxy / servicename:80
 }
@@ -275,39 +267,37 @@ docker run --rm -it -p 2019:2019 -v //./pipe/docker_engine://./pipe/docker_engin
 ```
 
 ## Caddy CLI
-All flags and environment variables supported by Caddy CLI are also supported:
-https://caddyserver.com/docs/cli
+This plugin extends caddy cli with command `caddy docker-proxy` and flags.
+
+Run `caddy docker-proxy --help` to see all available flags:
+```
+Usage of docker-proxy:
+  -caddyfile-path string
+    	Path to a base CaddyFile that will be extended with docker sites
+  -label-prefix string
+    	Prefix for Docker labels (default "caddy")
+  -polling-interval duration
+    	Interval caddy should manually check docker for a new caddyfile (default 30s)
+  -process-caddyfile
+    	Process Caddyfile before loading it, removing invalid servers
+  -proxy-service-tasks
+    	Proxy to service tasks instead of service load balancer
+  -validate-network
+    	Validates if caddy container and target are in same network (default true)
+```
 
 Check **examples** folder to see how to set them on a docker compose file.
-
-This plugin provides these flags:
-
-```
--label-prefix string
-      Prefix for Docker labels (default "caddy")
--caddyfile-path string
-      Path to a base CaddyFile that will be extended with docker sites (default "")
--polling-interval duration
-      Interval caddy should manually check docker for a new caddyfile (default 30s)
--proxy-service-tasks
-      Proxy to service tasks instead of service load balancer (default false)
--validate-network
-      Validates if caddy container and proxy target are in same network (default true)
-```
 
 Those flags can also be set via environment variables:
 
 ```
-CADDY_DOCKER_LABEL_PREFIX=<string>
 CADDY_DOCKER_CADDYFILE_PATH=<string>
+CADDY_DOCKER_LABEL_PREFIX=<string>
 CADDY_DOCKER_POLLING_INTERVAL=<duration>
+CADDY_DOCKER_PROCESS_CADDYFILE=<bool>
 CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
 CADDY_DOCKER_VALIDATE_NETWORK=<bool>
 ```
-
-## Caddy Telemetry
-
-We decided to disable telemetry by default in caddy-docker-proxy images. You can enable telemetry by setting environment variable **CADDY_ENABLE_TELEMETRY** to **true**. Or with CLI option **-enable-telemetry**.
 
 ## Connecting to Docker Host
 The default connection to docker host varies per platform:
@@ -347,11 +337,12 @@ Wait a bit for services startup...
 
 Now you can access each services/container using different urls
 ```
-curl -k --resolve whoami0.example.com:443:localhost https://whoami0.example.com
-curl -k --resolve whoami1.example.com:443:localhost https://whoami1.example.com
-curl -k --resolve whoami2.example.com:443:localhost https://whoami2.example.com
-curl -k --resolve whoami3.example.com:443:localhost https://whoami3.example.com
-curl -k --resolve config.example.com:443:localhost https://config.example.com
+curl -k --resolve whoami0.example.com:443:127.0.0.1 https://whoami0.example.com
+curl -k --resolve whoami1.example.com:443:127.0.0.1 https://whoami1.example.com
+curl -k --resolve whoami2.example.com:443:127.0.0.1 https://whoami2.example.com
+curl -k --resolve whoami3.example.com:443:127.0.0.1 https://whoami3.example.com
+curl -k --resolve config.example.com:443:127.0.0.1 https://config.example.com
+curl -k --resolve echo.example.com:443:127.0.0.1 https://echo.example.com/sourcepath/something
 ```
 
 After testing, delete the demo stack:
@@ -362,14 +353,14 @@ docker stack rm caddy-docker-demo
 ### With run commands
 
 ```
-docker run --name caddy -d -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock lucaslorentz/caddy-docker-proxy:ci-alpine docker-proxy
+docker run --name caddy -d -p 443:443 -v /var/run/docker.sock:/var/run/docker.sock lucaslorentz/caddy-docker-proxy:ci-alpine docker-proxy
 
-docker run --name whoami0 -d -l caddy.address=whoami0.example.com:8080 -l caddy.targetport=8000 -l caddy.tls=off jwilder/whoami
+docker run --name whoami0 -d -l caddy.address=whoami0.example.com -l caddy.targetport=8000 -l caddy.tls=internal jwilder/whoami
 
-docker run --name whoami1 -d -l caddy.address=whoami1.example.com:8080 -l caddy.targetport=8000 -l caddy.tls=off jwilder/whoami
+docker run --name whoami1 -d -l caddy.address=whoami1.example.com -l caddy.targetport=8000 -l caddy.tls=internal jwilder/whoami
 
-curl -H Host:whoami0.example.com http://localhost:8080
-curl -H Host:whoami1.example.com http://localhost:8080
+curl -k --resolve whoami0.example.com:443:127.0.0.1 https://whoami0.example.com
+curl -k --resolve whoami1.example.com:443:127.0.0.1 https://whoami1.example.com
 
 docker rm -f caddy whoami0 whoami1
 ```

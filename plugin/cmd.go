@@ -22,7 +22,7 @@ func init() {
 		Usage: "<command>",
 		Short: "Run caddy as a docker proxy",
 		Flags: func() *flag.FlagSet {
-			fs := flag.NewFlagSet("docker", flag.ExitOnError)
+			fs := flag.NewFlagSet("docker-proxy", flag.ExitOnError)
 			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
 			fs.String("caddyfile-path", "", "Path to a base CaddyFile that will be extended with docker sites")
 			fs.Bool("proxy-service-tasks", false, "Proxy to service tasks instead of service load balancer")

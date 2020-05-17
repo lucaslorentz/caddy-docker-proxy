@@ -28,19 +28,18 @@ services:
           cpus: '0.1'
           memory: 200M
 
+  # Proxy to service
   whoami0:
-    image: brndnmtthws/nginx-echo-headers
+    image: jwilder/whoami
     networks:
       - caddy
     deploy:
       labels:
         caddy.address: whoami0.example.com
-        caddy.sourcepath: "/a"
-        caddy.targetport: "8080"
-        caddy.targetpath: "/abc"
-        caddy.reverse_proxy.health_path: "/health"
+        caddy.targetport: "8000"
         caddy.tls: "internal"
 
+  # Proxy to service
   whoami1:
     image: jwilder/whoami
     networks:
@@ -51,6 +50,7 @@ services:
         caddy.targetport: "8000"
         caddy.tls: "internal"
 
+  # Proxy to container
   whoami2:
     image: jwilder/whoami
     networks:
@@ -60,6 +60,7 @@ services:
       caddy.targetport: "8000"
       caddy.tls: "internal"
 
+  # Proxy to container
   whoami3:
     image: jwilder/whoami
     networks:
@@ -68,6 +69,20 @@ services:
       caddy.address: whoami3.example.com
       caddy.targetport: "8000"
       caddy.tls: "internal"
+
+  # Proxy to service with all special labels
+  echo_headers:
+    image: brndnmtthws/nginx-echo-headers
+    networks:
+      - caddy
+    deploy:
+      labels:
+        caddy.address: echo.example.com
+        caddy.sourcepath: "/sourcepath"
+        caddy.targetport: "8080"
+        caddy.targetpath: "/targetpath"
+        caddy.tls: "internal"
+        caddy.rewrite: /sourcepath /sourcepath/
 
 networks:
   caddy:

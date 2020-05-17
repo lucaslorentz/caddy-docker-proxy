@@ -103,3 +103,15 @@ func TestFromLabels_EmptyValuesUsingTemplates(t *testing.T) {
 
 	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
 }
+
+func TestFromLabels_GlobalDirectives(t *testing.T) {
+	labels := map[string]string{
+		"caddy.key": "value",
+	}
+
+	caddyfileBlock := FromLabels(labels, nil)
+
+	const expectedCaddyfile = "key value\n"
+
+	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
+}

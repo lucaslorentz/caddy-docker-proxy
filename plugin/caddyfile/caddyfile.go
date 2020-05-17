@@ -107,7 +107,7 @@ func (block *Block) RemoveAllMatches(name string, discriminator string) {
 // Marshal block into caddyfile bytes
 func (block *Block) Marshal() []byte {
 	buffer := &bytes.Buffer{}
-	block.Write(buffer, 0)
+	block.Write(buffer, true, 0)
 	return buffer.Bytes()
 }
 
@@ -117,17 +117,22 @@ func (block *Block) MarshalString() string {
 }
 
 // Write all directives to a buffer
-func (block *Block) Write(buffer *bytes.Buffer, level int) {
+func (block *Block) Write(buffer *bytes.Buffer, isRoot bool, level int) {
 	block.sort()
 	for _, subdirective := range block.Children {
-		subdirective.Write(buffer, level)
+		subdirective.Write(buffer, isRoot, level)
 	}
 }
 
 // Write directive to a buffer
-func (directive *Directive) Write(buffer *bytes.Buffer, level int) {
-	buffer.WriteString(strings.Repeat("\t", level))
-	if level > 0 {
+func (directive *Directive) Write(buffer *bytes.Buffer, isRoot bool, identation int) {
+	buffer.WriteString(strings.Repeat("\t", identation))
+	if isRoot && len(directive.Args) == 0 {
+		// This is a global directives block
+		directive.Block.Write(buffer, false, identation)
+		return
+	}
+	if !isRoot {
 		if directive.Name != "" {
 			buffer.WriteString(directive.Name)
 		}
@@ -145,8 +150,8 @@ func (directive *Directive) Write(buffer *bytes.Buffer, level int) {
 	}
 	if len(directive.Children) > 0 {
 		buffer.WriteString(" {\n")
-		directive.Block.Write(buffer, level+1)
-		buffer.WriteString(strings.Repeat("\t", level) + "}")
+		directive.Block.Write(buffer, false, identation+1)
+		buffer.WriteString(strings.Repeat("\t", identation) + "}")
 	}
 	buffer.WriteString("\n")
 }
