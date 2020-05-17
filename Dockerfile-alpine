@@ -1,7 +1,7 @@
 FROM alpine:3.10
 LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
 
-EXPOSE 80 443 2015
+EXPOSE 80 443 2019
 
 RUN apk add --no-cache ca-certificates curl
 

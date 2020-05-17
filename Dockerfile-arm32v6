@@ -5,7 +5,7 @@ RUN apk add -U --no-cache ca-certificates
 FROM scratch
 LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
 
-EXPOSE 80 443 2015
+EXPOSE 80 443 2019
 ENV HOME /root
 
 WORKDIR /
