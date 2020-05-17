@@ -80,18 +80,20 @@ Generates:
 directive
 ```
 
-Any _# suffix on labels is removed when generating caddyfile configuration, that allows you to write repeating directives with same name.
+Any #_ prefix or _# suffix on labels are removed when generating caddyfile configuration, that allows you to order your directives with same name or different directives. By default, directives created by labels are sorted alphabetically in caddyfile.
 
 Example:
 ```
-caddy.directive_1=value1
-caddy.directive_2=value2
+caddy.1_rewrite_1=value1
+caddy.1_rewrite_2=value2
+caddy.2_reverse_proxy=value3
 ```
 
 Generates:
 ```
-directive value1
-directive value2
+rewrite=value1
+rewrite=value2
+reverse_proxyx=value3
 ```
 
 You can also set the website address section by adding value to caddy label.
@@ -99,18 +101,18 @@ You can also set the website address section by adding value to caddy label.
 Example:
 ```
 caddy=example.com
-caddy.status=200 /
+caddy.respond=200 /
 ```
 
 Generates:
 ```
 example.com {
-    status 200 /
+    respond 200 /
 }
 ```
 
-### Automatic Proxy Generation
-To automatically generate a website and a proxy directive pointing to a service or container, add the special label `caddy.address` to it.
+### Automatic Reverse Proxy Generation
+To automatically generate a website and a reverse_proxy directive pointing to a service or container, add the special label `caddy.address` to it.
 
 Example:
 ```
@@ -120,11 +122,11 @@ caddy.address=service.example.com
 Generates:
 ```
 service.example.com {
-	proxy / servicename
+	reverse_proxy / servicename
 }
 ```
 
-You can customize the automatic generated proxy with the following special labels:
+You can customize the automatic generated reverse proxy with the following special labels:
 
 | Label | Example | Description | Required |
 | - | - | - | - |
@@ -137,22 +139,22 @@ You can customize the automatic generated proxy with the following special label
 When all the values above are added to a service, the following configuration will be generated:
 ```
 service.example.com {
-	proxy /source https://servicename:8080/api
+	reverse_proxy /source https://servicename:8080/api
 }
 ```
 
-It's possible to add directives to the automatically created proxy directive.
+It's possible to add directives to the automatically created reverse proxy directive.
 
 Example:
 ```
-caddy.proxy.websocket=
+caddy.reverse_proxy.health_path=/health
 ```
 
 Generates:
 ```
 service.example.com {
 	proxy / https://servicename:8080/api {
-		websocket
+		health_path /health
 	}
 }
 ```
@@ -199,17 +201,17 @@ caddy_1.targetport = 81
 Generates:
 ```
 portal.example.com {
-	proxy / servicename:80
+	reverse_proxy / servicename:80
 }
 admin.example.com {
-	proxy / servicename:81
+	reverse_proxy / servicename:81
 }
 ```
 
 ### Docker configs
 You can also add raw text to your caddyfile using docker configs. Just add caddy label prefix to your configs and the whole config content will be prepended to the generated caddyfile.
 
-[Here is an example](examples/service-proxy.yaml#L4)
+[Here is an example](examples/example.yaml#L4)
 
 ## Proxying services vs containers
 Caddy docker proxy is able to proxy to swarm servcies or raw containers. Both features are always enabled, and what will differentiate the proxy target is where you define your labels.
@@ -269,7 +271,7 @@ Be aware that this needs to be tested further.
 
 This is an example of how to mount the windows docker pipe using CLI:
 ```
-docker run --rm -it -p 2015:2015 -v //./pipe/docker_engine://./pipe/docker_engine lucaslorentz/caddy-docker-proxy:ci-nanoserver-1803 -agree -email email@example.com -log stdout
+docker run --rm -it -p 2019:2019 -v //./pipe/docker_engine://./pipe/docker_engine lucaslorentz/caddy-docker-proxy:ci-nanoserver-1803 -agree -email email@example.com -log stdout
 ```
 
 ## Caddy CLI
@@ -281,16 +283,16 @@ Check **examples** folder to see how to set them on a docker compose file.
 This plugin provides these flags:
 
 ```
--docker-label-prefix string
+-label-prefix string
       Prefix for Docker labels (default "caddy")
--docker-caddyfile-path string
-      Path to a default CaddyFile (default "")
--docker-polling-interval duration
+-caddyfile-path string
+      Path to a base CaddyFile that will be extended with docker sites (default "")
+-polling-interval duration
       Interval caddy should manually check docker for a new caddyfile (default 30s)
 -proxy-service-tasks
       Proxy to service tasks instead of service load balancer (default false)
--docker-validate-network
-      Validates if caddy container and target are in same network (default true)
+-validate-network
+      Validates if caddy container and proxy target are in same network (default true)
 ```
 
 Those flags can also be set via environment variables:
@@ -338,18 +340,18 @@ Clone this repository.
 
 Deploy the compose file to swarm cluster:
 ```
-docker stack deploy -c examples/service-proxy.yaml caddy-docker-demo
+docker stack deploy -c examples/example.yaml caddy-docker-demo
 ```
 
 Wait a bit for services startup...
 
-Now you can access both services using different urls
+Now you can access each services/container using different urls
 ```
-curl -H Host:whoami0.example.com http://localhost:2015
-
-curl -H Host:whoami1.example.com http://localhost:2015
-
-curl -H Host:config.example.com http://localhost:2015
+curl -k --resolve whoami0.example.com:443:localhost https://whoami0.example.com
+curl -k --resolve whoami1.example.com:443:localhost https://whoami1.example.com
+curl -k --resolve whoami2.example.com:443:localhost https://whoami2.example.com
+curl -k --resolve whoami3.example.com:443:localhost https://whoami3.example.com
+curl -k --resolve config.example.com:443:localhost https://config.example.com
 ```
 
 After testing, delete the demo stack:
@@ -360,24 +362,24 @@ docker stack rm caddy-docker-demo
 ### With run commands
 
 ```
-docker run --name caddy -d -p 2015:2015 -v /var/run/docker.sock:/var/run/docker.sock lucaslorentz/caddy-docker-proxy:ci-alpine -agree -email email@example.com -log stdout -docker-process-caddyfile
+docker run --name caddy -d -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock lucaslorentz/caddy-docker-proxy:ci-alpine docker-proxy
 
-docker run --name whoami0 -d -l caddy.address=whoami0.example.com -l caddy.targetport=8000 -l caddy.tls=off jwilder/whoami
+docker run --name whoami0 -d -l caddy.address=whoami0.example.com:8080 -l caddy.targetport=8000 -l caddy.tls=off jwilder/whoami
 
-docker run --name whoami1 -d -l caddy.address=whoami1.example.com -l caddy.targetport=8000 -l caddy.tls=off jwilder/whoami
+docker run --name whoami1 -d -l caddy.address=whoami1.example.com:8080 -l caddy.targetport=8000 -l caddy.tls=off jwilder/whoami
 
-curl -H Host:whoami0.example.com http://localhost:2015
-curl -H Host:whoami1.example.com http://localhost:2015
+curl -H Host:whoami0.example.com http://localhost:8080
+curl -H Host:whoami1.example.com http://localhost:8080
 
 docker rm -f caddy whoami0 whoami1
 ```
 
 ## Building it
-You can use our caddy build wrapper **build.sh** and include additional plugins on https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/main.go#L5
+You can use our caddy build wrapper **build.sh** and include additional plugins on https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/main.go#L8
 
-Or, you can build from caddy repository and import  **caddy-docker-proxy** plugin on file https://github.com/caddyserver/caddy/blob/master/caddy/caddymain/run.go :
+Or, you can build from caddy repository and import  **caddy-docker-proxy** plugin on file https://github.com/caddyserver/caddy/blob/master/cmd/caddy/main.go#L33 :
 ```
 import (
-  _ "github.com/lucaslorentz/caddy-docker-proxy/plugin"
+  _ "github.com/lucaslorentz/caddy-docker-proxy/v2/plugin"
 )
 ```

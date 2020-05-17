@@ -14,3 +14,5 @@ COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY artifacts/binaries/linux/arm32v6/caddy /bin/
 
 ENTRYPOINT ["/bin/caddy"]
+
+CMD ["docker-proxy"]

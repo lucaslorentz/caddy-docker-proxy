@@ -7,7 +7,6 @@ services:
       - 2015:2015
     networks:
       - caddy
-    command: -email email@caddy-docker-demo -agree=true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - caddy:/root/.caddy

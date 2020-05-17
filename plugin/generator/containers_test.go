@@ -1,4 +1,4 @@
-package plugin
+package generator
 
 import (
 	"testing"
@@ -10,27 +10,27 @@ import (
 func TestContainers_Templates(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
-		types.Container{
+		{
 			Names: []string{
 				"container-name",
 			},
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
+					"caddy-network": {
 						IPAddress: "172.17.0.2",
 						NetworkID: caddyNetworkID,
 					},
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s"):       "{{index .Names 0}}.testdomain.com",
-				fmtLabel("%s.proxy"): "/ {{(index .NetworkSettings.Networks \"caddy-network\").IPAddress}}:5000/api",
+				fmtLabel("%s"):               "{{index .Names 0}}.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{(index .NetworkSettings.Networks \"caddy-network\").IPAddress}}:5000/api",
 			},
 		},
 	}
 
 	const expectedCaddyfile = "container-name.testdomain.com {\n" +
-		"  proxy / 172.17.0.2:5000/api\n" +
+		"	reverse_proxy 172.17.0.2:5000/api\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
@@ -39,14 +39,14 @@ func TestContainers_Templates(t *testing.T) {
 func TestContainers_PicksRightNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
-		types.Container{
+		{
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"other-network": &network.EndpointSettings{
+					"other-network": {
 						IPAddress: "10.0.0.1",
 						NetworkID: "other-network-id",
 					},
-					"caddy-network": &network.EndpointSettings{
+					"caddy-network": {
 						IPAddress: "172.17.0.2",
 						NetworkID: caddyNetworkID,
 					},
@@ -59,60 +59,7 @@ func TestContainers_PicksRightNetwork(t *testing.T) {
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy / 172.17.0.2\n" +
-		"}\n"
-
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
-}
-
-func TestContainers_MinimumBasicLabels(t *testing.T) {
-	dockerClient := createBasicDockerClientMock()
-	dockerClient.ContainersData = []types.Container{
-		types.Container{
-			NetworkSettings: &types.SummaryNetworkSettings{
-				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
-						IPAddress: "172.17.0.2",
-						NetworkID: caddyNetworkID,
-					},
-				},
-			},
-			Labels: map[string]string{
-				fmtLabel("%s.address"): "service.testdomain.com",
-			},
-		},
-	}
-
-	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy / 172.17.0.2\n" +
-		"}\n"
-
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
-}
-
-func TestContainers_AllBasicLabels(t *testing.T) {
-	dockerClient := createBasicDockerClientMock()
-	dockerClient.ContainersData = []types.Container{
-		types.Container{
-			NetworkSettings: &types.SummaryNetworkSettings{
-				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
-						IPAddress: "172.17.0.2",
-						NetworkID: caddyNetworkID,
-					},
-				},
-			},
-			Labels: map[string]string{
-				fmtLabel("%s.address"):        "service.testdomain.com",
-				fmtLabel("%s.targetport"):     "5000",
-				fmtLabel("%s.targetpath"):     "/api",
-				fmtLabel("%s.targetprotocol"): "https",
-			},
-		},
-	}
-
-	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy / https://172.17.0.2:5000/api\n" +
+		"	reverse_proxy 172.17.0.2\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
@@ -121,11 +68,11 @@ func TestContainers_AllBasicLabels(t *testing.T) {
 func TestContainers_DifferentNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
-		types.Container{
+		{
 			ID: "CONTAINER-ID",
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"other-network": &network.EndpointSettings{
+					"other-network": {
 						IPAddress: "10.0.0.1",
 						NetworkID: "other-network-id",
 					},
@@ -148,11 +95,11 @@ func TestContainers_DifferentNetwork(t *testing.T) {
 func TestContainers_DifferentNetworkSkipValidation(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
-		types.Container{
+		{
 			ID: "CONTAINER-ID",
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"other-network": &network.EndpointSettings{
+					"other-network": {
 						IPAddress: "10.0.0.1",
 						NetworkID: "other-network-id",
 					},
@@ -165,7 +112,7 @@ func TestContainers_DifferentNetworkSkipValidation(t *testing.T) {
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy / 10.0.0.1\n" +
+		"	reverse_proxy 10.0.0.1\n" +
 		"}\n"
 
 	const expectedLogs = skipCaddyfileText
@@ -173,53 +120,13 @@ func TestContainers_DifferentNetworkSkipValidation(t *testing.T) {
 	testGeneration(t, dockerClient, false, false, expectedCaddyfile, expectedLogs)
 }
 
-func TestContainers_MultipleConfigs(t *testing.T) {
-	dockerClient := createBasicDockerClientMock()
-	dockerClient.ContainersData = []types.Container{
-		types.Container{
-			NetworkSettings: &types.SummaryNetworkSettings{
-				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
-						IPAddress: "172.17.0.2",
-						NetworkID: caddyNetworkID,
-					},
-				},
-			},
-			Labels: map[string]string{
-				fmtLabel("%s_0.address"):    "service1.testdomain.com",
-				fmtLabel("%s_0.targetport"): "5000",
-				fmtLabel("%s_0.targetpath"): "/api",
-				fmtLabel("%s_0.tls.dns"):    "route53",
-				fmtLabel("%s_1.address"):    "service2.testdomain.com",
-				fmtLabel("%s_1.targetport"): "5001",
-				fmtLabel("%s_1.tls.dns"):    "route53",
-			},
-		},
-	}
-
-	const expectedCaddyfile = "service1.testdomain.com {\n" +
-		"  proxy / 172.17.0.2:5000/api\n" +
-		"  tls {\n" +
-		"    dns route53\n" +
-		"  }\n" +
-		"}\n" +
-		"service2.testdomain.com {\n" +
-		"  proxy / 172.17.0.2:5001\n" +
-		"  tls {\n" +
-		"    dns route53\n" +
-		"  }\n" +
-		"}\n"
-
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
-}
-
 func TestContainers_Replicas(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
-		types.Container{
+		{
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
+					"caddy-network": {
 						IPAddress: "172.17.0.2",
 						NetworkID: caddyNetworkID,
 					},
@@ -229,10 +136,10 @@ func TestContainers_Replicas(t *testing.T) {
 				fmtLabel("%s.address"): "service.testdomain.com",
 			},
 		},
-		types.Container{
+		{
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
+					"caddy-network": {
 						IPAddress: "172.17.0.3",
 						NetworkID: caddyNetworkID,
 					},
@@ -245,48 +152,48 @@ func TestContainers_Replicas(t *testing.T) {
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy / 172.17.0.2 172.17.0.3\n" +
+		"	reverse_proxy 172.17.0.2 172.17.0.3\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
 }
 
-func TestContainers_DoNotMergeProxiesWithDifferentLabelKey(t *testing.T) {
+func TestContainers_DoNotMergeDifferentProxies(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
-		types.Container{
+		{
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
+					"caddy-network": {
 						IPAddress: "172.17.0.2",
 						NetworkID: caddyNetworkID,
 					},
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s"):         "service.testdomain.com",
-				fmtLabel("%s.proxy_0"): "/a service-a",
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "/a/* service-a",
 			},
 		},
-		types.Container{
+		{
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
+					"caddy-network": {
 						IPAddress: "172.17.0.3",
 						NetworkID: caddyNetworkID,
 					},
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s"):         "service.testdomain.com",
-				fmtLabel("%s.proxy_1"): "/b service-b",
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "/b/* service-b",
 			},
 		},
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy /a service-a\n" +
-		"  proxy /b service-b\n" +
+		"	reverse_proxy /a/* service-a\n" +
+		"	reverse_proxy /b/* service-b\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
@@ -295,52 +202,58 @@ func TestContainers_DoNotMergeProxiesWithDifferentLabelKey(t *testing.T) {
 func TestContainers_ComplexMerge(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
-		types.Container{
+		{
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
+					"caddy-network": {
 						IPAddress: "172.17.0.2",
 						NetworkID: caddyNetworkID,
 					},
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"):           "service.testdomain.com",
-				fmtLabel("%s.sourcepath"):        "/a",
-				fmtLabel("%s.proxy.transparent"): "",
-				fmtLabel("%s.redir"):             "/a /a1",
-				fmtLabel("%s.tls"):               "off",
+				fmtLabel("%s.address"):                   "service.testdomain.com",
+				fmtLabel("%s.sourcepath"):                "/a",
+				fmtLabel("%s.reverse_proxy.health_path"): "/health",
+				fmtLabel("%s.redir"):                     "/a /a1",
+				fmtLabel("%s.tls"):                       "internal",
 			},
 		},
-		types.Container{
+		{
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
+					"caddy-network": {
 						IPAddress: "172.17.0.3",
 						NetworkID: caddyNetworkID,
 					},
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"):           "service.testdomain.com",
-				fmtLabel("%s.sourcepath"):        "/b",
-				fmtLabel("%s.proxy.transparent"): "",
-				fmtLabel("%s.redir"):             "/b /b1",
-				fmtLabel("%s.tls"):               "off",
+				fmtLabel("%s.address"):                   "service.testdomain.com",
+				fmtLabel("%s.sourcepath"):                "/b",
+				fmtLabel("%s.reverse_proxy.health_path"): "/health",
+				fmtLabel("%s.redir"):                     "/b /b1",
+				fmtLabel("%s.tls"):                       "internal",
 			},
 		},
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy /a 172.17.0.2 {\n" +
-		"    transparent\n" +
-		"  }\n" +
-		"  proxy /b 172.17.0.3 {\n" +
-		"    transparent\n" +
-		"  }\n" +
-		"  redir /a /a1\n" +
-		"  redir /b /b1\n" +
-		"  tls off\n" +
+		"	redir /a /a1\n" +
+		"	redir /b /b1\n" +
+		"	route /a/* {\n" +
+		"		uri strip_prefix /a\n" +
+		"		reverse_proxy 172.17.0.2 {\n" +
+		"			health_path /health\n" +
+		"		}\n" +
+		"	}\n" +
+		"	route /b/* {\n" +
+		"		uri strip_prefix /b\n" +
+		"		reverse_proxy 172.17.0.3 {\n" +
+		"			health_path /health\n" +
+		"		}\n" +
+		"	}\n" +
+		"	tls internal\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
@@ -349,10 +262,10 @@ func TestContainers_ComplexMerge(t *testing.T) {
 func TestContainers_WithSnippets(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
-		types.Container{
+		{
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
+					"caddy-network": {
 						IPAddress: "172.17.0.3",
 						NetworkID: caddyNetworkID,
 					},
@@ -363,10 +276,10 @@ func TestContainers_WithSnippets(t *testing.T) {
 				fmtLabel("%s.import"):  "mysnippet-1",
 			},
 		},
-		types.Container{
+		{
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
-					"caddy-network": &network.EndpointSettings{
+					"caddy-network": {
 						IPAddress: "172.17.0.2",
 						NetworkID: caddyNetworkID,
 					},
@@ -374,22 +287,22 @@ func TestContainers_WithSnippets(t *testing.T) {
 			},
 			Labels: map[string]string{
 				fmtLabel("%s_1"):     "(mysnippet-1)",
-				fmtLabel("%s_1.tls"): "off",
+				fmtLabel("%s_1.tls"): "internal",
 				fmtLabel("%s_2"):     "(mysnippet-2)",
-				fmtLabel("%s_2.tls"): "off",
+				fmtLabel("%s_2.tls"): "internal",
 			},
 		},
 	}
 
 	const expectedCaddyfile = "(mysnippet-1) {\n" +
-		"  tls off\n" +
+		"	tls internal\n" +
 		"}\n" +
 		"(mysnippet-2) {\n" +
-		"  tls off\n" +
+		"	tls internal\n" +
 		"}\n" +
 		"service.testdomain.com {\n" +
-		"  import mysnippet-1\n" +
-		"  proxy / 172.17.0.3\n" +
+		"	import mysnippet-1\n" +
+		"	reverse_proxy 172.17.0.3\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)

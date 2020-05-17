@@ -3,100 +3,76 @@ package plugin
 import (
 	"bytes"
 	"context"
-	"flag"
 	"log"
-	"os"
 	"time"
 
-	"github.com/caddyserver/caddy"
+	"github.com/caddyserver/caddy/v2"
+	"github.com/caddyserver/caddy/v2/caddyconfig"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/config"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/docker"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/generator"
 )
-
-var pollingInterval = 30 * time.Second
-var processCaddyfileFlag bool
-
-func init() {
-	flag.DurationVar(&pollingInterval, "docker-polling-interval", 30*time.Second, "Interval caddy should manually check docker for a new caddyfile")
-	flag.BoolVar(&processCaddyfileFlag, "docker-process-caddyfile", false, "Process caddyfile, removing invalid servers")
-}
 
 // DockerLoader generates caddy files from docker swarm information
 type DockerLoader struct {
-	initialized       bool
-	dockerClient      *client.Client
-	generator         *CaddyfileGenerator
-	timer             *time.Timer
-	skipEvents        bool
-	input             caddy.CaddyfileInput
-	processCaddyfile  bool
-	previousCaddyfile []byte
-	previousLogs      string
+	options       *config.Options
+	initialized   bool
+	dockerClient  docker.Client
+	generator     *generator.CaddyfileGenerator
+	timer         *time.Timer
+	skipEvents    bool
+	lastCaddyfile []byte
+	lastLogs      string
 }
 
 // CreateDockerLoader creates a docker loader
-func CreateDockerLoader() *DockerLoader {
+func CreateDockerLoader(options *config.Options) *DockerLoader {
 	return &DockerLoader{
-		input: caddy.CaddyfileInput{
-			ServerTypeName: "http",
-		},
+		options: options,
 	}
 }
 
-// Load returns the current caddy file input
-func (dockerLoader *DockerLoader) Load(serverType string) (caddy.Input, error) {
-	if serverType != "http" {
-		return nil, nil
-	}
+// Start docker loader
+func (dockerLoader *DockerLoader) Start() error {
 	if !dockerLoader.initialized {
 		dockerLoader.initialized = true
 
 		dockerClient, err := client.NewEnvClient()
 		if err != nil {
-			log.Printf("Docker connection failed: %v", err)
-			return nil, nil
+			log.Printf("[ERROR] Docker connection failed: %s", err)
+			return err
 		}
 
 		dockerPing, err := dockerClient.Ping(context.Background())
 		if err != nil {
-			log.Printf("Docker ping failed: %v", err)
-			return nil, nil
+			log.Printf("[ERROR] Docker ping failed: %s", err)
+			return err
 		}
 
 		dockerClient.NegotiateAPIVersionPing(dockerPing)
 
-		dockerLoader.dockerClient = dockerClient
-		dockerLoader.generator = CreateGenerator(
-			WrapDockerClient(dockerClient),
-			CreateDockerUtils(),
-			GetGeneratorOptions(),
+		wrappedClient := docker.WrapClient(dockerClient)
+
+		dockerLoader.dockerClient = wrappedClient
+		dockerLoader.generator = generator.CreateGenerator(
+			wrappedClient,
+			docker.CreateUtils(),
+			dockerLoader.options,
 		)
 
-		if processCaddyfileEnv := os.Getenv("CADDY_DOCKER_PROCESS_CADDYFILE"); processCaddyfileEnv != "" {
-			dockerLoader.processCaddyfile = isTrue.MatchString(processCaddyfileEnv)
-		} else {
-			dockerLoader.processCaddyfile = processCaddyfileFlag
-		}
-		log.Printf("[INFO] Docker process caddyfile: %v", dockerLoader.processCaddyfile)
+		log.Printf("[INFO] Docker polling interval: %s", dockerLoader.options.PollingInterval)
 
-		if pollingIntervalEnv := os.Getenv("CADDY_DOCKER_POLLING_INTERVAL"); pollingIntervalEnv != "" {
-			if p, err := time.ParseDuration(pollingIntervalEnv); err != nil {
-				log.Printf("Failed to parse CADDY_DOCKER_POLLING_INTERVAL: %v", err)
-			} else {
-				pollingInterval = p
-			}
-		}
-		log.Printf("[INFO] Docker polling interval: %v", pollingInterval)
-		dockerLoader.timer = time.AfterFunc(pollingInterval, func() {
-			dockerLoader.update(true)
+		dockerLoader.timer = time.AfterFunc(0, func() {
+			dockerLoader.update()
 		})
-
-		dockerLoader.update(false)
 
 		go dockerLoader.monitorEvents()
 	}
-	return dockerLoader.input, nil
+
+	return nil
 }
 
 func (dockerLoader *DockerLoader) monitorEvents() {
@@ -139,15 +115,17 @@ func (dockerLoader *DockerLoader) monitorEvents() {
 	}
 }
 
-func (dockerLoader *DockerLoader) update(reloadIfChanged bool) bool {
-	dockerLoader.timer.Reset(pollingInterval)
+func (dockerLoader *DockerLoader) update() bool {
+	dockerLoader.timer.Reset(dockerLoader.options.PollingInterval)
 	dockerLoader.skipEvents = false
 
 	caddyfile, logs := dockerLoader.generator.GenerateCaddyFile()
-	caddyfileChanged := !bytes.Equal(dockerLoader.previousCaddyfile, caddyfile)
-	logsChanged := dockerLoader.previousLogs != logs
-	dockerLoader.previousCaddyfile = caddyfile
-	dockerLoader.previousLogs = logs
+
+	caddyfileChanged := !bytes.Equal(dockerLoader.lastCaddyfile, caddyfile)
+	logsChanged := dockerLoader.lastLogs != logs
+
+	dockerLoader.lastCaddyfile = caddyfile
+	dockerLoader.lastLogs = logs
 
 	if logsChanged || caddyfileChanged {
 		log.Print(logs)
@@ -157,31 +135,31 @@ func (dockerLoader *DockerLoader) update(reloadIfChanged bool) bool {
 		return false
 	}
 
-	if dockerLoader.processCaddyfile {
-		log.Printf("[INFO] Processing caddyfile")
-		caddyfile = ProcessCaddyfile(caddyfile)
-	}
-
 	if len(caddyfile) == 0 {
 		caddyfile = []byte("# Empty caddyfile")
 	}
 
-	newInput := caddy.CaddyfileInput{
-		ServerTypeName: "http",
-		Contents:       caddyfile,
+	log.Printf("[INFO] New CaddyFile:\n%s", caddyfile)
+
+	adapter := caddyconfig.GetAdapter("caddyfile")
+
+	configJSON, warn, err := adapter.Adapt(caddyfile, nil)
+
+	if warn != nil {
+		log.Printf("[WARN] Caddyfile to json warning: %v", warn)
 	}
 
-	if err := caddy.ValidateAndExecuteDirectives(newInput, nil, true); err != nil {
-		log.Printf("[ERROR] CaddyFile error: %s", err)
-		log.Printf("[INFO] Wrong CaddyFile:\n%s", caddyfile)
-	} else {
-		log.Printf("[INFO] New CaddyFile:\n%s", newInput.Contents)
+	if err != nil {
+		log.Printf("[ERROR] Failed to convert caddyfile to json config: %s", err)
+	}
 
-		dockerLoader.input = newInput
+	log.Printf("[INFO] New Config:\n%s", configJSON)
 
-		if reloadIfChanged {
-			ReloadCaddy(dockerLoader)
-		}
+	err = caddy.Load(configJSON, false)
+
+	if err != nil {
+		log.Printf("[ERROR] Failed to load caddyfile: %s", err)
+		return false
 	}
 
 	return true

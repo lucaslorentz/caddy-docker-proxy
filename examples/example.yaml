@@ -10,17 +10,17 @@ services:
   caddy:
     image: lucaslorentz/caddy-docker-proxy:alpine
     ports:
-      - 2015:2015
+      - 8080:80
+      - 4443:443
     networks:
       - caddy
-    command: -email email@example.com -agree=true -log stdout
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     deploy:
       placement:
         constraints:
           - node.role == manager
-      replicas: 1
+      replicas: ${CADDY_REPLICAS:-1}
       restart_policy:
         condition: any
       resources:
@@ -29,14 +29,17 @@ services:
           memory: 200M
 
   whoami0:
-    image: jwilder/whoami
+    image: brndnmtthws/nginx-echo-headers
     networks:
       - caddy
     deploy:
       labels:
         caddy.address: whoami0.example.com
-        caddy.targetport: "8000"
-        caddy.tls: "off"
+        caddy.sourcepath: "/a"
+        caddy.targetport: "8080"
+        caddy.targetpath: "/abc"
+        caddy.reverse_proxy.health_path: "/health"
+        caddy.tls: "internal"
 
   whoami1:
     image: jwilder/whoami
@@ -46,8 +49,27 @@ services:
       labels:
         caddy.address: whoami1.example.com
         caddy.targetport: "8000"
-        caddy.tls: "off"
+        caddy.tls: "internal"
+
+  whoami2:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    labels:
+      caddy.address: whoami2.example.com
+      caddy.targetport: "8000"
+      caddy.tls: "internal"
+
+  whoami3:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    labels:
+      caddy.address: whoami3.example.com
+      caddy.targetport: "8000"
+      caddy.tls: "internal"
 
 networks:
   caddy:
     driver: overlay
+    external: ${EXTERNAL_NETWORK:-false}

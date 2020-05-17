@@ -1,4 +1,4 @@
-package plugin
+package generator
 
 import (
 	"context"
@@ -8,16 +8,19 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/caddyfile"
 )
 
-func (g *CaddyfileGenerator) getServiceDirectives(service *swarm.Service) (map[string]*directiveData, error) {
-	return g.parseDirectives(service.Spec.Labels, service, func() ([]string, error) {
+func (g *CaddyfileGenerator) getServiceCaddyfile(service *swarm.Service) (*caddyfile.Block, error) {
+	caddyLabels := g.filterLabels(service.Spec.Labels)
+
+	return labelsToCaddyfile(caddyLabels, service, func() ([]string, error) {
 		return g.getServiceProxyTargets(service)
 	})
 }
 
 func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service) ([]string, error) {
-	if g.proxyServiceTasks {
+	if g.options.ProxyServiceTasks {
 		return g.getServiceTasksIps(service)
 	}
 
@@ -33,7 +36,7 @@ func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service) ([]str
 	virtualIps := []string{}
 
 	for _, virtualIP := range service.Endpoint.VirtualIPs {
-		if !g.validateNetwork || g.caddyNetworks[virtualIP.NetworkID] {
+		if !g.options.ValidateNetwork || g.caddyNetworks[virtualIP.NetworkID] {
 			virtualIps = append(virtualIps, virtualIP.Addr)
 		}
 	}
@@ -61,7 +64,7 @@ func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service) ([]strin
 		if task.Status.State == swarm.TaskStateRunning {
 			hasRunningTasks = true
 			for _, networkAttachment := range task.NetworksAttachments {
-				if !g.validateNetwork || g.caddyNetworks[networkAttachment.Network.ID] {
+				if !g.options.ValidateNetwork || g.caddyNetworks[networkAttachment.Network.ID] {
 					for _, address := range networkAttachment.Addresses {
 						ipAddress, _, _ := net.ParseCIDR(address)
 						tasksIps = append(tasksIps, ipAddress.String())

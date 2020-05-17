@@ -1,5 +1,5 @@
 # This is an example Caddyfile stored inside docker swarm config
 config.example.com {
-    status 200 /
-    tls off
+    respond / "Hello World" 200
+    tls internal
 }
