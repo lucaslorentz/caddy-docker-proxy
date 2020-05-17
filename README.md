@@ -76,8 +76,8 @@ aaa value
 
 Suffix _&lt;number&gt; isolates directives that otherwise would be grouped:
 ```
-caddy.group.a=value
-caddy.group.b=value
+caddy.group_0.a=value
+caddy.group_1.b=value
 ↓
 group {
   a value
