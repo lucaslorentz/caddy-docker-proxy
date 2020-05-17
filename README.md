@@ -107,9 +107,24 @@ caddy.respond=200 /
 }
 ```
 
+It's also possible to isolate caddy configurations using suffix _&lt;number&gt;:
+```
+caddy_0.address = portal.example.com
+caddy_0.targetport = 80
+caddy_1.address = admin.example.com
+caddy_1.targetport = 81
+↓
+portal.example.com {
+	reverse_proxy / servicename:80
+}
+admin.example.com {
+	reverse_proxy / servicename:81
+}
+```
+
 Sometimes it's not possile to have labels with empty values, like when using some UI to manage docker. If that's the case, you can also use our support for go lang templates to generate empty labels.
 ```
-caddy.directive={{nil}}
+caddy.directive={{""}}
 ↓
 directive
 ```
@@ -182,22 +197,6 @@ caddy.targetpath=/path2
 Proxying multiple domains to container
 ```
 caddy.address=service1.example.com service2.example.com
-```
-
-### Multiple caddyfile sections from one service/container
-It's possible to generate multiple caddyfile sections for the same service/container by suffixing the caddy prefix with _#. That's usefull to expose multiple service ports at different urls.
-```
-caddy_0.address = portal.example.com
-caddy_0.targetport = 80
-caddy_1.address = admin.example.com
-caddy_1.targetport = 81
-↓
-portal.example.com {
-	reverse_proxy / servicename:80
-}
-admin.example.com {
-	reverse_proxy / servicename:81
-}
 ```
 
 ### Docker configs

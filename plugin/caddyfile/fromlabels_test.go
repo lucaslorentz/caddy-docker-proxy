@@ -88,11 +88,8 @@ func TestFromLabels_SeparateDirectivesWithSuffix(t *testing.T) {
 
 func TestFromLabels_EmptyValuesUsingTemplates(t *testing.T) {
 	labels := map[string]string{
-		"caddy": "localhost",
-		// This is actually wrong, and template engine returns an error that we ignore
-		// Let's keep like that for now to be backwards compatible
-		// Such feature is usefull because some docker UI doesn't allow empty labels
-		"caddy.key": "{{nil}}",
+		"caddy":     "localhost",
+		"caddy.key": `{{""}}`,
 	}
 
 	caddyfileBlock := FromLabels(labels, nil)

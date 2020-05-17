@@ -54,11 +54,15 @@ func parseLabelSegment(text string) (int, string, string) {
 func processVariables(data interface{}, content string) string {
 	t, err := template.New("").Parse(content)
 	if err != nil {
-		log.Println(err)
+		log.Printf("[ERROR] Template error: %s", err)
 		return content
 	}
 	var writer bytes.Buffer
-	t.Execute(&writer, data)
+	err = t.Execute(&writer, data)
+	if err != nil {
+		log.Printf("[ERROR] Template error: %s", err)
+		return content
+	}
 	return writer.String()
 }
 
