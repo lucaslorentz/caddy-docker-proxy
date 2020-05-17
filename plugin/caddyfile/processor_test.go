@@ -13,14 +13,14 @@ func TestProcess(t *testing.T) {
 		"	encode gzip\n" +
 		"}\n" +
 		"service1.example.com {\n" +
-		"	reverse_proxy service1:5000/api {\n" +
+		"	reverse_proxy service1:5000 {\n" +
 		"		invalid\n" +
 		"	}\n" +
 		"}\n" +
 		"service2.example.com {\n" +
 		"	respond 200 /\n" +
 		"	#Coment\n" +
-		"	reverse_proxy service2:5000/api {\n" +
+		"	reverse_proxy service2:5000 {\n" +
 		"		health_path /health\n" +
 		"	}\n" +
 		"	import mysnippet\n" +
@@ -34,7 +34,7 @@ func TestProcess(t *testing.T) {
 
 	expected := "service2.example.com {\n" +
 		"	respond 200 /\n" +
-		"	reverse_proxy service2:5000/api {\n" +
+		"	reverse_proxy service2:5000 {\n" +
 		"		health_path /health\n" +
 		"	}\n" +
 		"	encode gzip\n" +
@@ -46,7 +46,7 @@ func TestProcess(t *testing.T) {
 		"	}\n" +
 		"}\n"
 
-	result := Process([]byte(input))
+	result, _ := Process([]byte(input))
 
 	assert.Equal(t, expected, string(result))
 }
