@@ -37,7 +37,7 @@ func TestLabelsToCaddyfile_AllSpecialLabelsExceptSourcePath(t *testing.T) {
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
 		"	reverse_proxy https://target:5000\n" +
-		"	rewrite * /api{uri}\n" +
+		"	rewrite * /api{path}\n" +
 		"}\n"
 
 	assert.NoError(t, err)
@@ -60,7 +60,7 @@ func TestLabelsToCaddyfile_AllSpecialLabels(t *testing.T) {
 	const expectedCaddyfile = "service.testdomain.com {\n" +
 		"	route /path/* {\n" +
 		"		uri strip_prefix /path\n" +
-		"		rewrite * /api{uri}\n" +
+		"		rewrite * /api{path}\n" +
 		"		reverse_proxy https://target:5000\n" +
 		"	}\n" +
 		"}\n"
@@ -86,7 +86,7 @@ func TestLabelsToCaddyfile_MultipleConfigs(t *testing.T) {
 
 	const expectedCaddyfile = "service1.testdomain.com {\n" +
 		"	reverse_proxy target:5000\n" +
-		"	rewrite * /api{uri}\n" +
+		"	rewrite * /api{path}\n" +
 		"	tls {\n" +
 		"		dns route53\n" +
 		"	}\n" +

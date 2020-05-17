@@ -38,7 +38,7 @@ func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTa
 				if targetPath != nil && len(targetPath.Args) > 0 {
 					rewriteDirective := routeDirective.GetOrCreateDirective("rewrite", "")
 					rewriteDirective.Order = 2
-					rewriteDirective.AddArgs("*", strings.TrimRight(targetPath.Args[0], "/")+"{uri}")
+					rewriteDirective.AddArgs("*", strings.TrimRight(targetPath.Args[0], "/")+"{path}")
 				}
 
 				proxyDirective.Order = 3
@@ -46,7 +46,7 @@ func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTa
 				routeDirective.AddDirective(proxyDirective)
 			} else if targetPath != nil && len(targetPath.Args) > 0 {
 				rewriteDirective := directive.GetOrCreateDirective("rewrite", "")
-				rewriteDirective.AddArgs("*", strings.TrimRight(targetPath.Args[0], "/")+"{uri}")
+				rewriteDirective.AddArgs("*", strings.TrimRight(targetPath.Args[0], "/")+"{path}")
 			}
 
 			if len(proxyDirective.Args) == 0 {
