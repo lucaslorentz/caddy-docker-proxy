@@ -44,8 +44,8 @@ func CreateGenerator(dockerClient docker.Client, dockerUtils docker.Utils, optio
 	}
 }
 
-// GenerateCaddyFile generates a caddy file config from docker metadata
-func (g *CaddyfileGenerator) GenerateCaddyFile() ([]byte, string) {
+// GenerateCaddyfile generates a caddy file config from docker metadata
+func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 	var caddyfileBuffer bytes.Buffer
 	var logsBuffer bytes.Buffer
 
@@ -68,8 +68,8 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() ([]byte, string) {
 
 	caddyfileBlock := caddyfile.CreateBlock()
 
-	if g.options.CaddyFilePath != "" {
-		dat, err := ioutil.ReadFile(g.options.CaddyFilePath)
+	if g.options.CaddyfilePath != "" {
+		dat, err := ioutil.ReadFile(g.options.CaddyfilePath)
 
 		if err == nil {
 			_, err = caddyfileBuffer.Write(dat)
@@ -79,7 +79,7 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() ([]byte, string) {
 			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 		}
 	} else {
-		logsBuffer.WriteString("[INFO] Skipping default CaddyFile because no path is set\n")
+		logsBuffer.WriteString("[INFO] Skipping default Caddyfile because no path is set\n")
 	}
 
 	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})

@@ -63,7 +63,7 @@ func (dockerLoader *DockerLoader) Start() error {
 			dockerLoader.options,
 		)
 
-		log.Printf("[INFO] CaddyFilePath: %v", dockerLoader.options.CaddyFilePath)
+		log.Printf("[INFO] CaddyfilePath: %v", dockerLoader.options.CaddyfilePath)
 		log.Printf("[INFO] LabelPrefix: %v", dockerLoader.options.LabelPrefix)
 		log.Printf("[INFO] PollingInterval: %v", dockerLoader.options.PollingInterval)
 		log.Printf("[INFO] ProcessCaddyfile: %v", dockerLoader.options.ProcessCaddyfile)
@@ -124,7 +124,7 @@ func (dockerLoader *DockerLoader) update() bool {
 	dockerLoader.timer.Reset(dockerLoader.options.PollingInterval)
 	dockerLoader.skipEvents = false
 
-	caddyfile, logs := dockerLoader.generator.GenerateCaddyFile()
+	caddyfile, logs := dockerLoader.generator.GenerateCaddyfile()
 
 	caddyfileChanged := !bytes.Equal(dockerLoader.lastCaddyfile, caddyfile)
 	logsChanged := dockerLoader.lastLogs != logs
@@ -144,7 +144,7 @@ func (dockerLoader *DockerLoader) update() bool {
 		caddyfile = []byte("# Empty caddyfile")
 	}
 
-	log.Printf("[INFO] New CaddyFile:\n%s", caddyfile)
+	log.Printf("[INFO] New Caddyfile:\n%s", caddyfile)
 
 	adapter := caddyconfig.GetAdapter("caddyfile")
 

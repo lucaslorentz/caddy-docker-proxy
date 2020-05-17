@@ -2,6 +2,8 @@ FROM mcr.microsoft.com/windows/nanoserver:1809
 LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
 
 EXPOSE 80 443 2019
+ENV XDG_CONFIG_HOME c:/config
+ENV XDG_DATA_HOME c:/data
 
 COPY artifacts/binaries/windows/amd64/caddy.exe "C:\\caddy.exe"
 

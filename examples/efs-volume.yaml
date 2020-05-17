@@ -10,7 +10,7 @@ services:
       - caddy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - caddy:/root/.caddy
+      - caddy_data:/data
     deploy:
       placement:
         constraints:
@@ -28,5 +28,5 @@ volumes:
     driver: rexray/efs
 
 networks:
-  caddy:
+  caddy_data:
     driver: overlay

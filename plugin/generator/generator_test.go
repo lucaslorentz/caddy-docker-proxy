@@ -17,7 +17,7 @@ import (
 var caddyContainerID = "container-id"
 var caddyNetworkID = "network-id"
 
-const skipCaddyfileText = "[INFO] Skipping default CaddyFile because no path is set\n"
+const skipCaddyfileText = "[INFO] Skipping default Caddyfile because no path is set\n"
 
 func init() {
 	log.SetOutput(ioutil.Discard)
@@ -62,10 +62,10 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						"caddy_version":  "0.11.0",
-						"caddyversion":   "0.11.0",
-						"caddy_.version": "0.11.0",
-						"version_caddy":  "0.11.0",
+						"caddy_version":  "2.0.0",
+						"caddyversion":   "2.0.0",
+						"caddy_.version": "2.0.0",
+						"version_caddy":  "2.0.0",
 					},
 				},
 			},
@@ -100,7 +100,7 @@ func testGeneration(
 		ValidateNetwork:   validateNetwork,
 	})
 
-	caddyfileBytes, logs := generator.GenerateCaddyFile()
+	caddyfileBytes, logs := generator.GenerateCaddyfile()
 	assert.Equal(t, expectedCaddyfile, string(caddyfileBytes))
 	assert.Equal(t, expectedLogs, logs)
 }

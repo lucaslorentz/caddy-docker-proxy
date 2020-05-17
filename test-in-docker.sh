@@ -15,7 +15,7 @@ docker run --rm -it \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v $PWD/artifacts/binaries/linux/amd64/caddy:/caddy \
     --network caddy \
-    alpine:3.10 /caddy docker-proxy
+    alpine:3.11 /caddy docker-proxy
 
 docker stack rm caddy-test
 

@@ -43,7 +43,7 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 }
 
 func createOptions(flags caddycmd.Flags) *config.Options {
-	caddyFilePath := flags.String("caddyfile-path")
+	caddyfilePath := flags.String("caddyfile-path")
 	labelPrefixFlag := flags.String("label-prefix")
 	proxyServiceTasksFlag := flags.Bool("proxy-service-tasks")
 	validateNetworkFlag := flags.Bool("validate-network")
@@ -52,10 +52,10 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 
 	options := &config.Options{}
 
-	if caddyFilePathEnv := os.Getenv("CADDY_DOCKER_CADDYFILE_PATH"); caddyFilePathEnv != "" {
-		options.CaddyFilePath = caddyFilePathEnv
+	if caddyfilePathEnv := os.Getenv("CADDY_DOCKER_CADDYFILE_PATH"); caddyfilePathEnv != "" {
+		options.CaddyfilePath = caddyfilePathEnv
 	} else {
-		options.CaddyFilePath = caddyFilePath
+		options.CaddyfilePath = caddyfilePath
 	}
 
 	if labelPrefixEnv := os.Getenv("CADDY_DOCKER_LABEL_PREFIX"); labelPrefixEnv != "" {

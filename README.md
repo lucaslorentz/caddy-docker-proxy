@@ -154,7 +154,7 @@ When all the values above are added to a service, the following configuration wi
 service.example.com {
   route /source/* {
     uri strip_prefix /source
-    rewrite * /api{uri}
+    rewrite * /api{path}
     reverse_proxy https://servicename:8080
   }
 }
@@ -167,7 +167,7 @@ caddy.reverse_proxy.health_path=/health
 service.example.com {
   route /source/* {
     uri strip_prefix /source
-    rewrite * /api{uri}
+    rewrite * /api{path}
     reverse_proxy https://servicename:8080 {
       health_path /health
     }
@@ -204,7 +204,7 @@ caddy.address=service1.example.com service2.example.com
 ```
 
 ### Docker configs
-You can also add raw text to your caddyfile using docker configs. Just add caddy label prefix to your configs and the whole config content will be prepended to the generated caddyfile.
+You can also add raw text to your caddyfile using docker configs. Just add caddy label prefix to your configs and the whole config content will be inserted at the beginning of the generated caddyfile, outside any server blocks.
 
 [Here is an example](examples/example.yaml#L4)
 
@@ -266,7 +266,7 @@ Be aware that this needs to be tested further.
 
 This is an example of how to mount the windows docker pipe using CLI:
 ```
-docker run --rm -it -p 2019:2019 -v //./pipe/docker_engine://./pipe/docker_engine lucaslorentz/caddy-docker-proxy:ci-nanoserver-1803 -agree -email email@example.com -log stdout
+docker run --rm -it -v //./pipe/docker_engine://./pipe/docker_engine lucaslorentz/caddy-docker-proxy:ci-nanoserver-1803
 ```
 
 ## Caddy CLI
@@ -276,7 +276,7 @@ Run `caddy docker-proxy --help` to see all available flags:
 ```
 Usage of docker-proxy:
   -caddyfile-path string
-    	Path to a base CaddyFile that will be extended with docker sites
+    	Path to a base Caddyfile that will be extended with docker sites
   -label-prefix string
     	Prefix for Docker labels (default "caddy")
   -polling-interval duration
@@ -317,11 +317,11 @@ You can modify docker connection using the following environment variables:
 ## Volumes
 On a production docker swarm cluster, it's **very important** to store Caddy folder on a persistent storage. Otherwise Caddy will re-issue certificates every time it is restarted, exceeding let's encrypt quota.
 
-To do that map a docker volume to `/root/.caddy` folder.
+To do that map a persistent docker volume to `/data` folder.
 
-Since Caddy version 0.10.11, it is possible to run multiple caddy instances sharing same certificates.
+For resilient production deployments, use multiple caddy replicas and map `/data` folder to a volume that supports multiple mounts, like Network File Sharing docker volumes plugins.
 
-For resilient production deployments, use multiple caddy replicas and map a`/root/.caddy` folder to a volume that supports multiple mounts, like Network File Sharing docker volumes plugins.
+Multiple Caddy instances automatically orchestrates certificate issuing between themselves when sharing `/data` folder.
 
 [Here is an example](examples/efs-volume.yaml) of compose file with replicas and persistent volume using  Rexray EFS Plugin for AWS.
 
