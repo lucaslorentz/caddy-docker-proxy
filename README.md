@@ -115,10 +115,10 @@ caddy_1.address = admin.example.com
 caddy_1.targetport = 81
 ↓
 portal.example.com {
-	reverse_proxy / servicename:80
+	reverse_proxy servicename:80
 }
 admin.example.com {
-	reverse_proxy / servicename:81
+	reverse_proxy servicename:81
 }
 ```
 
@@ -135,7 +135,7 @@ To automatically generate a server block and a reverse_proxy directive pointing 
 caddy.address=service.example.com
 ↓
 service.example.com {
-	reverse_proxy / servicename
+	reverse_proxy servicename
 }
 ```
 
