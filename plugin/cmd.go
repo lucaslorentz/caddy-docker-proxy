@@ -23,8 +23,8 @@ func init() {
 		Short: "Run caddy as a docker proxy",
 		Flags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("docker-proxy", flag.ExitOnError)
-			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
 			fs.String("caddyfile-path", "", "Path to a base CaddyFile that will be extended with docker sites")
+			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
 			fs.Bool("proxy-service-tasks", false, "Proxy to service tasks instead of service load balancer")
 			fs.Bool("validate-network", true, "Validates if caddy container and target are in same network")
 			fs.Bool("process-caddyfile", false, "Process Caddyfile before loading it, removing invalid servers")
@@ -43,8 +43,8 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 }
 
 func createOptions(flags caddycmd.Flags) *config.Options {
-	labelPrefixFlag := flags.String("label-prefix")
 	caddyFilePath := flags.String("caddyfile-path")
+	labelPrefixFlag := flags.String("label-prefix")
 	proxyServiceTasksFlag := flags.Bool("proxy-service-tasks")
 	validateNetworkFlag := flags.Bool("validate-network")
 	processCaddyfileFlag := flags.Bool("process-caddyfile")

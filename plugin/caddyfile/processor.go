@@ -3,7 +3,6 @@ package caddyfile
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/caddyserver/caddy/v2/caddyconfig"
@@ -11,11 +10,13 @@ import (
 )
 
 // Process caddyfile and removes wrong server blocks
-func Process(caddyfileContent []byte) []byte {
+func Process(caddyfileContent []byte) ([]byte, []byte) {
+	logsBuffer := bytes.Buffer{}
+
 	serverBlocks, err := caddyfile.Parse("", caddyfileContent)
 
 	if err != nil {
-		log.Printf("[ERROR] Error parsing caddyfile: %s\n", err)
+		logsBuffer.WriteString(fmt.Sprintf("[ERROR] Error parsing caddyfile: %s\n", err.Error()))
 	}
 
 	var newCaddyfileBuffer bytes.Buffer
@@ -29,10 +30,10 @@ func Process(caddyfileContent []byte) []byte {
 		if err == nil {
 			newCaddyfileBuffer.Write(serverBlockContent)
 		} else {
-			log.Printf("[WARN] Removing invalid server block: %s\n%s\n", err, serverBlockContent)
+			logsBuffer.WriteString(fmt.Sprintf("[ERROR]  Removing invalid server block: %s\n%s\n", err.Error(), serverBlockContent))
 		}
 	}
-	return newCaddyfileBuffer.Bytes()
+	return newCaddyfileBuffer.Bytes(), logsBuffer.Bytes()
 }
 
 func serializeServerBlock(serverBlock *caddyfile.ServerBlock) []byte {

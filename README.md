@@ -289,8 +289,6 @@ Usage of docker-proxy:
     	Validates if caddy container and target are in same network (default true)
 ```
 
-Check **examples** folder to see how to set them on a docker compose file.
-
 Those flags can also be set via environment variables:
 
 ```
@@ -301,6 +299,8 @@ CADDY_DOCKER_PROCESS_CADDYFILE=<bool>
 CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
 CADDY_DOCKER_VALIDATE_NETWORK=<bool>
 ```
+
+Check **examples** folder to see how to set them on a docker compose file.
 
 ## Connecting to Docker Host
 The default connection to docker host varies per platform:

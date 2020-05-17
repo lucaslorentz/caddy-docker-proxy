@@ -63,7 +63,12 @@ func (dockerLoader *DockerLoader) Start() error {
 			dockerLoader.options,
 		)
 
-		log.Printf("[INFO] Docker polling interval: %s", dockerLoader.options.PollingInterval)
+		log.Printf("[INFO] CaddyFilePath: %v", dockerLoader.options.CaddyFilePath)
+		log.Printf("[INFO] LabelPrefix: %v", dockerLoader.options.LabelPrefix)
+		log.Printf("[INFO] PollingInterval: %v", dockerLoader.options.PollingInterval)
+		log.Printf("[INFO] ProcessCaddyfile: %v", dockerLoader.options.ProcessCaddyfile)
+		log.Printf("[INFO] ProxyServiceTasks: %v", dockerLoader.options.ProxyServiceTasks)
+		log.Printf("[INFO] ValidateNetwork: %v", dockerLoader.options.ValidateNetwork)
 
 		dockerLoader.timer = time.AfterFunc(0, func() {
 			dockerLoader.update()
@@ -153,7 +158,7 @@ func (dockerLoader *DockerLoader) update() bool {
 		log.Printf("[ERROR] Failed to convert caddyfile to json config: %s", err)
 	}
 
-	log.Printf("[INFO] New Config:\n%s", configJSON)
+	log.Printf("[INFO] New Config JSON:\n%s", configJSON)
 
 	err = caddy.Load(configJSON, false)
 

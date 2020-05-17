@@ -14,6 +14,9 @@ services:
       - 4443:443
     networks:
       - caddy
+    environment:
+      - CADDY_DOCKER_PROXY_SERVICE_TASKS=true
+      - CADDY_DOCKER_PROCESS_CADDYFILE=true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     deploy:

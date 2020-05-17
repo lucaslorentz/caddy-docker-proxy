@@ -140,8 +140,9 @@ func (g *CaddyfileGenerator) GenerateCaddyFile() ([]byte, string) {
 	caddyfileContent := caddyfileBuffer.Bytes()
 
 	if g.options.ProcessCaddyfile {
-		logsBuffer.WriteString("[INFO] Processing caddyfile\n")
-		caddyfileContent = caddyfile.Process(caddyfileContent)
+		processCaddyfileContent, processLogs := caddyfile.Process(caddyfileContent)
+		caddyfileContent = processCaddyfileContent
+		logsBuffer.Write(processLogs)
 	}
 
 	return caddyfileContent, logsBuffer.String()
