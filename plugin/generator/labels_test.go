@@ -138,3 +138,27 @@ func TestLabelsToCaddyfile_DoesntOverrideExistingProxy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
 }
+
+func TestLabelsToCaddyfile_ReverseProxyDirectivesAreMovedIntoRoute(t *testing.T) {
+	labels := map[string]string{
+		"caddy.address":                   "service.testdomain.com",
+		"caddy.sourcepath":                "/path",
+		"caddy.reverse_proxy.health_path": "/health",
+	}
+
+	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
+		return []string{"target"}, nil
+	})
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	route /path/* {\n" +
+		"		uri strip_prefix /path\n" +
+		"		reverse_proxy target {\n" +
+		"			health_path /health\n" +
+		"		}\n" +
+		"	}\n" +
+		"}\n"
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
+}

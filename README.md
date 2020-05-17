@@ -160,14 +160,18 @@ service.example.com {
 }
 ```
 
-It's possible to add directives to the automatically created reverse proxy directive:
+It's possible to add additional directives to the automatically created reverse proxy:
 ```
 caddy.reverse_proxy.health_path=/health
 ↓
 service.example.com {
-	proxy / https://servicename:8080/api {
-		health_path /health
-	}
+  route /source/* {
+    uri strip_prefix /source
+    rewrite * /api{uri}
+    reverse_proxy https://servicename:8080 {
+      health_path /health
+    }
+  }
 }
 ```
 
