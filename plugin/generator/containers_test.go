@@ -7,7 +7,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 )
 
-func TestContainers_Templates(t *testing.T) {
+func TestContainers_TemplateData(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
 		{
@@ -53,7 +53,8 @@ func TestContainers_PicksRightNetwork(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"): "service.testdomain.com",
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
 			},
 		},
 	}
@@ -79,15 +80,18 @@ func TestContainers_DifferentNetwork(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"): "service.testdomain.com",
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
 			},
 		},
 	}
 
-	const expectedCaddyfile = ""
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy\n" +
+		"}\n"
 
 	const expectedLogs = skipCaddyfileText +
-		"[ERROR] Container CONTAINER-ID and caddy are not in same network\n"
+		"[WARNING] Container CONTAINER-ID and caddy are not in same network\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, expectedLogs)
 }
@@ -106,7 +110,8 @@ func TestContainers_DifferentNetworkSkipValidation(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"): "service.testdomain.com",
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
 			},
 		},
 	}
@@ -133,7 +138,8 @@ func TestContainers_Replicas(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"): "service.testdomain.com",
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
 			},
 		},
 		{
@@ -146,7 +152,8 @@ func TestContainers_Replicas(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"): "service.testdomain.com",
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
 			},
 		},
 	}
@@ -172,7 +179,7 @@ func TestContainers_DoNotMergeDifferentProxies(t *testing.T) {
 			},
 			Labels: map[string]string{
 				fmtLabel("%s"):               "service.testdomain.com",
-				fmtLabel("%s.reverse_proxy"): "/a/* service-a",
+				fmtLabel("%s.reverse_proxy"): "/a/* {{upstreams}}",
 			},
 		},
 		{
@@ -186,14 +193,14 @@ func TestContainers_DoNotMergeDifferentProxies(t *testing.T) {
 			},
 			Labels: map[string]string{
 				fmtLabel("%s"):               "service.testdomain.com",
-				fmtLabel("%s.reverse_proxy"): "/b/* service-b",
+				fmtLabel("%s.reverse_proxy"): "/b/* {{upstreams}}",
 			},
 		},
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"	reverse_proxy /a/* service-a\n" +
-		"	reverse_proxy /b/* service-b\n" +
+		"	reverse_proxy /a/* 172.17.0.2\n" +
+		"	reverse_proxy /b/* 172.17.0.3\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
@@ -212,11 +219,13 @@ func TestContainers_ComplexMerge(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"):                   "service.testdomain.com",
-				fmtLabel("%s.sourcepath"):                "/a",
-				fmtLabel("%s.reverse_proxy.health_path"): "/health",
-				fmtLabel("%s.redir"):                     "/a /a1",
-				fmtLabel("%s.tls"):                       "internal",
+				fmtLabel("%s"):                                 "service.testdomain.com",
+				fmtLabel("%s.route"):                           "/a/*",
+				fmtLabel("%s.route.0_uri"):                     "strip_prefix /a",
+				fmtLabel("%s.route.reverse_proxy"):             "{{upstreams}}",
+				fmtLabel("%s.route.reverse_proxy.health_path"): "/health",
+				fmtLabel("%s.redir"):                           "/a /a1",
+				fmtLabel("%s.tls"):                             "internal",
 			},
 		},
 		{
@@ -229,11 +238,13 @@ func TestContainers_ComplexMerge(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"):                   "service.testdomain.com",
-				fmtLabel("%s.sourcepath"):                "/b",
-				fmtLabel("%s.reverse_proxy.health_path"): "/health",
-				fmtLabel("%s.redir"):                     "/b /b1",
-				fmtLabel("%s.tls"):                       "internal",
+				fmtLabel("%s"):                                 "service.testdomain.com",
+				fmtLabel("%s.route"):                           "/b/*",
+				fmtLabel("%s.route.0_uri"):                     "strip_prefix /b",
+				fmtLabel("%s.route.reverse_proxy"):             "{{upstreams}}",
+				fmtLabel("%s.route.reverse_proxy.health_path"): "/health",
+				fmtLabel("%s.redir"):                           "/b /b1",
+				fmtLabel("%s.tls"):                             "internal",
 			},
 		},
 	}
@@ -272,8 +283,9 @@ func TestContainers_WithSnippets(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s.address"): "service.testdomain.com",
-				fmtLabel("%s.import"):  "mysnippet-1",
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
+				fmtLabel("%s.import"):        "mysnippet-1",
 			},
 		},
 		{

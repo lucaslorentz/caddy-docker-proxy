@@ -2,7 +2,6 @@ package caddyfile
 
 import (
 	"bytes"
-	"log"
 	"math"
 	"regexp"
 	"strconv"
@@ -14,16 +13,19 @@ var whitespaceRegex = regexp.MustCompile("\\s+")
 var labelSegmentRegex = regexp.MustCompile(`^(?:(\d+)_)?(.*?)(?:_(\d+))?$`)
 
 // FromLabels converts key value labels into a caddyfile
-func FromLabels(labels map[string]string, templateData interface{}) *Block {
+func FromLabels(labels map[string]string, templateData interface{}, templateFuncs template.FuncMap) (*Block, error) {
 	block := CreateBlock()
 
 	for label, value := range labels {
 		directive := getOrCreateDirective(block, label)
-		argsText := processVariables(templateData, value)
+		argsText, err := processVariables(templateData, templateFuncs, value)
+		if err != nil {
+			return nil, err
+		}
 		directive.Args = parseArgs(argsText)
 	}
 
-	return block
+	return block, nil
 }
 
 func getOrCreateDirective(directives *Block, path string) *Directive {
@@ -51,19 +53,17 @@ func parseLabelSegment(text string) (int, string, string) {
 	return order, match[2], match[3]
 }
 
-func processVariables(data interface{}, content string) string {
-	t, err := template.New("").Parse(content)
+func processVariables(data interface{}, funcs template.FuncMap, content string) (string, error) {
+	t, err := template.New("").Funcs(funcs).Parse(content)
 	if err != nil {
-		log.Printf("[ERROR] Template error: %s", err)
-		return content
+		return "", err
 	}
 	var writer bytes.Buffer
 	err = t.Execute(&writer, data)
 	if err != nil {
-		log.Printf("[ERROR] Template error: %s", err)
-		return content
+		return "", err
 	}
-	return writer.String()
+	return writer.String(), nil
 }
 
 func parseArgs(text string) []string {

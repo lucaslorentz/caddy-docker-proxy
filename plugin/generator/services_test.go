@@ -7,7 +7,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 )
 
-func TestServices_Templates(t *testing.T) {
+func TestServices_TemplateData(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
 		{
@@ -69,7 +69,8 @@ func TestServices_DifferentNetwork(t *testing.T) {
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						fmtLabel("%s.address"): "service.testdomain.com",
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
 					},
 				},
 			},
@@ -83,10 +84,12 @@ func TestServices_DifferentNetwork(t *testing.T) {
 		},
 	}
 
-	const expectedCaddyfile = ""
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy service\n" +
+		"}\n"
 
 	const expectedLogs = skipCaddyfileText +
-		"[ERROR] Service SERVICE-ID and caddy are not in same network\n"
+		"[WARNING] Service SERVICE-ID and caddy are not in same network\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, expectedLogs)
 }
@@ -100,7 +103,8 @@ func TestServices_DifferentNetworkSkipValidation(t *testing.T) {
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						fmtLabel("%s.address"): "service.testdomain.com",
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
 					},
 				},
 			},
@@ -132,7 +136,8 @@ func TestServices_SwarmDisabled(t *testing.T) {
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						fmtLabel("%s.address"): "service.testdomain.com",
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams 5000}}",
 					},
 				},
 			},
@@ -169,8 +174,8 @@ func TestServiceTasks_Empty(t *testing.T) {
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						fmtLabel("%s.address"):    "service.testdomain.com",
-						fmtLabel("%s.targetport"): "5000",
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams 5000}}",
 					},
 				},
 			},
@@ -184,10 +189,12 @@ func TestServiceTasks_Empty(t *testing.T) {
 		},
 	}
 
-	const expectedCaddyfile = ""
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy\n" +
+		"}\n"
 
 	const expectedLogs = skipCaddyfileText +
-		"[ERROR] Service SERVICEID doesn't have any task in running state\n"
+		"[WARNING] Service SERVICEID doesn't have any task in running state\n"
 
 	testGeneration(t, dockerClient, true, true, expectedCaddyfile, expectedLogs)
 }
@@ -201,8 +208,8 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						fmtLabel("%s.address"):    "service.testdomain.com",
-						fmtLabel("%s.targetport"): "5000",
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams 5000}}",
 					},
 				},
 			},
@@ -244,10 +251,12 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 		},
 	}
 
-	const expectedCaddyfile = ""
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy\n" +
+		"}\n"
 
 	const expectedLogs = skipCaddyfileText +
-		"[ERROR] Service SERVICEID doesn't have any task in running state\n"
+		"[WARNING] Service SERVICEID doesn't have any task in running state\n"
 
 	testGeneration(t, dockerClient, true, true, expectedCaddyfile, expectedLogs)
 }
@@ -261,8 +270,8 @@ func TestServiceTasks_DifferentNetwork(t *testing.T) {
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						fmtLabel("%s.address"):    "service.testdomain.com",
-						fmtLabel("%s.targetport"): "5000",
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams 5000}}",
 					},
 				},
 			},
@@ -291,10 +300,12 @@ func TestServiceTasks_DifferentNetwork(t *testing.T) {
 		},
 	}
 
-	const expectedCaddyfile = ""
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy\n" +
+		"}\n"
 
 	const expectedLogs = skipCaddyfileText +
-		"[ERROR] Service SERVICEID and caddy are not in same network\n"
+		"[WARNING] Service SERVICEID and caddy are not in same network\n"
 
 	testGeneration(t, dockerClient, true, true, expectedCaddyfile, expectedLogs)
 }
@@ -308,8 +319,8 @@ func TestServiceTasks_DifferentNetworkSkipValidation(t *testing.T) {
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						fmtLabel("%s.address"):    "service.testdomain.com",
-						fmtLabel("%s.targetport"): "5000",
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams 5000}}",
 					},
 				},
 			},
@@ -354,8 +365,8 @@ func TestServiceTasks_Running(t *testing.T) {
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						fmtLabel("%s.address"):    "service.testdomain.com",
-						fmtLabel("%s.targetport"): "5000",
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams 5000}}",
 					},
 				},
 			},

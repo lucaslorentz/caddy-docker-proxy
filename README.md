@@ -87,6 +87,20 @@ group {
 }
 ```
 
+Named matchers can be created using @ inside labels:
+```
+caddy: "localhost"
+caddy.@match.path: "/sourcepath /sourcepath/*"
+caddy.reverse_proxy: "@match localhost:6001"
+↓
+localhost {
+  @match {
+    path /sourcepath /sourcepath/*
+  }
+  reverse_proxy @match localhost:6001
+}
+```
+
 Caddy label args creates a server block:
 ```
 caddy=example.com
@@ -109,16 +123,21 @@ caddy.respond=200 /
 
 It's also possible to isolate caddy configurations using suffix _&lt;number&gt;:
 ```
-caddy_0.address = portal.example.com
-caddy_0.targetport = 80
-caddy_1.address = admin.example.com
-caddy_1.targetport = 81
+caddy_0 = (snippet)
+caddy_0.tls = internal
+caddy_1 = site-a.com
+caddy_1.import = snippet
+caddy_2 = site-b.com
+caddy_2.import = snippet
 ↓
-portal.example.com {
-	reverse_proxy servicename:80
+(snippet) {
+	tls internal
 }
-admin.example.com {
-	reverse_proxy servicename:81
+site_a {
+	import snippet
+}
+site_b {
+	import snippet
 }
 ```
 
@@ -129,81 +148,105 @@ caddy.directive={{""}}
 directive
 ```
 
-### Automatic Reverse Proxy Generation
-To automatically generate a server block and a reverse_proxy directive pointing to a service or container, add the special label `caddy.address` to it:
+[GoLang templates](https://golang.org/pkg/text/template/) can be used inside label values to increase flexibility. From templates you have access to current docker resource information. But keep in mind that the structure that describes a docker container is different from a service.
+
+While you can access a service name like this:
 ```
-caddy.address=service.example.com
+caddy.respond = /info "{{.Spec.Name}}"
 ↓
-service.example.com {
-	reverse_proxy servicename
-}
+respond /info "myservice"
 ```
 
-You can customize the automatic generated reverse proxy with the following special labels:
-
-| Label | Example | Description | Required |
-| - | - | - | - |
-| caddy.address | service.example.com | addresses that should be proxied separated by whitespace | Required |
-| caddy.sourcepath | /source | the path being served by container | Optional |
-| caddy.targetport | 8080 | the port being server by container | Optional |
-| caddy.targetpath | /api | the path being served by container | Optional |
-| caddy.targetprotocol | https | the protocol being served by container | Optional |
-
-When all the values above are added to a service, the following configuration will be generated:
+The equivalent to access a container name would be:
 ```
-service.example.com {
-  route /source/* {
-    uri strip_prefix /source
-    rewrite * /api{path}
-    reverse_proxy https://servicename:8080
-  }
-}
-```
-
-It's possible to add additional directives to the automatically created reverse proxy:
-```
-caddy.reverse_proxy.health_path=/health
+caddy.respond = /info "{{index .Names 0}}"
 ↓
-service.example.com {
-  route /source/* {
-    uri strip_prefix /source
-    rewrite * /api{path}
-    reverse_proxy https://servicename:8080 {
-      health_path /health
-    }
-  }
-}
+respond /info "mycontainer"
 ```
 
-### More examples
+## Template functions
+
+The following functions are available for use inside templates:
+
+### upstreams
+
+Returns all addresses for the current docker resource separated by whitespace.
+
+For services, that would be the service DNS name when **proxy-service-tasks** is **false**, or all running tasks IPs when **proxy-service-tasks** is **true**.
+
+For containers, that would be the container IPs.
+
+There is network validation to only use addresses available to caddy network. That ensures Caddy will always use reachable IP addresses. You can set **validate-network** to **false** to disable that validation 
+
+Usage: `upstreams [http|https] [port]`  
+
+Examples:
+```
+caddy.reverse_proxy = {{upstreams}}
+↓
+reverse_proxy 192.168.0.1 192.168.0.2
+```
+```
+caddy.reverse_proxy = {{upstreams https}}
+↓
+reverse_proxy https://192.168.0.1 https://192.168.0.2
+```
+```
+caddy.reverse_proxy = {{upstreams 8080}}
+↓
+reverse_proxy 192.168.0.1:8080 192.168.0.2:8080
+```
+```
+caddy.reverse_proxy = {{upstreams http 8080}}
+↓
+reverse_proxy http://192.168.0.1:8080 http://192.168.0.2:8080
+```
+
+## Reverse proxy examples
 Proxying domain root to container root
 ```
-caddy.address=service.example.com
+caddy = example.com
+caddy.reverse_proxy = {{upstreams}}
 ```
 
 Proxying domain root to container path
 ```
-caddy.address=service.example.com
-caddy.targetpath=/my-path
+caddy = example.com
+caddy.0_rewrite = * /target{path}
+caddy.1_reverse_proxy = {{upstreams}}
 ```
 
 Proxying domain path to container root
 ```
-caddy.address=service.example.com/path1
+caddy = example.com
+caddy.reverse_proxy = /source/* {{upstreams http 8080}}
 ```
 
-Proxying domain path to container path
+Proxying domain path to different container path
 ```
-caddy.address=service.example.com/path1
-caddy.targetpath=/path2
+caddy = example.com
+caddy.route = /source/*
+caddy.0_uri = strip_prefix /source
+caddy.1_rewrite = * /target{path}
+caddy.2_reverse_proxy = {{upstreams}}
+```
+
+Proxying domain path to subpath
+```
+caddy = example.com
+caddy.route = /source/*
+caddy.0_uri = strip_prefix /source
+caddy.1_rewrite = * /source/target{path}
+caddy.2_reverse_proxy = {{upstreams}}
 ```
 
 Proxying multiple domains to container
 ```
-caddy.address=service1.example.com service2.example.com
+caddy = example.com example.org
+caddy.reverse_proxy = {{upstreams}}
 ```
 
-### Docker configs
+## Docker configs
 You can also add raw text to your caddyfile using docker configs. Just add caddy label prefix to your configs and the whole config content will be inserted at the beginning of the generated caddyfile, outside any server blocks.
 
 [Here is an example](examples/example.yaml#L4)
@@ -217,8 +260,8 @@ To proxy swarm services, labels should be defined at service level. On a docker-
 service:
   ...
   deploy:
-    caddy.address=service.example.com
-    caddy.targetport=80
+    caddy=service.example.com
+    caddy.reverse_proxy={{upstreams}}
 ```
 
 Caddy will use service dns name as target, swarm takes care of load balancing into all containers of that service.
@@ -228,8 +271,8 @@ To proxy containers, labels should be defined at container level. On a docker-co
 ```
 service:
   ...
-  caddy.address=service.example.com
-  caddy.targetport=80
+  caddy=service.example.com
+  caddy.reverse_proxy={{upstreams}}
 ```
 When proxying a container, caddy uses a single container IP as target. Currently multiple containers/replicas are not supported under the same website.
 
@@ -345,7 +388,7 @@ curl -k --resolve whoami1.example.com:443:127.0.0.1 https://whoami1.example.com
 curl -k --resolve whoami2.example.com:443:127.0.0.1 https://whoami2.example.com
 curl -k --resolve whoami3.example.com:443:127.0.0.1 https://whoami3.example.com
 curl -k --resolve config.example.com:443:127.0.0.1 https://config.example.com
-curl -k --resolve echo.example.com:443:127.0.0.1 https://echo.example.com/sourcepath/something
+curl -k --resolve echo0.example.com:443:127.0.0.1 https://echo0.example.com/sourcepath/something
 ```
 
 After testing, delete the demo stack:
@@ -356,11 +399,11 @@ docker stack rm caddy-docker-demo
 ### With run commands
 
 ```
-docker run --name caddy -d -p 443:443 -v /var/run/docker.sock:/var/run/docker.sock lucaslorentz/caddy-docker-proxy:ci-alpine docker-proxy
+docker run --name caddy -d -p 443:443 -v /var/run/docker.sock:/var/run/docker.sock lucaslorentz/caddy-docker-proxy:ci-alpine
 
-docker run --name whoami0 -d -l caddy.address=whoami0.example.com -l caddy.targetport=8000 -l caddy.tls=internal jwilder/whoami
+docker run --name whoami0 -d -l caddy=whoami0.example.com -l "caddy.reverse_proxy={{upstreams 8000}}" -l caddy.tls=internal jwilder/whoami
 
-docker run --name whoami1 -d -l caddy.address=whoami1.example.com -l caddy.targetport=8000 -l caddy.tls=internal jwilder/whoami
+docker run --name whoami1 -d -l caddy=whoami1.example.com -l "caddy.reverse_proxy={{upstreams 8000}}" -l caddy.tls=internal jwilder/whoami
 
 curl -k --resolve whoami0.example.com:443:127.0.0.1 https://whoami0.example.com
 curl -k --resolve whoami1.example.com:443:127.0.0.1 https://whoami1.example.com

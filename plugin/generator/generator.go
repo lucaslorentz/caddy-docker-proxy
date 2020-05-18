@@ -85,7 +85,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err == nil {
 		for _, container := range containers {
-			containerCaddyfile, err := g.getContainerCaddyfile(&container)
+			containerCaddyfile, err := g.getContainerCaddyfile(&container, &logsBuffer)
 			if err == nil {
 				caddyfileBlock.Merge(containerCaddyfile)
 			} else {
@@ -100,7 +100,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 		services, err := g.dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
 		if err == nil {
 			for _, service := range services {
-				serviceCaddyfile, err := g.getServiceCaddyfile(&service)
+				serviceCaddyfile, err := g.getServiceCaddyfile(&service, &logsBuffer)
 				if err == nil {
 					caddyfileBlock.Merge(serviceCaddyfile)
 				} else {

@@ -159,19 +159,15 @@ func (directive *Directive) Write(buffer *bytes.Buffer, isRoot bool, identation 
 func (block *Block) sort() {
 	items := block.Children
 	sort.SliceStable(items, func(i, j int) bool {
-		if items[i].isSnippet() && !items[j].isSnippet() {
-			return true
-		}
 		if items[i].Order != items[j].Order {
 			return items[i].Order < items[j].Order
 		}
 		if items[i].Name != items[j].Name {
 			return items[i].Name < items[j].Name
 		}
+		if len(items[i].Args) > 0 && len(items[j].Args) > 0 && items[i].Args[0] != items[j].Args[0] {
+			return items[i].Args[0] < items[j].Args[0]
+		}
 		return items[i].Discriminator < items[j].Discriminator
 	})
-}
-
-func (directive *Directive) isSnippet() bool {
-	return len(directive.Args) > 0 && snippetRegex.MatchString(directive.Args[0])
 }
