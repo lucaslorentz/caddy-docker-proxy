@@ -8,7 +8,8 @@ import (
 
 func TestLabelsToCaddyfile_MinimumSpecialLabels(t *testing.T) {
 	labels := map[string]string{
-		"caddy.address": "service.testdomain.com",
+		"caddy":               "service.testdomain.com",
+		"caddy.reverse_proxy": "{{upstreams}}",
 	}
 
 	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
@@ -23,12 +24,11 @@ func TestLabelsToCaddyfile_MinimumSpecialLabels(t *testing.T) {
 	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
 }
 
-func TestLabelsToCaddyfile_AllSpecialLabelsExceptSourcePath(t *testing.T) {
+func TestLabelsToCaddyfile_WithGroups(t *testing.T) {
 	labels := map[string]string{
-		"caddy.address":        "service.testdomain.com",
-		"caddy.targetport":     "5000",
-		"caddy.targetpath":     "/api",
-		"caddy.targetprotocol": "https",
+		"caddy":               "service.testdomain.com",
+		"caddy.reverse_proxy": "{{upstreams https 5000}}",
+		"caddy.rewrite":       "* /api{path}",
 	}
 
 	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
@@ -46,11 +46,11 @@ func TestLabelsToCaddyfile_AllSpecialLabelsExceptSourcePath(t *testing.T) {
 
 func TestLabelsToCaddyfile_AllSpecialLabels(t *testing.T) {
 	labels := map[string]string{
-		"caddy.address":        "service.testdomain.com",
-		"caddy.sourcepath":     "/path",
-		"caddy.targetport":     "5000",
-		"caddy.targetpath":     "/api",
-		"caddy.targetprotocol": "https",
+		"caddy":                       "service.testdomain.com",
+		"caddy.route":                 "/path/*",
+		"caddy.route.0_uri":           "strip_prefix /path",
+		"caddy.route.1_rewrite":       "* /api{path}",
+		"caddy.route.2_reverse_proxy": "{{upstreams https 5000}}",
 	}
 
 	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
@@ -71,13 +71,13 @@ func TestLabelsToCaddyfile_AllSpecialLabels(t *testing.T) {
 
 func TestLabelsToCaddyfile_MultipleConfigs(t *testing.T) {
 	labels := map[string]string{
-		"caddy_0.address":    "service1.testdomain.com",
-		"caddy_0.targetport": "5000",
-		"caddy_0.targetpath": "/api",
-		"caddy_0.tls.dns":    "route53",
-		"caddy_1.address":    "service2.testdomain.com",
-		"caddy_1.targetport": "5001",
-		"caddy_1.tls.dns":    "route53",
+		"caddy_0":               "service1.testdomain.com",
+		"caddy_0.reverse_proxy": "{{upstreams 5000}}",
+		"caddy_0.rewrite":       "* /api{path}",
+		"caddy_0.tls.dns":       "route53",
+		"caddy_1":               "service2.testdomain.com",
+		"caddy_1.reverse_proxy": "{{upstreams 5001}}",
+		"caddy_1.tls.dns":       "route53",
 	}
 
 	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
@@ -104,7 +104,8 @@ func TestLabelsToCaddyfile_MultipleConfigs(t *testing.T) {
 
 func TestLabelsToCaddyfile_MultipleAddresses(t *testing.T) {
 	labels := map[string]string{
-		"caddy.address": "a.testdomain.com b.testdomain.com",
+		"caddy":               "a.testdomain.com b.testdomain.com",
+		"caddy.reverse_proxy": "{{upstreams}}",
 	}
 
 	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
@@ -121,7 +122,7 @@ func TestLabelsToCaddyfile_MultipleAddresses(t *testing.T) {
 
 func TestLabelsToCaddyfile_DoesntOverrideExistingProxy(t *testing.T) {
 	labels := map[string]string{
-		"caddy.address":         "testdomain.com",
+		"caddy":                 "testdomain.com",
 		"caddy.reverse_proxy":   "something",
 		"caddy.reverse_proxy_1": "/api/* external-api",
 	}
@@ -131,8 +132,8 @@ func TestLabelsToCaddyfile_DoesntOverrideExistingProxy(t *testing.T) {
 	})
 
 	const expectedCaddyfile = "testdomain.com {\n" +
-		"	reverse_proxy something\n" +
 		"	reverse_proxy /api/* external-api\n" +
+		"	reverse_proxy something\n" +
 		"}\n"
 
 	assert.NoError(t, err)
@@ -141,9 +142,11 @@ func TestLabelsToCaddyfile_DoesntOverrideExistingProxy(t *testing.T) {
 
 func TestLabelsToCaddyfile_ReverseProxyDirectivesAreMovedIntoRoute(t *testing.T) {
 	labels := map[string]string{
-		"caddy.address":                   "service.testdomain.com",
-		"caddy.sourcepath":                "/path",
-		"caddy.reverse_proxy.health_path": "/health",
+		"caddy":                       "service.testdomain.com",
+		"caddy.route":                 "/path/*",
+		"caddy.route.0_uri":           "strip_prefix /path",
+		"caddy.route.1_reverse_proxy": "{{upstreams}}",
+		"caddy.route.1_reverse_proxy.health_path": "/health",
 	}
 
 	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
@@ -161,4 +164,18 @@ func TestLabelsToCaddyfile_ReverseProxyDirectivesAreMovedIntoRoute(t *testing.T)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
+}
+
+func TestLabelsToCaddyfile_InvalidTemplate(t *testing.T) {
+	labels := map[string]string{
+		"caddy":               "service.testdomain.com",
+		"caddy.reverse_proxy": "{{invalid}}",
+	}
+
+	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
+		return []string{"target"}, nil
+	})
+
+	assert.Error(t, err, `template: :1: function "invalid" not defined`)
+	assert.Nil(t, caddyfileBlock)
 }

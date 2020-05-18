@@ -1,21 +1,22 @@
 package generator
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/docker/docker/api/types"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/caddyfile"
 )
 
-func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container) (*caddyfile.Block, error) {
+func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container, logsBuffer *bytes.Buffer) (*caddyfile.Block, error) {
 	caddyLabels := g.filterLabels(container.Labels)
 
 	return labelsToCaddyfile(caddyLabels, container, func() ([]string, error) {
-		return g.getContainerIPAddresses(container)
+		return g.getContainerIPAddresses(container, logsBuffer)
 	})
 }
 
-func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container) ([]string, error) {
+func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container, logsBuffer *bytes.Buffer) ([]string, error) {
 	ips := []string{}
 
 	for _, network := range container.NetworkSettings.Networks {
@@ -25,7 +26,7 @@ func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container)
 	}
 
 	if len(ips) == 0 {
-		return ips, fmt.Errorf("Container %v and caddy are not in same network", container.ID)
+		logsBuffer.WriteString(fmt.Sprintf("[WARNING] Container %v and caddy are not in same network\n", container.ID))
 	}
 
 	return ips, nil

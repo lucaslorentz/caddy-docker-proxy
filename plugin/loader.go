@@ -151,7 +151,7 @@ func (dockerLoader *DockerLoader) update() bool {
 	configJSON, warn, err := adapter.Adapt(caddyfile, nil)
 
 	if warn != nil {
-		log.Printf("[WARN] Caddyfile to json warning: %v", warn)
+		log.Printf("[WARNING] Caddyfile to json warning: %v", warn)
 	}
 
 	if err != nil {
