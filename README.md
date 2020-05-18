@@ -176,7 +176,7 @@ For services, that would be the service DNS name when **proxy-service-tasks** is
 
 For containers, that would be the container IPs.
 
-There is network validation to only use addresses available to caddy network. That ensures Caddy will always use reachable IP addresses. You can set **validate-network** to **false** to disable that validation 
+Resource networks are validated and only addresses available to caddy network are returned. You can set **validate-network** to **false** to disable that validation 
 
 Usage: `upstreams [http|https] [port]`  
 
