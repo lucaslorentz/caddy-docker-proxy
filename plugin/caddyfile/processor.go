@@ -1,43 +1,39 @@
-package plugin
+package caddyfile
 
 import (
 	"bytes"
 	"fmt"
-	"log"
-	"sort"
 	"strings"
 
-	"github.com/caddyserver/caddy"
-	"github.com/caddyserver/caddy/caddyfile"
-
-	_ "github.com/caddyserver/caddy/caddyhttp" // plug in the HTTP server type
+	"github.com/caddyserver/caddy/v2/caddyconfig"
+	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 )
 
-// ProcessCaddyfile validate and removes wrong server blocks from caddyfile
-func ProcessCaddyfile(caddyfileContent []byte) []byte {
-	serverBlocks, err := caddyfile.Parse("", bytes.NewReader(caddyfileContent), nil)
+// Process caddyfile and removes wrong server blocks
+func Process(caddyfileContent []byte) ([]byte, []byte) {
+	logsBuffer := bytes.Buffer{}
+
+	serverBlocks, err := caddyfile.Parse("", caddyfileContent)
 
 	if err != nil {
-		log.Printf("[ERROR] Error parsing caddyfile:%s\n", err)
+		logsBuffer.WriteString(fmt.Sprintf("[ERROR] Error parsing caddyfile: %s\n", err.Error()))
 	}
 
 	var newCaddyfileBuffer bytes.Buffer
+
 	for _, serverBlock := range serverBlocks {
 		serverBlockContent := serializeServerBlock(&serverBlock)
 
-		newInput := caddy.CaddyfileInput{
-			ServerTypeName: "http",
-			Contents:       serverBlockContent,
-		}
+		adapter := caddyconfig.GetAdapter("caddyfile")
 
-		err := caddy.ValidateAndExecuteDirectives(newInput, nil, true)
+		_, _, err := adapter.Adapt(serverBlockContent, nil)
 		if err == nil {
 			newCaddyfileBuffer.Write(serverBlockContent)
 		} else {
-			log.Printf("[WARN] Removing invalid server block: %s\n%s\n", err, serverBlockContent)
+			logsBuffer.WriteString(fmt.Sprintf("[ERROR]  Removing invalid server block: %s\n%s\n", err.Error(), serverBlockContent))
 		}
 	}
-	return newCaddyfileBuffer.Bytes()
+	return newCaddyfileBuffer.Bytes(), logsBuffer.Bytes()
 }
 
 func serializeServerBlock(serverBlock *caddyfile.ServerBlock) []byte {
@@ -49,11 +45,11 @@ func serializeServerBlock(serverBlock *caddyfile.ServerBlock) []byte {
 func writeServerBlock(writer *bytes.Buffer, serverBlock *caddyfile.ServerBlock) {
 	writer.WriteString(fmt.Sprintf("%v {\n", strings.Join(serverBlock.Keys, " ")))
 
-	for _, directiveName := range getSortedDirectiveNames(serverBlock.Tokens) {
+	for _, segment := range serverBlock.Segments {
 		indent := 1
 		newLine := true
 		tokenLine := -1
-		for _, token := range serverBlock.Tokens[directiveName] {
+		for _, token := range segment {
 			if token.Text == "}" {
 				indent--
 			}
@@ -65,7 +61,7 @@ func writeServerBlock(writer *bytes.Buffer, serverBlock *caddyfile.ServerBlock) 
 				tokenLine = token.Line
 			}
 			if newLine {
-				writer.WriteString(strings.Repeat("  ", indent))
+				writer.WriteString(strings.Repeat("\t", indent))
 				newLine = false
 			} else {
 				writer.WriteString(" ")
@@ -87,13 +83,4 @@ func writeServerBlock(writer *bytes.Buffer, serverBlock *caddyfile.ServerBlock) 
 		writer.WriteString("\n")
 	}
 	writer.WriteString("}\n")
-}
-
-func getSortedDirectiveNames(m map[string][]caddyfile.Token) []string {
-	var keys []string
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }

@@ -1,4 +1,4 @@
-package plugin
+package docker
 
 import (
 	"errors"
@@ -8,15 +8,15 @@ import (
 	"runtime"
 )
 
-// DockerUtils is an interface with docker utilities
-type DockerUtils interface {
+// Utils is an interface with docker utilities
+type Utils interface {
 	GetCurrentContainerID() (string, error)
 }
 
 type dockerUtils struct{}
 
-// CreateDockerUtils creates a new instance of docker utils
-func CreateDockerUtils() DockerUtils {
+// CreateUtils creates a new instance of docker utils
+func CreateUtils() Utils {
 	return &dockerUtils{}
 }
 

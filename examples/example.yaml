@@ -1,0 +1,93 @@
+version: '3.7'
+
+configs:
+  caddy-basic-content:
+    file: ./Caddyfile
+    labels:
+        caddy:
+
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:alpine
+    ports:
+      - 8080:80
+      - 4443:443
+    networks:
+      - caddy
+    environment:
+      - CADDY_DOCKER_PROXY_SERVICE_TASKS=true
+      - CADDY_DOCKER_PROCESS_CADDYFILE=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      replicas: ${CADDY_REPLICAS:-1}
+      restart_policy:
+        condition: any
+      resources:
+        reservations:
+          cpus: '0.1'
+          memory: 200M
+
+  # Proxy to service
+  whoami0:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    deploy:
+      labels:
+        caddy.address: whoami0.example.com
+        caddy.targetport: "8000"
+        caddy.tls: "internal"
+
+  # Proxy to service
+  whoami1:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    deploy:
+      labels:
+        caddy.address: whoami1.example.com
+        caddy.targetport: "8000"
+        caddy.tls: "internal"
+
+  # Proxy to container
+  whoami2:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    labels:
+      caddy.address: whoami2.example.com
+      caddy.targetport: "8000"
+      caddy.tls: "internal"
+
+  # Proxy to container
+  whoami3:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    labels:
+      caddy.address: whoami3.example.com
+      caddy.targetport: "8000"
+      caddy.tls: "internal"
+
+  # Proxy to service with all special labels
+  echo_headers:
+    image: brndnmtthws/nginx-echo-headers
+    networks:
+      - caddy
+    deploy:
+      labels:
+        caddy.address: echo.example.com
+        caddy.sourcepath: "/sourcepath"
+        caddy.targetport: "8080"
+        caddy.targetpath: "/targetpath"
+        caddy.tls: "internal"
+        caddy.rewrite: /sourcepath /sourcepath/
+
+networks:
+  caddy:
+    driver: overlay
+    external: ${EXTERNAL_NETWORK:-false}

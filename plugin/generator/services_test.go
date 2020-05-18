@@ -1,4 +1,4 @@
-package plugin
+package generator
 
 import (
 	"testing"
@@ -10,30 +10,28 @@ import (
 func TestServices_Templates(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
+		{
 			Spec: swarm.ServiceSpec{
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						fmtLabel("%s"):                    "{{.Spec.Name}}.testdomain.com",
-						fmtLabel("%s.proxy"):              "/ {{.Spec.Name}}:5000/api",
-						fmtLabel("%s.proxy.transparent"):  "",
-						fmtLabel("%s.proxy.health_check"): "/health",
-						fmtLabel("%s.proxy.websocket"):    "",
-						fmtLabel("%s.gzip"):               "",
-						fmtLabel("%s.basicauth"):          "/ user password",
-						fmtLabel("%s.tls.dns"):            "route53",
-						fmtLabel("%s.rewrite_0"):          "/path1 /path2",
-						fmtLabel("%s.rewrite_1"):          "/path3 /path4",
-						fmtLabel("%s.limits.header"):      "100kb",
-						fmtLabel("%s.limits.body_0"):      "/path1 2mb",
-						fmtLabel("%s.limits.body_1"):      "/path2 4mb",
+						fmtLabel("%s"):                           "{{.Spec.Name}}.testdomain.com",
+						fmtLabel("%s.reverse_proxy"):             "{{.Spec.Name}}:5000",
+						fmtLabel("%s.reverse_proxy.health_path"): "/health",
+						fmtLabel("%s.gzip"):                      "",
+						fmtLabel("%s.basicauth"):                 "/ user password",
+						fmtLabel("%s.tls.dns"):                   "route53",
+						fmtLabel("%s.rewrite_0"):                 "/path1 /path2",
+						fmtLabel("%s.rewrite_1"):                 "/path3 /path4",
+						fmtLabel("%s.limits.header"):             "100kb",
+						fmtLabel("%s.limits.body_0"):             "/path1 2mb",
+						fmtLabel("%s.limits.body_1"):             "/path2 4mb",
 					},
 				},
 			},
 			Endpoint: swarm.Endpoint{
 				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
+					{
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -42,199 +40,21 @@ func TestServices_Templates(t *testing.T) {
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  basicauth / user password\n" +
-		"  gzip\n" +
-		"  limits {\n" +
-		"    body /path1 2mb\n" +
-		"    body /path2 4mb\n" +
-		"    header 100kb\n" +
-		"  }\n" +
-		"  proxy / service:5000/api {\n" +
-		"    health_check /health\n" +
-		"    transparent\n" +
-		"    websocket\n" +
-		"  }\n" +
-		"  rewrite /path1 /path2\n" +
-		"  rewrite /path3 /path4\n" +
-		"  tls {\n" +
-		"    dns route53\n" +
-		"  }\n" +
-		"}\n"
-
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
-}
-
-func TestServices_MinimumBasicLabels(t *testing.T) {
-	dockerClient := createBasicDockerClientMock()
-	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
-			Spec: swarm.ServiceSpec{
-				Annotations: swarm.Annotations{
-					Name: "service",
-					Labels: map[string]string{
-						fmtLabel("%s.address"): "service.testdomain.com",
-					},
-				},
-			},
-			Endpoint: swarm.Endpoint{
-				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
-						NetworkID: caddyNetworkID,
-					},
-				},
-			},
-		},
-	}
-
-	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy / service\n" +
-		"}\n"
-
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
-}
-
-func TestServices_AllBasicLabels(t *testing.T) {
-	dockerClient := createBasicDockerClientMock()
-	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
-			Spec: swarm.ServiceSpec{
-				Annotations: swarm.Annotations{
-					Name: "service",
-					Labels: map[string]string{
-						fmtLabel("%s.address"):        "service.testdomain.com",
-						fmtLabel("%s.sourcepath"):     "/source",
-						fmtLabel("%s.targetport"):     "5000",
-						fmtLabel("%s.targetpath"):     "/api",
-						fmtLabel("%s.targetprotocol"): "https",
-					},
-				},
-			},
-			Endpoint: swarm.Endpoint{
-				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
-						NetworkID: caddyNetworkID,
-					},
-				},
-			},
-		},
-	}
-
-	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy /source https://service:5000/api\n" +
-		"}\n"
-
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
-}
-
-func TestServices_MultipleConfigs(t *testing.T) {
-	dockerClient := createBasicDockerClientMock()
-	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
-			Spec: swarm.ServiceSpec{
-				Annotations: swarm.Annotations{
-					Name: "service",
-					Labels: map[string]string{
-						fmtLabel("%s_0.address"):            "service1.testdomain.com",
-						fmtLabel("%s_0.targetport"):         "5000",
-						fmtLabel("%s_0.targetpath"):         "/api",
-						fmtLabel("%s_0.proxy.health_check"): "/health",
-						fmtLabel("%s_0.proxy.transparent"):  "",
-						fmtLabel("%s_0.proxy.websocket"):    "",
-						fmtLabel("%s_0.basicauth"):          "/ user password",
-						fmtLabel("%s_0.tls.dns"):            "route53",
-						fmtLabel("%s_1.address"):            "service2.testdomain.com",
-						fmtLabel("%s_1.targetport"):         "5001",
-						fmtLabel("%s_1.tls.dns"):            "route53",
-					},
-				},
-			},
-			Endpoint: swarm.Endpoint{
-				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
-						NetworkID: caddyNetworkID,
-					},
-				},
-			},
-		},
-	}
-
-	const expectedCaddyfile = "service1.testdomain.com {\n" +
-		"  basicauth / user password\n" +
-		"  proxy / service:5000/api {\n" +
-		"    health_check /health\n" +
-		"    transparent\n" +
-		"    websocket\n" +
-		"  }\n" +
-		"  tls {\n" +
-		"    dns route53\n" +
-		"  }\n" +
-		"}\n" +
-		"service2.testdomain.com {\n" +
-		"  proxy / service:5001\n" +
-		"  tls {\n" +
-		"    dns route53\n" +
-		"  }\n" +
-		"}\n"
-
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
-}
-
-func TestServices_MultipleAddresses(t *testing.T) {
-	dockerClient := createBasicDockerClientMock()
-	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
-			Spec: swarm.ServiceSpec{
-				Annotations: swarm.Annotations{
-					Name: "service",
-					Labels: map[string]string{
-						fmtLabel("%s.address"): "a.testdomain.com b.testdomain.com",
-					},
-				},
-			},
-			Endpoint: swarm.Endpoint{
-				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
-						NetworkID: caddyNetworkID,
-					},
-				},
-			},
-		},
-	}
-
-	const expectedCaddyfile = "a.testdomain.com b.testdomain.com {\n" +
-		"  proxy / service\n" +
-		"}\n"
-
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
-}
-
-func TestAutomaticProxyDoesntOverrideCustomWithSameKey(t *testing.T) {
-	dockerClient := createBasicDockerClientMock()
-	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
-			Spec: swarm.ServiceSpec{
-				Annotations: swarm.Annotations{
-					Name: "service",
-					Labels: map[string]string{
-						fmtLabel("%s.address"): "testdomain.com",
-						fmtLabel("%s.proxy"):   "/ something",
-						fmtLabel("%s.proxy_1"): "/api external-api",
-					},
-				},
-			},
-			Endpoint: swarm.Endpoint{
-				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
-						NetworkID: caddyNetworkID,
-					},
-				},
-			},
-		},
-	}
-
-	const expectedCaddyfile = "testdomain.com {\n" +
-		"  proxy / something\n" +
-		"  proxy /api external-api\n" +
+		"	basicauth / user password\n" +
+		"	gzip\n" +
+		"	limits {\n" +
+		"		body /path1 2mb\n" +
+		"		body /path2 4mb\n" +
+		"		header 100kb\n" +
+		"	}\n" +
+		"	reverse_proxy service:5000 {\n" +
+		"		health_path /health\n" +
+		"	}\n" +
+		"	rewrite /path1 /path2\n" +
+		"	rewrite /path3 /path4\n" +
+		"	tls {\n" +
+		"		dns route53\n" +
+		"	}\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
@@ -243,7 +63,7 @@ func TestAutomaticProxyDoesntOverrideCustomWithSameKey(t *testing.T) {
 func TestServices_DifferentNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
+		{
 			ID: "SERVICE-ID",
 			Spec: swarm.ServiceSpec{
 				Annotations: swarm.Annotations{
@@ -255,7 +75,7 @@ func TestServices_DifferentNetwork(t *testing.T) {
 			},
 			Endpoint: swarm.Endpoint{
 				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
+					{
 						NetworkID: "other-network-id",
 					},
 				},
@@ -274,7 +94,7 @@ func TestServices_DifferentNetwork(t *testing.T) {
 func TestServices_DifferentNetworkSkipValidation(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
+		{
 			ID: "SERVICE-ID",
 			Spec: swarm.ServiceSpec{
 				Annotations: swarm.Annotations{
@@ -286,7 +106,7 @@ func TestServices_DifferentNetworkSkipValidation(t *testing.T) {
 			},
 			Endpoint: swarm.Endpoint{
 				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
+					{
 						NetworkID: "other-network-id",
 					},
 				},
@@ -295,7 +115,7 @@ func TestServices_DifferentNetworkSkipValidation(t *testing.T) {
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy / service\n" +
+		"	reverse_proxy service\n" +
 		"}\n"
 
 	const expectedLogs = skipCaddyfileText
@@ -306,7 +126,7 @@ func TestServices_DifferentNetworkSkipValidation(t *testing.T) {
 func TestServices_SwarmDisabled(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
+		{
 			ID: "SERVICE-ID",
 			Spec: swarm.ServiceSpec{
 				Annotations: swarm.Annotations{
@@ -318,7 +138,7 @@ func TestServices_SwarmDisabled(t *testing.T) {
 			},
 			Endpoint: swarm.Endpoint{
 				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
+					{
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -343,7 +163,7 @@ func TestServices_SwarmDisabled(t *testing.T) {
 func TestServiceTasks_Empty(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
+		{
 			ID: "SERVICEID",
 			Spec: swarm.ServiceSpec{
 				Annotations: swarm.Annotations{
@@ -356,7 +176,7 @@ func TestServiceTasks_Empty(t *testing.T) {
 			},
 			Endpoint: swarm.Endpoint{
 				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
+					{
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -375,7 +195,7 @@ func TestServiceTasks_Empty(t *testing.T) {
 func TestServiceTasks_NotRunning(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
+		{
 			ID: "SERVICEID",
 			Spec: swarm.ServiceSpec{
 				Annotations: swarm.Annotations{
@@ -388,7 +208,7 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 			},
 			Endpoint: swarm.Endpoint{
 				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
+					{
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -396,10 +216,10 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 		},
 	}
 	dockerClient.TasksData = []swarm.Task{
-		swarm.Task{
+		{
 			ServiceID: "SERVICEID",
 			NetworksAttachments: []swarm.NetworkAttachment{
-				swarm.NetworkAttachment{
+				{
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
@@ -409,10 +229,10 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 			DesiredState: swarm.TaskStateShutdown,
 			Status:       swarm.TaskStatus{State: swarm.TaskStateRunning},
 		},
-		swarm.Task{
+		{
 			ServiceID: "SERVICEID",
 			NetworksAttachments: []swarm.NetworkAttachment{
-				swarm.NetworkAttachment{
+				{
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
@@ -435,7 +255,7 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 func TestServiceTasks_DifferentNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
+		{
 			ID: "SERVICEID",
 			Spec: swarm.ServiceSpec{
 				Annotations: swarm.Annotations{
@@ -448,7 +268,7 @@ func TestServiceTasks_DifferentNetwork(t *testing.T) {
 			},
 			Endpoint: swarm.Endpoint{
 				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
+					{
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -456,10 +276,10 @@ func TestServiceTasks_DifferentNetwork(t *testing.T) {
 		},
 	}
 	dockerClient.TasksData = []swarm.Task{
-		swarm.Task{
+		{
 			ServiceID: "SERVICEID",
 			NetworksAttachments: []swarm.NetworkAttachment{
-				swarm.NetworkAttachment{
+				{
 					Network: swarm.Network{
 						ID: "other-network-id",
 					},
@@ -482,7 +302,7 @@ func TestServiceTasks_DifferentNetwork(t *testing.T) {
 func TestServiceTasks_DifferentNetworkSkipValidation(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
+		{
 			ID: "SERVICEID",
 			Spec: swarm.ServiceSpec{
 				Annotations: swarm.Annotations{
@@ -495,7 +315,7 @@ func TestServiceTasks_DifferentNetworkSkipValidation(t *testing.T) {
 			},
 			Endpoint: swarm.Endpoint{
 				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
+					{
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -503,10 +323,10 @@ func TestServiceTasks_DifferentNetworkSkipValidation(t *testing.T) {
 		},
 	}
 	dockerClient.TasksData = []swarm.Task{
-		swarm.Task{
+		{
 			ServiceID: "SERVICEID",
 			NetworksAttachments: []swarm.NetworkAttachment{
-				swarm.NetworkAttachment{
+				{
 					Network: swarm.Network{
 						ID: "other-network-id",
 					},
@@ -519,7 +339,7 @@ func TestServiceTasks_DifferentNetworkSkipValidation(t *testing.T) {
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy / 10.0.0.1:5000\n" +
+		"	reverse_proxy 10.0.0.1:5000\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, true, false, expectedCaddyfile, skipCaddyfileText)
@@ -528,7 +348,7 @@ func TestServiceTasks_DifferentNetworkSkipValidation(t *testing.T) {
 func TestServiceTasks_Running(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
-		swarm.Service{
+		{
 			ID: "SERVICEID",
 			Spec: swarm.ServiceSpec{
 				Annotations: swarm.Annotations{
@@ -541,7 +361,7 @@ func TestServiceTasks_Running(t *testing.T) {
 			},
 			Endpoint: swarm.Endpoint{
 				VirtualIPs: []swarm.EndpointVirtualIP{
-					swarm.EndpointVirtualIP{
+					{
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -549,10 +369,10 @@ func TestServiceTasks_Running(t *testing.T) {
 		},
 	}
 	dockerClient.TasksData = []swarm.Task{
-		swarm.Task{
+		{
 			ServiceID: "SERVICEID",
 			NetworksAttachments: []swarm.NetworkAttachment{
-				swarm.NetworkAttachment{
+				{
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
@@ -562,10 +382,10 @@ func TestServiceTasks_Running(t *testing.T) {
 			DesiredState: swarm.TaskStateRunning,
 			Status:       swarm.TaskStatus{State: swarm.TaskStateRunning},
 		},
-		swarm.Task{
+		{
 			ServiceID: "SERVICEID",
 			NetworksAttachments: []swarm.NetworkAttachment{
-				swarm.NetworkAttachment{
+				{
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
@@ -578,7 +398,7 @@ func TestServiceTasks_Running(t *testing.T) {
 	}
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"  proxy / 10.0.0.1:5000 10.0.0.2:5000\n" +
+		"	reverse_proxy 10.0.0.1:5000 10.0.0.2:5000\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, true, true, expectedCaddyfile, skipCaddyfileText)

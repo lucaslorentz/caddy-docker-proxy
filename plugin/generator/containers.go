@@ -1,13 +1,16 @@
-package plugin
+package generator
 
 import (
 	"fmt"
 
 	"github.com/docker/docker/api/types"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/caddyfile"
 )
 
-func (g *CaddyfileGenerator) getContainerDirectives(container *types.Container) (map[string]*directiveData, error) {
-	return g.parseDirectives(container.Labels, container, func() ([]string, error) {
+func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container) (*caddyfile.Block, error) {
+	caddyLabels := g.filterLabels(container.Labels)
+
+	return labelsToCaddyfile(caddyLabels, container, func() ([]string, error) {
 		return g.getContainerIPAddresses(container)
 	})
 }
@@ -16,7 +19,7 @@ func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container)
 	ips := []string{}
 
 	for _, network := range container.NetworkSettings.Networks {
-		if !g.validateNetwork || g.caddyNetworks[network.NetworkID] {
+		if !g.options.ValidateNetwork || g.caddyNetworks[network.NetworkID] {
 			ips = append(ips, network.IPAddress)
 		}
 	}
