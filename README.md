@@ -87,20 +87,6 @@ group {
 }
 ```
 
-Named matchers can be created using @ inside labels:
-```
-caddy: "localhost"
-caddy.@match.path: "/sourcepath /sourcepath/*"
-caddy.reverse_proxy: "@match localhost:6001"
-↓
-localhost {
-  @match {
-    path /sourcepath /sourcepath/*
-  }
-  reverse_proxy @match localhost:6001
-}
-```
-
 Caddy label args creates a server block:
 ```
 caddy=example.com
@@ -138,6 +124,20 @@ site_a {
 }
 site_b {
 	import snippet
+}
+```
+
+Named matchers can be created using @ inside labels:
+```
+caddy: "localhost"
+caddy.@match.path: "/sourcepath /sourcepath/*"
+caddy.reverse_proxy: "@match localhost:6001"
+↓
+localhost {
+  @match {
+    path /sourcepath /sourcepath/*
+  }
+  reverse_proxy @match localhost:6001
 }
 ```
 
