@@ -107,7 +107,7 @@ func (block *Block) RemoveAllMatches(name string, discriminator string) {
 // Marshal block into caddyfile bytes
 func (block *Block) Marshal() []byte {
 	buffer := &bytes.Buffer{}
-	block.Write(buffer, true, 0)
+	block.Write(buffer, 0)
 	return buffer.Bytes()
 }
 
@@ -117,48 +117,45 @@ func (block *Block) MarshalString() string {
 }
 
 // Write all directives to a buffer
-func (block *Block) Write(buffer *bytes.Buffer, isRoot bool, level int) {
-	block.sort()
+func (block *Block) Write(buffer *bytes.Buffer, level int) {
+	block.sort(level)
 	for _, subdirective := range block.Children {
-		subdirective.Write(buffer, isRoot, level)
+		subdirective.Write(buffer, level)
 	}
 }
 
 // Write directive to a buffer
-func (directive *Directive) Write(buffer *bytes.Buffer, isRoot bool, identation int) {
-	buffer.WriteString(strings.Repeat("\t", identation))
-	if isRoot && len(directive.Args) == 0 {
-		// This is a global directives block
-		directive.Block.Write(buffer, false, identation)
-		return
+func (directive *Directive) Write(buffer *bytes.Buffer, level int) {
+	buffer.WriteString(strings.Repeat("\t", level))
+	needsWhitespace := false
+	if level > 0 && directive.Name != "" {
+		buffer.WriteString(directive.Name)
+		needsWhitespace = true
 	}
-	if !isRoot {
-		if directive.Name != "" {
-			buffer.WriteString(directive.Name)
-		}
-		if directive.Name != "" && len(directive.Args) > 0 {
+	for _, arg := range directive.Args {
+		if needsWhitespace {
 			buffer.WriteString(" ")
 		}
-	}
-	if len(directive.Args) > 0 {
-		for index, arg := range directive.Args {
-			if index > 0 {
-				buffer.WriteString(" ")
-			}
-			buffer.WriteString(arg)
-		}
+		buffer.WriteString(arg)
+		needsWhitespace = true
 	}
 	if len(directive.Children) > 0 {
-		buffer.WriteString(" {\n")
-		directive.Block.Write(buffer, false, identation+1)
-		buffer.WriteString(strings.Repeat("\t", identation) + "}")
+		if needsWhitespace {
+			buffer.WriteString(" ")
+		}
+		buffer.WriteString("{\n")
+		directive.Block.Write(buffer, level+1)
+		buffer.WriteString(strings.Repeat("\t", level) + "}")
 	}
 	buffer.WriteString("\n")
 }
 
-func (block *Block) sort() {
+func (block *Block) sort(level int) {
 	items := block.Children
 	sort.SliceStable(items, func(i, j int) bool {
+		if level == 0 && items[i].IsGlobalBlock() && !items[j].IsGlobalBlock() {
+			return true
+		}
 		if items[i].Order != items[j].Order {
 			return items[i].Order < items[j].Order
 		}
@@ -170,4 +167,9 @@ func (block *Block) sort() {
 		}
 		return items[i].Discriminator < items[j].Discriminator
 	})
+}
+
+// IsGlobalBlock returns if directive is global directive
+func (directive *Directive) IsGlobalBlock() bool {
+	return len(directive.Args) == 0
 }

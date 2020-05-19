@@ -114,6 +114,15 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 		logsBuffer.WriteString("[INFO] Skipping services because swarm is not available\n")
 	}
 
+	// Write global blocks first
+	for _, directive := range caddyfileBlock.Children {
+		if directive.IsGlobalBlock() {
+			directive.Write(&caddyfileBuffer, 0)
+			caddyfileBlock.Remove(directive)
+		}
+	}
+
+	// Write swarm configs
 	if g.swarmIsAvailable {
 		configs, err := g.dockerClient.ConfigList(context.Background(), types.ConfigListOptions{})
 		if err == nil {
@@ -135,7 +144,8 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 		logsBuffer.WriteString("[INFO] Skipping configs because swarm is not available\n")
 	}
 
-	caddyfileBlock.Write(&caddyfileBuffer, true, 0)
+	// Write remaining blocks
+	caddyfileBlock.Write(&caddyfileBuffer, 0)
 
 	caddyfileContent := caddyfileBuffer.Bytes()
 
