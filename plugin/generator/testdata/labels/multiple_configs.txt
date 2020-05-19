@@ -1,0 +1,21 @@
+caddy_0               = service1.testdomain.com
+caddy_0.reverse_proxy = {{upstreams 5000}}
+caddy_0.rewrite       = * /api{path}
+caddy_0.tls.dns       = route53
+caddy_1               = service2.testdomain.com
+caddy_1.reverse_proxy = {{upstreams 5001}}
+caddy_1.tls.dns       = route53
+----------
+service1.testdomain.com {
+	reverse_proxy target:5000
+	rewrite * /api{path}
+	tls {
+		dns route53
+	}
+}
+service2.testdomain.com {
+	reverse_proxy target:5001
+	tls {
+		dns route53
+	}
+}

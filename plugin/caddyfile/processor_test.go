@@ -1,6 +1,9 @@
 package caddyfile
 
 import (
+	"io/ioutil"
+	"regexp"
+	"strings"
 	"testing"
 
 	_ "github.com/caddyserver/caddy/v2/modules/standard" // plug standard HTTP modules
@@ -8,45 +11,43 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestProcess(t *testing.T) {
-	input := "(mysnippet) {\n" +
-		"	encode gzip\n" +
-		"}\n" +
-		"service1.example.com {\n" +
-		"	reverse_proxy service1:5000 {\n" +
-		"		invalid\n" +
-		"	}\n" +
-		"}\n" +
-		"service2.example.com {\n" +
-		"	respond 200 /\n" +
-		"	#Coment\n" +
-		"	reverse_proxy service2:5000 {\n" +
-		"		health_path /health\n" +
-		"	}\n" +
-		"	import mysnippet\n" +
-		"}\n" +
-		"service3.example.com {\n" +
-		"	respond 404 /\n" +
-		"	basicauth /secret {\n" +
-		"		user \" a \\ b\"\n" +
-		"	}\n" +
-		"}\n"
+func TestProcessCaddyfile(t *testing.T) {
+	// load the list of test files from the dir
+	files, err := ioutil.ReadDir("./testdata/process")
+	if err != nil {
+		t.Errorf("failed to read process dir: %s", err)
+	}
 
-	expected := "service2.example.com {\n" +
-		"	respond 200 /\n" +
-		"	reverse_proxy service2:5000 {\n" +
-		"		health_path /health\n" +
-		"	}\n" +
-		"	encode gzip\n" +
-		"}\n" +
-		"service3.example.com {\n" +
-		"	respond 404 /\n" +
-		"	basicauth /secret {\n" +
-		"		user \" a \\ b\"\n" +
-		"	}\n" +
-		"}\n"
+	// prep a regexp to fix strings on windows
+	winNewlines := regexp.MustCompile(`\r?\n`)
 
-	result, _ := Process([]byte(input))
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
 
-	assert.Equal(t, expected, string(result))
+		// read the test file
+		filename := f.Name()
+		data, err := ioutil.ReadFile("./testdata/process/" + filename)
+		if err != nil {
+			t.Errorf("failed to read %s dir: %s", filename, err)
+		}
+
+		// split two Caddyfile parts
+		parts := strings.Split(string(data), "----------")
+		beforeCaddyfile, expectedCaddyfile := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+
+		// replace windows newlines in the json with unix newlines
+		expectedCaddyfile = winNewlines.ReplaceAllString(expectedCaddyfile, "\n")
+
+		// process the Caddyfile
+		result, _ := Process([]byte(beforeCaddyfile))
+
+		actualCaddyfile := strings.TrimSpace(string(result))
+
+		// compare the actual and expected Caddyfiles
+		assert.Equal(t, expectedCaddyfile, actualCaddyfile,
+			"failed to process in %s, \nExpected:\n%s\nActual:\n%s",
+			filename, expectedCaddyfile, actualCaddyfile)
+	}
 }

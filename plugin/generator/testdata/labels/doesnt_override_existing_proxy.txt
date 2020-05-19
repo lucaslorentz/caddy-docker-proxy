@@ -1,0 +1,8 @@
+caddy                 = testdomain.com
+caddy.reverse_proxy   = something
+caddy.reverse_proxy_1 = /api/* external-api
+----------
+testdomain.com {
+	reverse_proxy /api/* external-api
+	reverse_proxy something
+}

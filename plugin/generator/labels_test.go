@@ -1,181 +1,110 @@
 package generator
 
 import (
+	"fmt"
+	"io/ioutil"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLabelsToCaddyfile_MinimumSpecialLabels(t *testing.T) {
-	labels := map[string]string{
-		"caddy":               "service.testdomain.com",
-		"caddy.reverse_proxy": "{{upstreams}}",
+func TestLabelsToCaddyfile(t *testing.T) {
+	// load the list of test files from the dir
+	files, err := ioutil.ReadDir("./testdata/labels")
+	if err != nil {
+		t.Errorf("failed to read labels dir: %s", err)
 	}
 
-	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
-		return []string{"target"}, nil
-	})
+	// prep a regexp to fix strings on windows
+	winNewlines := regexp.MustCompile(`\r?\n`)
 
-	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"	reverse_proxy target\n" +
-		"}\n"
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
 
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
+		// read the test file
+		filename := f.Name()
+		data, err := ioutil.ReadFile("./testdata/labels/" + filename)
+		if err != nil {
+			t.Errorf("failed to read %s dir: %s", filename, err)
+		}
+
+		// split the labels (first) and Caddyfile (second) parts
+		parts := strings.Split(string(data), "----------")
+		labelsString, expectedCaddyfile := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+
+		// parse label key-value pairs
+		labels, err := parseLabelsFromString(labelsString)
+		if err != nil {
+			t.Errorf("failed to parse labels from %s", filename)
+		}
+
+		// replace windows newlines in the json with unix newlines
+		expectedCaddyfile = winNewlines.ReplaceAllString(expectedCaddyfile, "\n")
+
+		// convert the labels to a Caddyfile
+		caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
+			return []string{"target"}, nil
+		})
+
+		// if the result is nil then we expect an empty Caddyfile
+		// or an error message prefixed with "err: "
+		if caddyfileBlock == nil {
+			if strings.HasPrefix(expectedCaddyfile, "err: ") {
+				assert.Error(t, err, expectedCaddyfile[4:])
+			} else if expectedCaddyfile != "" {
+				t.Errorf("got nil in %s but expected: %s", filename, expectedCaddyfile)
+			}
+			continue
+		}
+
+		// if caddyfileBlock is not nil, we expect no error
+		assert.NoError(t, err, "expected no error in %s", filename)
+
+		// compare the actual and expected Caddyfiles
+		actualCaddyfile := strings.TrimSpace(caddyfileBlock.MarshalString())
+		assert.Equal(t, expectedCaddyfile, actualCaddyfile,
+			"comparison failed in %s: \nExpected:\n%s\n\nActual:\n%s\n",
+			filename, expectedCaddyfile, actualCaddyfile)
+	}
 }
 
-func TestLabelsToCaddyfile_WithGroups(t *testing.T) {
-	labels := map[string]string{
-		"caddy":               "service.testdomain.com",
-		"caddy.reverse_proxy": "{{upstreams https 5000}}",
-		"caddy.rewrite":       "* /api{path}",
+func parseLabelsFromString(s string) (map[string]string, error) {
+	labels := make(map[string]string)
+
+	lines := strings.Split(s, "\n")
+	lineNumber := 0
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		lineNumber++
+
+		// skip lines starting with comment
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// skip empty line
+		if len(line) == 0 {
+			continue
+		}
+
+		fields := strings.SplitN(line, "=", 2)
+		if len(fields) != 2 {
+			return nil, fmt.Errorf("can't parse line %d; line should be in KEY = VALUE format", lineNumber)
+		}
+
+		key := strings.TrimSpace(fields[0])
+		val := strings.TrimSpace(fields[1])
+
+		if key == "" {
+			return nil, fmt.Errorf("missing or empty key on line %d", lineNumber)
+		}
+		labels[key] = val
 	}
 
-	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
-		return []string{"target"}, nil
-	})
-
-	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"	reverse_proxy https://target:5000\n" +
-		"	rewrite * /api{path}\n" +
-		"}\n"
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
-}
-
-func TestLabelsToCaddyfile_AllSpecialLabels(t *testing.T) {
-	labels := map[string]string{
-		"caddy":                       "service.testdomain.com",
-		"caddy.route":                 "/path/*",
-		"caddy.route.0_uri":           "strip_prefix /path",
-		"caddy.route.1_rewrite":       "* /api{path}",
-		"caddy.route.2_reverse_proxy": "{{upstreams https 5000}}",
-	}
-
-	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
-		return []string{"target"}, nil
-	})
-
-	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"	route /path/* {\n" +
-		"		uri strip_prefix /path\n" +
-		"		rewrite * /api{path}\n" +
-		"		reverse_proxy https://target:5000\n" +
-		"	}\n" +
-		"}\n"
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
-}
-
-func TestLabelsToCaddyfile_MultipleConfigs(t *testing.T) {
-	labels := map[string]string{
-		"caddy_0":               "service1.testdomain.com",
-		"caddy_0.reverse_proxy": "{{upstreams 5000}}",
-		"caddy_0.rewrite":       "* /api{path}",
-		"caddy_0.tls.dns":       "route53",
-		"caddy_1":               "service2.testdomain.com",
-		"caddy_1.reverse_proxy": "{{upstreams 5001}}",
-		"caddy_1.tls.dns":       "route53",
-	}
-
-	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
-		return []string{"target"}, nil
-	})
-
-	const expectedCaddyfile = "service1.testdomain.com {\n" +
-		"	reverse_proxy target:5000\n" +
-		"	rewrite * /api{path}\n" +
-		"	tls {\n" +
-		"		dns route53\n" +
-		"	}\n" +
-		"}\n" +
-		"service2.testdomain.com {\n" +
-		"	reverse_proxy target:5001\n" +
-		"	tls {\n" +
-		"		dns route53\n" +
-		"	}\n" +
-		"}\n"
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
-}
-
-func TestLabelsToCaddyfile_MultipleAddresses(t *testing.T) {
-	labels := map[string]string{
-		"caddy":               "a.testdomain.com b.testdomain.com",
-		"caddy.reverse_proxy": "{{upstreams}}",
-	}
-
-	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
-		return []string{"target"}, nil
-	})
-
-	const expectedCaddyfile = "a.testdomain.com b.testdomain.com {\n" +
-		"	reverse_proxy target\n" +
-		"}\n"
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
-}
-
-func TestLabelsToCaddyfile_DoesntOverrideExistingProxy(t *testing.T) {
-	labels := map[string]string{
-		"caddy":                 "testdomain.com",
-		"caddy.reverse_proxy":   "something",
-		"caddy.reverse_proxy_1": "/api/* external-api",
-	}
-
-	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
-		return []string{"target"}, nil
-	})
-
-	const expectedCaddyfile = "testdomain.com {\n" +
-		"	reverse_proxy /api/* external-api\n" +
-		"	reverse_proxy something\n" +
-		"}\n"
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
-}
-
-func TestLabelsToCaddyfile_ReverseProxyDirectivesAreMovedIntoRoute(t *testing.T) {
-	labels := map[string]string{
-		"caddy":                       "service.testdomain.com",
-		"caddy.route":                 "/path/*",
-		"caddy.route.0_uri":           "strip_prefix /path",
-		"caddy.route.1_reverse_proxy": "{{upstreams}}",
-		"caddy.route.1_reverse_proxy.health_path": "/health",
-	}
-
-	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
-		return []string{"target"}, nil
-	})
-
-	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"	route /path/* {\n" +
-		"		uri strip_prefix /path\n" +
-		"		reverse_proxy target {\n" +
-		"			health_path /health\n" +
-		"		}\n" +
-		"	}\n" +
-		"}\n"
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedCaddyfile, caddyfileBlock.MarshalString())
-}
-
-func TestLabelsToCaddyfile_InvalidTemplate(t *testing.T) {
-	labels := map[string]string{
-		"caddy":               "service.testdomain.com",
-		"caddy.reverse_proxy": "{{invalid}}",
-	}
-
-	caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
-		return []string{"target"}, nil
-	})
-
-	assert.Error(t, err, `template: :1: function "invalid" not defined`)
-	assert.Nil(t, caddyfileBlock)
+	return labels, nil
 }

@@ -1,0 +1,6 @@
+caddy               = service.testdomain.com
+caddy.reverse_proxy = {{upstreams}}
+----------
+service.testdomain.com {
+	reverse_proxy target
+}

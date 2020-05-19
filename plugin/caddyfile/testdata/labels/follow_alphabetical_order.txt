@@ -1,0 +1,8 @@
+caddy     = localhost
+caddy.bbb = value
+caddy.aaa = value
+----------
+localhost {
+	aaa value
+	bbb value
+}

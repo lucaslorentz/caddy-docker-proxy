@@ -1,0 +1,36 @@
+(mysnippet) {
+	encode gzip
+}
+service1.example.com {
+	reverse_proxy service1:5000 {
+		invalid
+	}
+}
+service2.example.com {
+	respond 200 /
+	# Comment
+	reverse_proxy service2:5000 {
+		health_path /health
+	}
+	import mysnippet
+}
+service3.example.com {
+	respond 404 /
+	basicauth /secret {
+		user " a \ b"
+	}
+}
+----------
+service2.example.com {
+	respond 200 /
+	reverse_proxy service2:5000 {
+		health_path /health
+	}
+	encode gzip
+}
+service3.example.com {
+	respond 404 /
+	basicauth /secret {
+		user " a \ b"
+	}
+}
