@@ -1,4 +1,4 @@
-module github.com/lucaslorentz/caddy-docker-proxy/v2/plugin
+module github.com/lucaslorentz/caddy-docker-proxy/plugin/v2
 
 go 1.14
 

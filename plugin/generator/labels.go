@@ -5,7 +5,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/caddyfile"
+	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/caddyfile"
 )
 
 type targetsProvider func() ([]string, error)

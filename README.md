@@ -417,6 +417,6 @@ You can use our caddy build wrapper **build.sh** and include additional plugins 
 Or, you can build from caddy repository and import  **caddy-docker-proxy** plugin on file https://github.com/caddyserver/caddy/blob/master/cmd/caddy/main.go#L33 :
 ```
 import (
-  _ "github.com/lucaslorentz/caddy-docker-proxy/v2/plugin"
+  _ "github.com/lucaslorentz/caddy-docker-proxy/plugin/v2"
 )
 ```
