@@ -2,10 +2,9 @@
 
 set -e
 
-docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
-
 if [[ "${BUILD_SOURCEBRANCH}" == "refs/heads/master" ]]; then
     echo "Pushing CI images"
+    docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
     docker push lucaslorentz/caddy-docker-proxy:ci-nanoserver-1803
     docker push lucaslorentz/caddy-docker-proxy:ci-nanoserver-1809
 fi

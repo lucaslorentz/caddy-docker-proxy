@@ -2,10 +2,11 @@
 
 set -e
 
-docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
-
 if [[ "${BUILD_SOURCEBRANCH}" == "refs/heads/master" ]]; then
     echo "Pushing CI images"
+    
+    docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
+
     docker push lucaslorentz/caddy-docker-proxy:ci
     docker push lucaslorentz/caddy-docker-proxy:ci-alpine
     docker push lucaslorentz/caddy-docker-proxy:ci-arm32v6
@@ -17,6 +18,8 @@ if [[ "${RELEASE_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
 
     PATCH_VERSION=$(echo $RELEASE_VERSION | cut -c2-)
     MINOR_VERSION=$(echo $PATCH_VERSION | cut -d. -f-2)
+
+    docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
 
     # scratch
     docker tag lucaslorentz/caddy-docker-proxy:ci lucaslorentz/caddy-docker-proxy:latest
