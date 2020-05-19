@@ -141,13 +141,6 @@ localhost {
 }
 ```
 
-Sometimes it's not possile to have labels with empty values, like when using some UI to manage docker. If that's the case, you can also use our support for go lang templates to generate empty labels.
-```
-caddy.directive={{""}}
-↓
-directive
-```
-
 [GoLang templates](https://golang.org/pkg/text/template/) can be used inside label values to increase flexibility. From templates you have access to current docker resource information. But keep in mind that the structure that describes a docker container is different from a service.
 
 While you can access a service name like this:
@@ -162,6 +155,13 @@ The equivalent to access a container name would be:
 caddy.respond = /info "{{index .Names 0}}"
 ↓
 respond /info "mycontainer"
+```
+
+Sometimes it's not possile to have labels with empty values, like when using some UI to manage docker. If that's the case, you can also use our support for go lang templates to generate empty labels.
+```
+caddy.directive={{""}}
+↓
+directive
 ```
 
 ## Template functions
