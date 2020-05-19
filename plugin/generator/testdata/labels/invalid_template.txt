@@ -1,0 +1,4 @@
+caddy               = service.testdomain.com
+caddy.reverse_proxy = {{invalid}}
+----------
+err: template: :1: function "invalid" not defined

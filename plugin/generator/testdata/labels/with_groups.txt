@@ -1,0 +1,8 @@
+caddy               = service.testdomain.com
+caddy.reverse_proxy = {{upstreams https 5000}}
+caddy.rewrite       = * /api{path}
+----------
+service.testdomain.com {
+	reverse_proxy https://target:5000
+	rewrite * /api{path}
+}

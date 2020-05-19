@@ -1,0 +1,14 @@
+caddy                                   = service.testdomain.com
+caddy.route                             = /path/*
+caddy.route.0_uri                       = strip_prefix /path
+caddy.route.1_reverse_proxy             = {{upstreams}}
+caddy.route.1_reverse_proxy.health_path = /health
+----------
+service.testdomain.com {
+	route /path/* {
+		uri strip_prefix /path
+		reverse_proxy target {
+			health_path /health
+		}
+	}
+}

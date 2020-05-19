@@ -1,0 +1,11 @@
+caddy_0        = aaa.com
+caddy_0.import = my-snippet
+caddy_1        = (my-snippet)
+caddy_1.tls    = internal
+----------
+(my-snippet) {
+	tls internal
+}
+aaa.com {
+	import my-snippet
+}

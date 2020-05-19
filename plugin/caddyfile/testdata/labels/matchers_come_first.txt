@@ -1,0 +1,10 @@
+caddy               = localhost
+caddy.@matcher.path = /path1 /path2
+caddy.respond       = @matcher 200
+----------
+localhost {
+	@matcher {
+		path /path1 /path2
+	}
+	respond @matcher 200
+}

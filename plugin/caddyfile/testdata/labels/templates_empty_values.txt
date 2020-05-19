@@ -1,0 +1,6 @@
+caddy     = localhost
+caddy.key = {{""}}
+----------
+localhost {
+	key
+}

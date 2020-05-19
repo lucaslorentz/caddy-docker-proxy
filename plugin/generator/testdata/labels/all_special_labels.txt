@@ -1,0 +1,13 @@
+caddy                       = service.testdomain.com
+caddy.route                 = /path/*
+caddy.route.0_uri           = strip_prefix /path
+caddy.route.1_rewrite       = * /api{path}
+caddy.route.2_reverse_proxy = {{upstreams https 5000}}
+----------
+service.testdomain.com {
+	route /path/* {
+		uri strip_prefix /path
+		rewrite * /api{path}
+		reverse_proxy https://target:5000
+	}
+}

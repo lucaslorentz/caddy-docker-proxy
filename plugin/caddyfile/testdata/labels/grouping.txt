@@ -1,0 +1,16 @@
+caddy               = localhost
+caddy.group.a       = value-a
+caddy.group.b       = value-b
+caddy.group.group.a = value-a
+caddy.group.group.b = value-b
+----------
+localhost {
+	group {
+		a value-a
+		b value-b
+		group {
+			a value-a
+			b value-b
+		}
+	}
+}
