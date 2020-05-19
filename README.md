@@ -129,9 +129,9 @@ site_b {
 
 Named matchers can be created using @ inside labels:
 ```
-caddy: "localhost"
-caddy.@match.path: "/sourcepath /sourcepath/*"
-caddy.reverse_proxy: "@match localhost:6001"
+caddy = localhost
+caddy.@match.path = /sourcepath /sourcepath/*
+caddy.reverse_proxy = @match localhost:6001
 ↓
 localhost {
   @match {
