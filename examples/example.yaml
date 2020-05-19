@@ -8,7 +8,7 @@ configs:
 
 services:
   caddy:
-    image: lucaslorentz/caddy-docker-proxy:alpine
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
     ports:
       - 80:80
       - 443:443
