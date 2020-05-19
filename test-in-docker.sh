@@ -14,6 +14,7 @@ docker run --rm -it \
     -e CADDY_DOCKER_PROCESS_CADDYFILE=true \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v $PWD/artifacts/binaries/linux/amd64/caddy:/caddy \
+    -l caddy.email=you@example.com \
     --network caddy \
     alpine:3.11 /caddy docker-proxy
 

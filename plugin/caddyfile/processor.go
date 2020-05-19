@@ -43,7 +43,12 @@ func serializeServerBlock(serverBlock *caddyfile.ServerBlock) []byte {
 }
 
 func writeServerBlock(writer *bytes.Buffer, serverBlock *caddyfile.ServerBlock) {
-	writer.WriteString(fmt.Sprintf("%v {\n", strings.Join(serverBlock.Keys, " ")))
+	key := strings.Join(serverBlock.Keys, " ")
+	if key != "" {
+		writer.WriteString(key)
+		writer.WriteString(" ")
+	}
+	writer.WriteString("{\n")
 
 	for _, segment := range serverBlock.Segments {
 		indent := 1

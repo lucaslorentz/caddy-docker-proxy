@@ -25,7 +25,9 @@ Keys becomes directive name and value becomes arguments:
 ```
 caddy.directive=arg1 arg2
 ↓
-directive arg1 arg2
+{
+	directive arg1 arg2
+}
 ```
 
 Dots represents nesting and grouping is done automatically:
@@ -34,9 +36,11 @@ caddy.directive=argA
 caddy.directive.subdirA=valueA  
 caddy.directive.subdirB=valueB1 valueB2
 ↓
-directive argA {  
-	subdirA valueA  
-	subdirB valueB1 valueB2  
+{
+	directive argA {  
+		subdirA valueA  
+		subdirB valueB1 valueB2  
+	}
 }
 ```
 
@@ -44,8 +48,10 @@ Labels for parent directives are optional:
 ```
 caddy.directive.subdirA=valueA
 ↓
-directive {
-	subdirA valueA
+{
+	directive {
+		subdirA valueA
+	}
 }
 ```
 
@@ -53,7 +59,9 @@ Labels with empty values generates directives without arguments:
 ```
 caddy.directive=
 ↓
-directive
+{
+	directive
+}
 ```
 
 Directives are ordered alphabetically by default:
@@ -61,8 +69,10 @@ Directives are ordered alphabetically by default:
 caddy.bbb=value
 caddy.aaa=value
 ↓
-aaa value 
-bbb value
+{
+	aaa value 
+	bbb value
+}
 ```
 
 Prefix &lt;number&gt;_ defines a custom ordering for directives, and directives without order prefix will go last:
@@ -70,8 +80,10 @@ Prefix &lt;number&gt;_ defines a custom ordering for directives, and directives 
 caddy.1_bbb=value
 caddy.2_aaa=value
 ↓
-bbb value
-aaa value
+{
+	bbb value
+	aaa value
+}
 ```
 
 Suffix _&lt;number&gt; isolates directives that otherwise would be grouped:
@@ -79,11 +91,13 @@ Suffix _&lt;number&gt; isolates directives that otherwise would be grouped:
 caddy.group_0.a=value
 caddy.group_1.b=value
 ↓
-group {
-  a value
-}
-group {
-  b value
+{
+	group {
+		a value
+	}
+	group {
+		b value
+	}
 }
 ```
 
@@ -93,7 +107,7 @@ caddy=example.com
 caddy.respond=200 /
 ↓
 example.com {
-    respond 200 /
+		respond 200 /
 }
 ```
 
@@ -103,7 +117,7 @@ caddy=(snippet)
 caddy.respond=200 /
 ↓
 (snippet) {
-    respond 200 /
+		respond 200 /
 }
 ```
 
@@ -134,10 +148,19 @@ caddy.@match.path = /sourcepath /sourcepath/*
 caddy.reverse_proxy = @match localhost:6001
 ↓
 localhost {
-  @match {
-    path /sourcepath /sourcepath/*
-  }
-  reverse_proxy @match localhost:6001
+	@match {
+		path /sourcepath /sourcepath/*
+	}
+	reverse_proxy @match localhost:6001
+}
+```
+
+Global options can be defined by not setting any value for caddy. It can be set in any resource, including caddy container/service. Check [example.yaml](examples/example.yaml)
+```
+caddy.email = you@example.com
+↓
+{
+	email you@example.com
 }
 ```
 
@@ -258,10 +281,10 @@ Caddy docker proxy is able to proxy to swarm servcies or raw containers. Both fe
 To proxy swarm services, labels should be defined at service level. On a docker-compose file, that means labels should be inside deploy, like:
 ```
 service:
-  ...
-  deploy:
-    caddy=service.example.com
-    caddy.reverse_proxy={{upstreams}}
+	...
+	deploy:
+		caddy=service.example.com
+		caddy.reverse_proxy={{upstreams}}
 ```
 
 Caddy will use service dns name as target, swarm takes care of load balancing into all containers of that service.
@@ -270,9 +293,9 @@ Caddy will use service dns name as target, swarm takes care of load balancing in
 To proxy containers, labels should be defined at container level. On a docker-compose file, that means labels should be outside deploy, like:
 ```
 service:
-  ...
-  caddy=service.example.com
-  caddy.reverse_proxy={{upstreams}}
+	...
+	caddy=service.example.com
+	caddy.reverse_proxy={{upstreams}}
 ```
 When proxying a container, caddy uses a single container IP as target. Currently multiple containers/replicas are not supported under the same website.
 
@@ -318,18 +341,18 @@ This plugin extends caddy cli with command `caddy docker-proxy` and flags.
 Run `caddy docker-proxy --help` to see all available flags:
 ```
 Usage of docker-proxy:
-  -caddyfile-path string
-    	Path to a base Caddyfile that will be extended with docker sites
-  -label-prefix string
-    	Prefix for Docker labels (default "caddy")
-  -polling-interval duration
-    	Interval caddy should manually check docker for a new caddyfile (default 30s)
-  -process-caddyfile
-    	Process Caddyfile before loading it, removing invalid servers
-  -proxy-service-tasks
-    	Proxy to service tasks instead of service load balancer
-  -validate-network
-    	Validates if caddy container and target are in same network (default true)
+	-caddyfile-path string
+			Path to a base Caddyfile that will be extended with docker sites
+	-label-prefix string
+			Prefix for Docker labels (default "caddy")
+	-polling-interval duration
+			Interval caddy should manually check docker for a new caddyfile (default 30s)
+	-process-caddyfile
+			Process Caddyfile before loading it, removing invalid servers
+	-proxy-service-tasks
+			Proxy to service tasks instead of service load balancer
+	-validate-network
+			Validates if caddy container and target are in same network (default true)
 ```
 
 Those flags can also be set via environment variables:
@@ -417,6 +440,6 @@ You can use our caddy build wrapper **build.sh** and include additional plugins 
 Or, you can build from caddy repository and import  **caddy-docker-proxy** plugin on file https://github.com/caddyserver/caddy/blob/master/cmd/caddy/main.go#L33 :
 ```
 import (
-  _ "github.com/lucaslorentz/caddy-docker-proxy/plugin/v2"
+	_ "github.com/lucaslorentz/caddy-docker-proxy/plugin/v2"
 )
 ```

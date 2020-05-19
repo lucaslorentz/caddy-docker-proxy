@@ -1,0 +1,10 @@
+caddy_0 = localhost
+caddy_0.tls = internal
+caddy_1.key = value
+----------
+{
+	key value
+}
+localhost {
+	tls internal
+}

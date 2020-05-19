@@ -33,17 +33,17 @@ func TestProcessCaddyfile(t *testing.T) {
 			t.Errorf("failed to read %s dir: %s", filename, err)
 		}
 
-		// split two Caddyfile parts
-		parts := strings.Split(string(data), "----------")
-		beforeCaddyfile, expectedCaddyfile := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
-
 		// replace windows newlines in the json with unix newlines
-		expectedCaddyfile = winNewlines.ReplaceAllString(expectedCaddyfile, "\n")
+		content := winNewlines.ReplaceAllString(string(data), "\n")
+
+		// split two Caddyfile parts
+		parts := strings.Split(content, "----------\n")
+		beforeCaddyfile, expectedCaddyfile := parts[0], parts[1]
 
 		// process the Caddyfile
 		result, _ := Process([]byte(beforeCaddyfile))
 
-		actualCaddyfile := strings.TrimSpace(string(result))
+		actualCaddyfile := string(result)
 
 		// compare the actual and expected Caddyfiles
 		assert.Equal(t, expectedCaddyfile, actualCaddyfile,

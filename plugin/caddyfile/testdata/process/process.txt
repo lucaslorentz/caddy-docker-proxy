@@ -1,3 +1,6 @@
+{
+	email you@example.com
+}
 (mysnippet) {
 	encode gzip
 }
@@ -21,6 +24,9 @@ service3.example.com {
 	}
 }
 ----------
+{
+	email you@example.com
+}
 service2.example.com {
 	respond 200 /
 	reverse_proxy service2:5000 {
