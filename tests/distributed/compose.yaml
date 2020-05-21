@@ -1,37 +1,31 @@
 version: '3.7'
 
-configs:
-  caddy-basic-content:
-    file: ./Caddyfile
-    labels:
-        caddy:
-
 services:
-  caddy:
-    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+
+  caddy_server:
+    image: caddy-docker-proxy:local
     ports:
       - 80:80
       - 443:443
     networks:
       - caddy
     environment:
+      - CADDY_DOCKER_MODE=server
+    deploy:
+      replicas: 3
+      labels:
+        caddy_controlled_server: "true"
+
+  caddy_controller:
+    image: caddy-docker-proxy:local
+    networks:
+      - caddy
+    environment:
       - CADDY_DOCKER_PROXY_SERVICE_TASKS=true
       - CADDY_DOCKER_PROCESS_CADDYFILE=true
-    labels: # Global options
-      caddy.email: you@example.com
+      - CADDY_DOCKER_MODE=controller
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    deploy:
-      placement:
-        constraints:
-          - node.role == manager
-      replicas: 1
-      restart_policy:
-        condition: any
-      resources:
-        reservations:
-          cpus: '0.1'
-          memory: 200M
 
   # Proxy to service
   whoami0:

@@ -45,7 +45,7 @@ func CreateGenerator(dockerClient docker.Client, dockerUtils docker.Utils, optio
 }
 
 // GenerateCaddyfile generates a caddy file config from docker metadata
-func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
+func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 	var caddyfileBuffer bytes.Buffer
 	var logsBuffer bytes.Buffer
 
@@ -82,9 +82,22 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 		logsBuffer.WriteString("[INFO] Skipping default Caddyfile because no path is set\n")
 	}
 
+	controlledServers := []string{}
+
 	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err == nil {
 		for _, container := range containers {
+			if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {
+				ips, err := g.getContainerIPAddresses(&container, &logsBuffer)
+				if err != nil {
+					logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+				} else {
+					for _, ip := range ips {
+						controlledServers = append(controlledServers, ip)
+					}
+				}
+			}
+
 			containerCaddyfile, err := g.getContainerCaddyfile(&container, &logsBuffer)
 			if err == nil {
 				caddyfileBlock.Merge(containerCaddyfile)
@@ -100,6 +113,17 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 		services, err := g.dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
 		if err == nil {
 			for _, service := range services {
+				if _, isControlledServer := service.Spec.Labels[g.options.ControlledServersLabel]; isControlledServer {
+					ips, err := g.getServiceTasksIps(&service, &logsBuffer)
+					if err != nil {
+						logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+					} else {
+						for _, ip := range ips {
+							controlledServers = append(controlledServers, ip)
+						}
+					}
+				}
+
 				serviceCaddyfile, err := g.getServiceCaddyfile(&service, &logsBuffer)
 				if err == nil {
 					caddyfileBlock.Merge(serviceCaddyfile)
@@ -155,7 +179,15 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 		logsBuffer.Write(processLogs)
 	}
 
-	return caddyfileContent, logsBuffer.String()
+	if len(caddyfileContent) == 0 {
+		caddyfileContent = []byte("# Empty caddyfile")
+	}
+
+	if g.options.Mode&config.Server == config.Server {
+		controlledServers = append(controlledServers, "localhost")
+	}
+
+	return caddyfileContent, logsBuffer.String(), controlledServers
 }
 
 func (g *CaddyfileGenerator) checkSwarmAvailability(isFirstCheck bool) {

@@ -4,10 +4,24 @@ import "time"
 
 // Options are the options for generator
 type Options struct {
-	CaddyfilePath     string
-	LabelPrefix       string
-	ProxyServiceTasks bool
-	ValidateNetwork   bool
-	ProcessCaddyfile  bool
-	PollingInterval   time.Duration
+	CaddyfilePath          string
+	LabelPrefix            string
+	ControlledServersLabel string
+	ProxyServiceTasks      bool
+	ValidateNetwork        bool
+	ProcessCaddyfile       bool
+	PollingInterval        time.Duration
+	Mode                   Mode
 }
+
+// Mode represents how this instance should run
+type Mode int
+
+const (
+	// Controller runs only controller
+	Controller Mode = 1
+	// Server runs only server
+	Server Mode = 2
+	// Standalone runs generator and server in a single instance
+	Standalone Mode = Controller | Server
+)

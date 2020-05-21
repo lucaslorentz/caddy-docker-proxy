@@ -3,10 +3,13 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"sync"
 	"time"
 
-	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -18,20 +21,23 @@ import (
 
 // DockerLoader generates caddy files from docker swarm information
 type DockerLoader struct {
-	options       *config.Options
-	initialized   bool
-	dockerClient  docker.Client
-	generator     *generator.CaddyfileGenerator
-	timer         *time.Timer
-	skipEvents    bool
-	lastCaddyfile []byte
-	lastLogs      string
+	options        *config.Options
+	initialized    bool
+	dockerClient   docker.Client
+	generator      *generator.CaddyfileGenerator
+	timer          *time.Timer
+	skipEvents     bool
+	lastCaddyfile  []byte
+	lastLogs       string
+	lastAppsConfig []byte
+	updatedServers map[string]struct{}
 }
 
 // CreateDockerLoader creates a docker loader
 func CreateDockerLoader(options *config.Options) *DockerLoader {
 	return &DockerLoader{
-		options: options,
+		options:        options,
+		updatedServers: map[string]struct{}{},
 	}
 }
 
@@ -124,7 +130,7 @@ func (dockerLoader *DockerLoader) update() bool {
 	dockerLoader.timer.Reset(dockerLoader.options.PollingInterval)
 	dockerLoader.skipEvents = false
 
-	caddyfile, logs := dockerLoader.generator.GenerateCaddyfile()
+	caddyfile, logs, controlledServers := dockerLoader.generator.GenerateCaddyfile()
 
 	caddyfileChanged := !bytes.Equal(dockerLoader.lastCaddyfile, caddyfile)
 	logsChanged := dockerLoader.lastLogs != logs
@@ -136,36 +142,69 @@ func (dockerLoader *DockerLoader) update() bool {
 		log.Print(logs)
 	}
 
-	if !caddyfileChanged {
-		return false
+	if caddyfileChanged {
+		log.Printf("[INFO] New Caddyfile:\n%s", caddyfile)
+
+		adapter := caddyconfig.GetAdapter("caddyfile")
+
+		configJSON, warn, err := adapter.Adapt(caddyfile, nil)
+
+		if warn != nil {
+			log.Printf("[WARNING] Caddyfile to json warning: %v", warn)
+		}
+
+		if err != nil {
+			log.Printf("[ERROR] Failed to convert caddyfile into json config: %s", err)
+		}
+
+		log.Printf("[INFO] New Config JSON:\n%s", configJSON)
+
+		var full map[string]interface{}
+		json.Unmarshal(configJSON, &full)
+		apps, _ := full["apps"]
+		appsConfig, _ := json.Marshal(apps)
+
+		dockerLoader.lastAppsConfig = appsConfig
+		dockerLoader.updatedServers = map[string]struct{}{}
 	}
 
-	if len(caddyfile) == 0 {
-		caddyfile = []byte("# Empty caddyfile")
+	var wg sync.WaitGroup
+	for _, server := range controlledServers {
+		wg.Add(1)
+		go dockerLoader.updateServer(&wg, server)
 	}
-
-	log.Printf("[INFO] New Caddyfile:\n%s", caddyfile)
-
-	adapter := caddyconfig.GetAdapter("caddyfile")
-
-	configJSON, warn, err := adapter.Adapt(caddyfile, nil)
-
-	if warn != nil {
-		log.Printf("[WARNING] Caddyfile to json warning: %v", warn)
-	}
-
-	if err != nil {
-		log.Printf("[ERROR] Failed to convert caddyfile to json config: %s", err)
-	}
-
-	log.Printf("[INFO] New Config JSON:\n%s", configJSON)
-
-	err = caddy.Load(configJSON, false)
-
-	if err != nil {
-		log.Printf("[ERROR] Failed to load caddyfile: %s", err)
-		return false
-	}
+	wg.Wait()
 
 	return true
+}
+
+func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string) {
+	defer wg.Done()
+
+	if _, isUpToDate := dockerLoader.updatedServers[server]; isUpToDate {
+		return
+	}
+
+	log.Printf("[INFO] Sending configuration to %v", server)
+
+	resp, err := http.Post("http://"+server+":2019/config/apps", "application/json", bytes.NewBuffer(dockerLoader.lastAppsConfig))
+	if err != nil {
+		log.Printf("[ERROR] Failed to send configuration to %v: %s", server, err)
+		return
+	}
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[ERROR] Failed to read response from %v: %s", server, err)
+		return
+	}
+
+	if resp.StatusCode != 200 {
+		log.Printf("[ERROR] Error response from %v: %v - %s", server, resp.StatusCode, bodyBytes)
+		return
+	}
+
+	dockerLoader.updatedServers[server] = struct{}{}
+
+	log.Printf("[INFO] Successfully configured %v", server)
 }

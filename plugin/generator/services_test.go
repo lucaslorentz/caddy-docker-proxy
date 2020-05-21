@@ -156,7 +156,7 @@ func TestServices_SwarmDisabled(t *testing.T) {
 		},
 	}
 
-	const expectedCaddyfile = ""
+	const expectedCaddyfile = "# Empty caddyfile"
 
 	const expectedLogs = skipCaddyfileText +
 		"[INFO] Skipping services because swarm is not available\n" +

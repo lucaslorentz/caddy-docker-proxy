@@ -23,6 +23,7 @@ func init() {
 		Short: "Run caddy as a docker proxy",
 		Flags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("docker-proxy", flag.ExitOnError)
+			fs.Bool("mode", false, "Which mode this instance should run: standalone | controller | server")
 			fs.String("caddyfile-path", "", "Path to a base Caddyfile that will be extended with docker sites")
 			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
 			fs.Bool("proxy-service-tasks", false, "Proxy to service tasks instead of service load balancer")
@@ -35,10 +36,25 @@ func init() {
 }
 
 func cmdFunc(flags caddycmd.Flags) (int, error) {
-	caddy.Load([]byte{}, true)
+	caddy.TrapSignals()
+
 	options := createOptions(flags)
-	loader := CreateDockerLoader(options)
-	loader.Start()
+
+	if options.Mode&config.Server == config.Server {
+		log.Printf("[INFO] Running caddy proxy server")
+		caddy.Run(&caddy.Config{
+			Admin: &caddy.AdminConfig{
+				Listen: ":2019",
+			},
+		})
+	}
+
+	if options.Mode&config.Controller == config.Controller {
+		log.Printf("[INFO] Running caddy proxy controller")
+		loader := CreateDockerLoader(options)
+		loader.Start()
+	}
+
 	select {}
 }
 
@@ -49,8 +65,25 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	validateNetworkFlag := flags.Bool("validate-network")
 	processCaddyfileFlag := flags.Bool("process-caddyfile")
 	pollingIntervalFlag := flags.Duration("polling-interval")
+	modeFlag := flags.String("mode")
 
 	options := &config.Options{}
+
+	var mode string
+	if modeEnv := os.Getenv("CADDY_DOCKER_MODE"); modeEnv != "" {
+		mode = modeEnv
+	} else {
+		mode = modeFlag
+	}
+	switch mode {
+	case "controller":
+		options.Mode = config.Controller
+		break
+	case "server":
+		options.Mode = config.Server
+	default:
+		options.Mode = config.Standalone
+	}
 
 	if caddyfilePathEnv := os.Getenv("CADDY_DOCKER_CADDYFILE_PATH"); caddyfilePathEnv != "" {
 		options.CaddyfilePath = caddyfilePathEnv
@@ -63,6 +96,7 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	} else {
 		options.LabelPrefix = labelPrefixFlag
 	}
+	options.ControlledServersLabel = options.LabelPrefix + "_controlled_server"
 
 	if proxyServiceTasksEnv := os.Getenv("CADDY_DOCKER_PROXY_SERVICE_TASKS"); proxyServiceTasksEnv != "" {
 		options.ProxyServiceTasks = isTrue.MatchString(proxyServiceTasksEnv)
