@@ -187,7 +187,17 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 
 	log.Printf("[INFO] Sending configuration to %v", server)
 
-	resp, err := http.Post("http://"+server+":2019/config/apps", "application/json", bytes.NewBuffer(dockerLoader.lastAppsConfig))
+	url := "http://" + server + ":2019/config/apps"
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(dockerLoader.lastAppsConfig))
+	if err != nil {
+		log.Printf("[ERROR] Failed to create request to %v: %s", server, err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", dockerLoader.options.Secret)
+	resp, err := http.DefaultClient.Do(req)
+
 	if err != nil {
 		log.Printf("[ERROR] Failed to send configuration to %v: %s", server, err)
 		return

@@ -11,10 +11,11 @@ services:
       - caddy
     environment:
       - CADDY_DOCKER_MODE=server
+      - CADDY_DOCKER_SECRET=some-secret
     deploy:
       replicas: 3
       labels:
-        caddy_controlled_server: "true"
+        caddy_controlled_server:
 
   caddy_controller:
     image: caddy-docker-proxy:local
@@ -24,6 +25,7 @@ services:
       - CADDY_DOCKER_PROXY_SERVICE_TASKS=true
       - CADDY_DOCKER_PROCESS_CADDYFILE=true
       - CADDY_DOCKER_MODE=controller
+      - CADDY_DOCKER_SECRET=some-secret
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 

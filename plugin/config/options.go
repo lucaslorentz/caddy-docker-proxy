@@ -12,6 +12,7 @@ type Options struct {
 	ProcessCaddyfile       bool
 	PollingInterval        time.Duration
 	Mode                   Mode
+	Secret                 string
 }
 
 // Mode represents how this instance should run
@@ -22,6 +23,6 @@ const (
 	Controller Mode = 1
 	// Server runs only server
 	Server Mode = 2
-	// Standalone runs generator and server in a single instance
+	// Standalone runs controller and server in a single instance
 	Standalone Mode = Controller | Server
 )

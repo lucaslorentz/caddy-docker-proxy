@@ -24,6 +24,7 @@ func init() {
 		Flags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("docker-proxy", flag.ExitOnError)
 			fs.Bool("mode", false, "Which mode this instance should run: standalone | controller | server")
+			fs.String("secret", "", "Defines a secret that controller and servers will use to communicate")
 			fs.String("caddyfile-path", "", "Path to a base Caddyfile that will be extended with docker sites")
 			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
 			fs.Bool("proxy-service-tasks", false, "Proxy to service tasks instead of service load balancer")
@@ -42,11 +43,18 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 
 	if options.Mode&config.Server == config.Server {
 		log.Printf("[INFO] Running caddy proxy server")
-		caddy.Run(&caddy.Config{
-			Admin: &caddy.AdminConfig{
-				Listen: ":2019",
-			},
-		})
+
+		if options.Mode&config.Controller == config.Controller {
+			caddy.Run(&caddy.Config{})
+		} else {
+			caddy.Run(&caddy.Config{
+				Admin: &caddy.AdminConfig{
+					Listen:        ":2019",
+					EnforceOrigin: true,
+					Origins:       []string{options.Secret},
+				},
+			})
+		}
 	}
 
 	if options.Mode&config.Controller == config.Controller {
@@ -66,6 +74,7 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	processCaddyfileFlag := flags.Bool("process-caddyfile")
 	pollingIntervalFlag := flags.Duration("polling-interval")
 	modeFlag := flags.String("mode")
+	secretFlag := flags.String("secret")
 
 	options := &config.Options{}
 
@@ -83,6 +92,12 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		options.Mode = config.Server
 	default:
 		options.Mode = config.Standalone
+	}
+
+	if secretEnv := os.Getenv("CADDY_DOCKER_SECRET"); secretEnv != "" {
+		options.Secret = secretEnv
+	} else {
+		options.Secret = secretFlag
 	}
 
 	if caddyfilePathEnv := os.Getenv("CADDY_DOCKER_CADDYFILE_PATH"); caddyfilePathEnv != "" {
