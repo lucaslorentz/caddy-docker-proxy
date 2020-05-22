@@ -1,0 +1,39 @@
+{
+	email you@example.com
+}
+service2.example.com {
+	respond 200 /
+	route * {
+		reverse_proxy service2:5000 {
+			health_path /health
+		}
+	}
+	encode gzip
+}
+service3.example.com {
+	respond 404 /
+	respond 200 /health
+	basicauth /secret {
+		user " a \ b"
+	}
+}
+----------
+{
+	email you@example.com
+}
+service2.example.com {
+	respond 200 /
+	route * {
+		reverse_proxy service2:5000 {
+			health_path /health
+		}
+	}
+	encode gzip
+}
+service3.example.com {
+	respond 404 /
+	respond 200 /health
+	basicauth /secret {
+		user " a \ b"
+	}
+}

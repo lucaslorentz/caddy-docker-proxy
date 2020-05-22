@@ -70,13 +70,15 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 
 	if g.options.CaddyfilePath != "" {
 		dat, err := ioutil.ReadFile(g.options.CaddyfilePath)
-
-		if err == nil {
-			_, err = caddyfileBuffer.Write(dat)
-		}
-
 		if err != nil {
 			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+		} else {
+			block, err := caddyfile.Unmarshal(dat)
+			if err != nil {
+				logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+			} else {
+				caddyfileBlock.Merge(block)
+			}
 		}
 	} else {
 		logsBuffer.WriteString("[INFO] Skipping default Caddyfile because no path is set\n")
@@ -114,14 +116,6 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 		logsBuffer.WriteString("[INFO] Skipping services because swarm is not available\n")
 	}
 
-	// Write global blocks first
-	for _, directive := range caddyfileBlock.Children {
-		if directive.IsGlobalBlock() {
-			directive.Write(&caddyfileBuffer, 0)
-			caddyfileBlock.Remove(directive)
-		}
-	}
-
 	// Write swarm configs
 	if g.swarmIsAvailable {
 		configs, err := g.dockerClient.ConfigList(context.Background(), types.ConfigListOptions{})
@@ -129,11 +123,15 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 			for _, config := range configs {
 				if _, hasLabel := config.Spec.Labels[g.options.LabelPrefix]; hasLabel {
 					fullConfig, _, err := g.dockerClient.ConfigInspectWithRaw(context.Background(), config.ID)
-					if err == nil {
-						caddyfileBuffer.Write(fullConfig.Spec.Data)
-						caddyfileBuffer.WriteRune('\n')
-					} else {
+					if err != nil {
 						logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+					} else {
+						block, err := caddyfile.Unmarshal(fullConfig.Spec.Data)
+						if err != nil {
+							logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+						} else {
+							caddyfileBlock.Merge(block)
+						}
 					}
 				}
 			}
@@ -142,6 +140,14 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string) {
 		}
 	} else {
 		logsBuffer.WriteString("[INFO] Skipping configs because swarm is not available\n")
+	}
+
+	// Write global blocks first
+	for _, directive := range caddyfileBlock.Children {
+		if directive.IsGlobalBlock() {
+			directive.Write(&caddyfileBuffer, 0)
+			caddyfileBlock.Remove(directive)
+		}
 	}
 
 	// Write remaining blocks

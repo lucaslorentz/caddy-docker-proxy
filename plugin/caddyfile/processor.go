@@ -72,13 +72,13 @@ func writeServerBlock(writer *bytes.Buffer, serverBlock *caddyfile.ServerBlock) 
 				writer.WriteString(" ")
 			}
 
-			escapedTokenText := strings.ReplaceAll(token.Text, "\"", "\\\"")
-			if strings.ContainsAny(token.Text, " ") {
+			if strings.ContainsAny(token.Text, ` "'`) {
 				writer.WriteString("\"")
-				writer.WriteString(escapedTokenText)
+				escapedToken := strings.ReplaceAll(token.Text, "\"", "\\\"")
+				writer.WriteString(escapedToken)
 				writer.WriteString("\"")
 			} else {
-				writer.WriteString(escapedTokenText)
+				writer.WriteString(token.Text)
 			}
 
 			if token.Text == "{" {
