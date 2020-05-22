@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"net"
+	"time"
+)
 
 // Options are the options for generator
 type Options struct {
@@ -13,6 +16,7 @@ type Options struct {
 	PollingInterval        time.Duration
 	Mode                   Mode
 	Secret                 string
+	ControllerSubnet       *net.IPNet
 }
 
 // Mode represents how this instance should run

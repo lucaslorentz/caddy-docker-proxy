@@ -3,6 +3,7 @@ package plugin
 import (
 	"flag"
 	"log"
+	"net"
 	"os"
 	"regexp"
 	"time"
@@ -24,7 +25,7 @@ func init() {
 		Flags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("docker-proxy", flag.ExitOnError)
 			fs.Bool("mode", false, "Which mode this instance should run: standalone | controller | server")
-			fs.String("secret", "", "Defines a secret that controller and servers will use to communicate")
+			fs.String("controller-subnet", "", "Defines which subnet caddy admin API should listen to")
 			fs.String("caddyfile-path", "", "Path to a base Caddyfile that will be extended with docker sites")
 			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
 			fs.Bool("proxy-service-tasks", false, "Proxy to service tasks instead of service load balancer")
@@ -44,17 +45,11 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 	if options.Mode&config.Server == config.Server {
 		log.Printf("[INFO] Running caddy proxy server")
 
-		if options.Mode&config.Controller == config.Controller {
-			caddy.Run(&caddy.Config{})
-		} else {
-			caddy.Run(&caddy.Config{
-				Admin: &caddy.AdminConfig{
-					Listen:        ":2019",
-					EnforceOrigin: true,
-					Origins:       []string{options.Secret},
-				},
-			})
-		}
+		caddy.Run(&caddy.Config{
+			Admin: &caddy.AdminConfig{
+				Listen: getAdminListen(options),
+			},
+		})
 	}
 
 	if options.Mode&config.Controller == config.Controller {
@@ -66,6 +61,37 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 	select {}
 }
 
+func getAdminListen(options *config.Options) string {
+	if options.ControllerSubnet != nil {
+		ifaces, err := net.Interfaces()
+		if err != nil {
+			log.Printf("[ERROR] Failed to get network interfaces: %v", err)
+		}
+		for _, i := range ifaces {
+			addrs, err := i.Addrs()
+			if err != nil {
+				log.Printf("[ERROR] Failed to get network interface addresses: %v", err)
+				continue
+			}
+			for _, a := range addrs {
+				switch v := a.(type) {
+				case *net.IPAddr:
+					if options.ControllerSubnet.Contains(v.IP) {
+						return "tcp/" + v.IP.String() + ":2019"
+					}
+					break
+				case *net.IPNet:
+					if options.ControllerSubnet.Contains(v.IP) {
+						return "tcp/" + v.IP.String() + ":2019"
+					}
+					break
+				}
+			}
+		}
+	}
+	return "tcp/localhost:2019"
+}
+
 func createOptions(flags caddycmd.Flags) *config.Options {
 	caddyfilePath := flags.String("caddyfile-path")
 	labelPrefixFlag := flags.String("label-prefix")
@@ -74,7 +100,7 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	processCaddyfileFlag := flags.Bool("process-caddyfile")
 	pollingIntervalFlag := flags.Duration("polling-interval")
 	modeFlag := flags.String("mode")
-	secretFlag := flags.String("secret")
+	controllerSubnetFlag := flags.String("controller-subnet")
 
 	options := &config.Options{}
 
@@ -94,10 +120,20 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		options.Mode = config.Standalone
 	}
 
-	if secretEnv := os.Getenv("CADDY_DOCKER_SECRET"); secretEnv != "" {
-		options.Secret = secretEnv
-	} else {
-		options.Secret = secretFlag
+	if controllerIPRangeEnv := os.Getenv("CADDY_CONTROLLER_SUBNET"); controllerIPRangeEnv != "" {
+		_, ipNet, err := net.ParseCIDR(controllerIPRangeEnv)
+		if err != nil {
+			log.Printf("[ERROR] Failed to parse CADDY_CONTROLLER_SUBNET %v: %v", controllerIPRangeEnv, err)
+		} else if ipNet != nil {
+			options.ControllerSubnet = ipNet
+		}
+	} else if controllerSubnetFlag != "" {
+		_, ipNet, err := net.ParseCIDR(controllerSubnetFlag)
+		if err != nil {
+			log.Printf("[ERROR] Failed to parse controller-subnet %v: %v", controllerSubnetFlag, err)
+		} else if ipNet != nil {
+			options.ControllerSubnet = ipNet
+		}
 	}
 
 	if caddyfilePathEnv := os.Getenv("CADDY_DOCKER_CADDYFILE_PATH"); caddyfilePathEnv != "" {

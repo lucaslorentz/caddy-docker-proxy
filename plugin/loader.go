@@ -195,7 +195,6 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", dockerLoader.options.Secret)
 	resp, err := http.DefaultClient.Do(req)
 
 	if err != nil {
