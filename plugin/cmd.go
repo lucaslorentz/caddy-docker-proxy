@@ -25,7 +25,7 @@ func init() {
 		Flags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("docker-proxy", flag.ExitOnError)
 			fs.Bool("mode", false, "Which mode this instance should run: standalone | controller | server")
-			fs.String("controller-subnet", "", "Defines which subnet caddy admin API should listen to")
+			fs.String("controller-network", "", "Network allowed to configure caddy server in CIDR notation. Ex: 10.200.200.0/24")
 			fs.String("caddyfile-path", "", "Path to a base Caddyfile that will be extended with docker sites")
 			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
 			fs.Bool("proxy-service-tasks", false, "Proxy to service tasks instead of service load balancer")
@@ -100,7 +100,7 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	processCaddyfileFlag := flags.Bool("process-caddyfile")
 	pollingIntervalFlag := flags.Duration("polling-interval")
 	modeFlag := flags.String("mode")
-	controllerSubnetFlag := flags.String("controller-subnet")
+	controllerSubnetFlag := flags.String("controller-network")
 
 	options := &config.Options{}
 
@@ -120,17 +120,17 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		options.Mode = config.Standalone
 	}
 
-	if controllerIPRangeEnv := os.Getenv("CADDY_CONTROLLER_SUBNET"); controllerIPRangeEnv != "" {
+	if controllerIPRangeEnv := os.Getenv("CADDY_CONTROLLER_NETWORK"); controllerIPRangeEnv != "" {
 		_, ipNet, err := net.ParseCIDR(controllerIPRangeEnv)
 		if err != nil {
-			log.Printf("[ERROR] Failed to parse CADDY_CONTROLLER_SUBNET %v: %v", controllerIPRangeEnv, err)
+			log.Printf("[ERROR] Failed to parse CADDY_CONTROLLER_NETWORK %v: %v", controllerIPRangeEnv, err)
 		} else if ipNet != nil {
 			options.ControllerSubnet = ipNet
 		}
 	} else if controllerSubnetFlag != "" {
 		_, ipNet, err := net.ParseCIDR(controllerSubnetFlag)
 		if err != nil {
-			log.Printf("[ERROR] Failed to parse controller-subnet %v: %v", controllerSubnetFlag, err)
+			log.Printf("[ERROR] Failed to parse controller-network %v: %v", controllerSubnetFlag, err)
 		} else if ipNet != nil {
 			options.ControllerSubnet = ipNet
 		}

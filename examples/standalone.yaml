@@ -1,34 +1,38 @@
 version: '3.7'
 
-services:
+configs:
+  caddy-basic-content:
+    file: ./Caddyfile
+    labels:
+        caddy:
 
-  caddy_server:
-    image: caddy-docker-proxy:local
+services:
+  
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
     ports:
       - 80:80
       - 443:443
     networks:
-      - caddy_controller
-      - caddy
-    environment:
-      - CADDY_DOCKER_MODE=server
-      - CADDY_CONTROLLER_NETWORK=10.200.200.0/24
-    deploy:
-      replicas: 3
-      labels:
-        caddy_controlled_server:
-
-  caddy_controller:
-    image: caddy-docker-proxy:local
-    networks:
-      - caddy_controller
       - caddy
     environment:
       - CADDY_DOCKER_PROXY_SERVICE_TASKS=true
       - CADDY_DOCKER_PROCESS_CADDYFILE=true
-      - CADDY_DOCKER_MODE=controller
+    labels: # Global options
+      caddy.email: you@example.com
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        reservations:
+          cpus: '0.1'
+          memory: 200M
 
   # Proxy to service
   whoami0:
@@ -90,9 +94,3 @@ services:
 networks:
   caddy:
     driver: overlay
-  caddy_controller:
-    driver: overlay
-    ipam:
-      driver: default
-      config:
-        - subnet: "10.200.200.0/24"
