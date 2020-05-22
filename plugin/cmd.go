@@ -62,7 +62,7 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 }
 
 func getAdminListen(options *config.Options) string {
-	if options.ControllerSubnet != nil {
+	if options.ControllerNetwork != nil {
 		ifaces, err := net.Interfaces()
 		if err != nil {
 			log.Printf("[ERROR] Failed to get network interfaces: %v", err)
@@ -76,12 +76,12 @@ func getAdminListen(options *config.Options) string {
 			for _, a := range addrs {
 				switch v := a.(type) {
 				case *net.IPAddr:
-					if options.ControllerSubnet.Contains(v.IP) {
+					if options.ControllerNetwork.Contains(v.IP) {
 						return "tcp/" + v.IP.String() + ":2019"
 					}
 					break
 				case *net.IPNet:
-					if options.ControllerSubnet.Contains(v.IP) {
+					if options.ControllerNetwork.Contains(v.IP) {
 						return "tcp/" + v.IP.String() + ":2019"
 					}
 					break
@@ -125,14 +125,14 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		if err != nil {
 			log.Printf("[ERROR] Failed to parse CADDY_CONTROLLER_NETWORK %v: %v", controllerIPRangeEnv, err)
 		} else if ipNet != nil {
-			options.ControllerSubnet = ipNet
+			options.ControllerNetwork = ipNet
 		}
 	} else if controllerSubnetFlag != "" {
 		_, ipNet, err := net.ParseCIDR(controllerSubnetFlag)
 		if err != nil {
 			log.Printf("[ERROR] Failed to parse controller-network %v: %v", controllerSubnetFlag, err)
 		} else if ipNet != nil {
-			options.ControllerSubnet = ipNet
+			options.ControllerNetwork = ipNet
 		}
 	}
 

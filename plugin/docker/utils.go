@@ -2,6 +2,7 @@ package docker
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -30,13 +31,16 @@ func (wrapper *dockerUtils) GetCurrentContainerID() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if len(bytes) > 0 {
-		cgroups := string(bytes)
-		idRegex := regexp.MustCompile("docker/([A-Za-z0-9]+)")
-		matches := idRegex.FindStringSubmatch(cgroups)
-		if len(matches) > 1 {
-			return matches[1], nil
-		}
+	if len(bytes) == 0 {
+		return "", errors.New("Cannot read /proc/self/cgroup")
 	}
-	return "", errors.New("Cannot find container id")
+
+	cgroups := string(bytes)
+	idRegex := regexp.MustCompile(`:[^:]*\bcpu\b[^:]*:[^\n]*\/([^\n]*)`)
+	matches := idRegex.FindStringSubmatch(cgroups)
+	if len(matches) == 0 {
+		return "", fmt.Errorf("Cannot find container id in cgroups: %v", cgroups)
+	}
+
+	return matches[len(matches)-1], nil
 }
