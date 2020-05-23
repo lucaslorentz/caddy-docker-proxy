@@ -287,7 +287,7 @@ service:
 		caddy.reverse_proxy={{upstreams}}
 ```
 
-Caddy will use service dns name as target, swarm takes care of load balancing into all containers of that service.
+Caddy will use service DNS name as target or all service tasks IPs, depending on configuration **proxy-service-tasks**.
 
 ### Containers
 To proxy containers, labels should be defined at container level. On a docker-compose file, that means labels should be outside deploy, like:
@@ -297,9 +297,6 @@ service:
 	caddy=service.example.com
 	caddy.reverse_proxy={{upstreams}}
 ```
-When proxying a container, caddy uses a single container IP as target. Currently multiple containers/replicas are not supported under the same website.
-
-
 
 ## Execution modes
 
