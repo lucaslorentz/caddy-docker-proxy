@@ -79,7 +79,7 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 		},
 	}
 
-	const expectedCaddyfile = ""
+	const expectedCaddyfile = "# Empty caddyfile"
 
 	testGeneration(t, dockerClient, true, true, expectedCaddyfile, skipCaddyfileText)
 }
@@ -100,7 +100,7 @@ func testGeneration(
 		ValidateNetwork:   validateNetwork,
 	})
 
-	caddyfileBytes, logs := generator.GenerateCaddyfile()
+	caddyfileBytes, logs, _ := generator.GenerateCaddyfile()
 	assert.Equal(t, expectedCaddyfile, string(caddyfileBytes))
 	assert.Equal(t, expectedLogs, logs)
 }

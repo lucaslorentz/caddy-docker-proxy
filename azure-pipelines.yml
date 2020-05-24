@@ -8,10 +8,15 @@ jobs:
     inputs:
       version: '1.14'
 
-  - bash: ./build.sh
+  - bash: . build.sh
     env:
       ARTIFACTS: '$(Build.ArtifactStagingDirectory)'
     displayName: Build
+
+  - bash: . run-docker-tests.sh
+    env:
+      ARTIFACTS: '$(Build.ArtifactStagingDirectory)'
+    displayName: Run docker tests
 
   - task: PublishBuildArtifacts@1
     inputs:

@@ -107,7 +107,7 @@ caddy=example.com
 caddy.respond=200 /
 ↓
 example.com {
-		respond 200 /
+	respond 200 /
 }
 ```
 
@@ -117,7 +117,7 @@ caddy=(snippet)
 caddy.respond=200 /
 ↓
 (snippet) {
-		respond 200 /
+	respond 200 /
 }
 ```
 
@@ -155,7 +155,7 @@ localhost {
 }
 ```
 
-Global options can be defined by not setting any value for caddy. It can be set in any resource, including caddy container/service. Check [example.yaml](examples/example.yaml)
+Global options can be defined by not setting any value for caddy. It can be set in any container/service, including caddy-docker-proxy itself. [Here is an example](examples/standalone.yaml#L22)
 ```
 caddy.email = you@example.com
 ↓
@@ -272,7 +272,7 @@ caddy.reverse_proxy = {{upstreams}}
 ## Docker configs
 You can also add raw text to your caddyfile using docker configs. Just add caddy label prefix to your configs and the whole config content will be inserted at the beginning of the generated caddyfile, outside any server blocks.
 
-[Here is an example](examples/example.yaml#L4)
+[Here is an example](examples/standalone.yaml#L4)
 
 ## Proxying services vs containers
 Caddy docker proxy is able to proxy to swarm servcies or raw containers. Both features are always enabled, and what will differentiate the proxy target is where you define your labels.
@@ -287,7 +287,7 @@ service:
 		caddy.reverse_proxy={{upstreams}}
 ```
 
-Caddy will use service dns name as target, swarm takes care of load balancing into all containers of that service.
+Caddy will use service DNS name as target or all service tasks IPs, depending on configuration **proxy-service-tasks**.
 
 ### Containers
 To proxy containers, labels should be defined at container level. On a docker-compose file, that means labels should be outside deploy, like:
@@ -297,7 +297,79 @@ service:
 	caddy=service.example.com
 	caddy.reverse_proxy={{upstreams}}
 ```
-When proxying a container, caddy uses a single container IP as target. Currently multiple containers/replicas are not supported under the same website.
+
+## Execution modes
+
+Each caddy docker proxy instance can be executed in one of the following modes.
+
+### Server
+
+Acts as a proxy to your docker resources. The server starts without any configuration, and will not serve anything until it is configured by a "controller".
+
+In order to make a server discoverable and configurable by controllers, you need to mark it with label `caddy_controlled_server` and define the controller network via CLI option `controller-network` or environment variable `CADDY_CONTROLLER_NETWORK`.
+
+Server instances doesn't need access to docker host socket and you can run it in manager or worker nodes.
+
+[Configuration example](examples/distributed.yaml#L5)
+
+### Controller
+
+Controller monitors your docker cluster, generates Caddy configuration and pushes to all servers it finds in your docker cluster.
+
+When Controller instances are connected to more than one network, it is also necessary to define the controller network via CLI option `controller-network` or environment variable `CADDY_CONTROLLER_NETWORK`.
+
+Controller instances requires access to docker host socket.
+
+A single controller instance can configure all server instances in your cluster.
+
+[Configuration example](examples/distributed.yaml#L21)
+
+### Standalone (default)
+
+This mode executes a controller and a server in the same instance and doesn't require additional configuration.
+
+[Configuration example](examples/standalone.yaml#L11)
+
+## Caddy CLI
+
+This plugin extends caddy cli with command `caddy docker-proxy` and flags.
+
+Run `caddy help docker-proxy` to see all available flags.
+
+```
+Usage of docker-proxy:
+  -caddyfile-path string
+    	Path to a base Caddyfile that will be extended with docker sites
+  -controller-network string
+    	Defines from which network a caddy server instance will accept configuration
+  -label-prefix string
+    	Prefix for Docker labels (default "caddy")
+  -mode
+    	Which mode this instance should run: standalone | controller | server
+  -polling-interval duration
+    	Interval caddy should manually check docker for a new caddyfile (default 30s)
+  -process-caddyfile
+    	Process Caddyfile before loading it, removing invalid servers
+  -proxy-service-tasks
+    	Proxy to service tasks instead of service load balancer
+  -validate-network
+    	Validates if caddy container and target are in same network (default true)
+```
+
+Those flags can also be set via environment variables:
+
+```
+CADDY_DOCKER_CADDYFILE_PATH=<string>
+CADDY_CONTROLLER_NETWORK=<string>
+CADDY_DOCKER_LABEL_PREFIX=<string>
+CADDY_DOCKER_MODE=<string>
+CADDY_DOCKER_POLLING_INTERVAL=<duration>
+CADDY_DOCKER_PROCESS_CADDYFILE=<bool>
+CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
+CADDY_DOCKER_VALIDATE_NETWORK=<bool>
+```
+
+Check **examples** folder to see how to set them on a docker compose file.
 
 ## Docker images
 Docker images are available at Docker hub:
@@ -335,39 +407,6 @@ This is an example of how to mount the windows docker pipe using CLI:
 docker run --rm -it -v //./pipe/docker_engine://./pipe/docker_engine lucaslorentz/caddy-docker-proxy:ci-nanoserver-1803
 ```
 
-## Caddy CLI
-This plugin extends caddy cli with command `caddy docker-proxy` and flags.
-
-Run `caddy docker-proxy --help` to see all available flags:
-```
-Usage of docker-proxy:
-	-caddyfile-path string
-			Path to a base Caddyfile that will be extended with docker sites
-	-label-prefix string
-			Prefix for Docker labels (default "caddy")
-	-polling-interval duration
-			Interval caddy should manually check docker for a new caddyfile (default 30s)
-	-process-caddyfile
-			Process Caddyfile before loading it, removing invalid servers
-	-proxy-service-tasks
-			Proxy to service tasks instead of service load balancer
-	-validate-network
-			Validates if caddy container and target are in same network (default true)
-```
-
-Those flags can also be set via environment variables:
-
-```
-CADDY_DOCKER_CADDYFILE_PATH=<string>
-CADDY_DOCKER_LABEL_PREFIX=<string>
-CADDY_DOCKER_POLLING_INTERVAL=<duration>
-CADDY_DOCKER_PROCESS_CADDYFILE=<bool>
-CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
-CADDY_DOCKER_VALIDATE_NETWORK=<bool>
-```
-
-Check **examples** folder to see how to set them on a docker compose file.
-
 ## Connecting to Docker Host
 The default connection to docker host varies per platform:
 * At Unix: `unix:///var/run/docker.sock`
@@ -399,7 +438,7 @@ Clone this repository.
 
 Deploy the compose file to swarm cluster:
 ```
-docker stack deploy -c examples/example.yaml caddy-docker-demo
+docker stack deploy -c examples/standalone.yaml caddy-docker-demo
 ```
 
 Wait a bit for services startup...
