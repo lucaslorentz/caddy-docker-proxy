@@ -1,11 +1,8 @@
 package caddyfile
 
 import (
-	"bytes"
 	"math"
 	"regexp"
-	"sort"
-	"strings"
 )
 
 var snippetRegex = regexp.MustCompile(`^\(.*\)$`)
@@ -102,71 +99,6 @@ func (block *Block) RemoveAllMatches(name string, discriminator string) {
 		}
 	}
 	block.Children = newItems
-}
-
-// Marshal block into caddyfile bytes
-func (block *Block) Marshal() []byte {
-	buffer := &bytes.Buffer{}
-	block.Write(buffer, 0)
-	return buffer.Bytes()
-}
-
-// MarshalString block into caddyfile string
-func (block *Block) MarshalString() string {
-	return string(block.Marshal())
-}
-
-// Write all directives to a buffer
-func (block *Block) Write(buffer *bytes.Buffer, level int) {
-	block.sort(level)
-	for _, subdirective := range block.Children {
-		subdirective.Write(buffer, level)
-	}
-}
-
-// Write directive to a buffer
-func (directive *Directive) Write(buffer *bytes.Buffer, level int) {
-	buffer.WriteString(strings.Repeat("\t", level))
-	needsWhitespace := false
-	if level > 0 && directive.Name != "" {
-		buffer.WriteString(directive.Name)
-		needsWhitespace = true
-	}
-	for _, arg := range directive.Args {
-		if needsWhitespace {
-			buffer.WriteString(" ")
-		}
-		buffer.WriteString(arg)
-		needsWhitespace = true
-	}
-	if len(directive.Children) > 0 {
-		if needsWhitespace {
-			buffer.WriteString(" ")
-		}
-		buffer.WriteString("{\n")
-		directive.Block.Write(buffer, level+1)
-		buffer.WriteString(strings.Repeat("\t", level) + "}")
-	}
-	buffer.WriteString("\n")
-}
-
-func (block *Block) sort(level int) {
-	items := block.Children
-	sort.SliceStable(items, func(i, j int) bool {
-		if level == 0 && items[i].IsGlobalBlock() && !items[j].IsGlobalBlock() {
-			return true
-		}
-		if items[i].Order != items[j].Order {
-			return items[i].Order < items[j].Order
-		}
-		if items[i].Name != items[j].Name {
-			return items[i].Name < items[j].Name
-		}
-		if len(items[i].Args) > 0 && len(items[j].Args) > 0 && items[i].Args[0] != items[j].Args[0] {
-			return items[i].Args[0] < items[j].Args[0]
-		}
-		return items[i].Discriminator < items[j].Discriminator
-	})
 }
 
 // IsGlobalBlock returns if directive is global directive
