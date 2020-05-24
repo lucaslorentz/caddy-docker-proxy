@@ -27,7 +27,7 @@ func fmtLabel(s string) string {
 	return fmt.Sprintf(s, DefaultLabelPrefix)
 }
 
-func TestAddDockerConfigContent(t *testing.T) {
+func TestMergeConfigContent(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ConfigsData = []swarm.Config{
 		{
@@ -39,16 +39,43 @@ func TestAddDockerConfigContent(t *testing.T) {
 					},
 				},
 				Data: []byte(
-					"example.com {\n" +
-						"	tls off+\n" +
+					"{\n" +
+						"	email test@example.com\n" +
+						"}\n" +
+						"example.com {\n" +
+						"	reverse_proxy 127.0.0.1\n" +
 						"}",
 				),
 			},
 		},
 	}
+	dockerClient.ContainersData = []types.Container{
+		{
+			Names: []string{
+				"container-name",
+			},
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": {
+						IPAddress: "172.17.0.2",
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):                      "example.com",
+				fmtLabel("%s.reverse_proxy"):        "{{upstreams}}",
+				fmtLabel("%s_1.experimental_http3"): "",
+			},
+		},
+	}
 
-	const expectedCaddyfile = "example.com {\n" +
-		"	tls off+\n" +
+	const expectedCaddyfile = "{\n" +
+		"	email test@example.com\n" +
+		"	experimental_http3\n" +
+		"}\n" +
+		"example.com {\n" +
+		"	reverse_proxy 127.0.0.1 172.17.0.2\n" +
 		"}\n"
 
 	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)

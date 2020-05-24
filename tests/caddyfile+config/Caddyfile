@@ -1,0 +1,5 @@
+# This is an example Caddyfile stored inside docker swarm config
+whoami0.local {
+    respond /caddyfile "Caddyfile" 200
+    tls internal
+}

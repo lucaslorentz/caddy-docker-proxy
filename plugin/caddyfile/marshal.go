@@ -3,6 +3,7 @@ package caddyfile
 import (
 	"bytes"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
@@ -99,7 +100,7 @@ func Unmarshal(caddyfileContent []byte) (*Block, error) {
 func unmarshalServerBlock(serverBlock *caddyfile.ServerBlock, index int) *Directive {
 	stack := []*Directive{}
 
-	directive := CreateDirective("caddy", "")
+	directive := CreateDirective("caddy", strconv.Itoa(index))
 	directive.Order = index
 	directive.AddArgs(serverBlock.Keys...)
 	stack = append(stack, directive)
@@ -121,9 +122,10 @@ func unmarshalServerBlock(serverBlock *caddyfile.ServerBlock, index int) *Direct
 			} else if token.Text == "{" {
 				stack = append(stack, subDirective)
 			} else if newDirective {
+				parentDirective := stack[len(stack)-1]
 				subDirective = CreateDirective(token.Text, "")
-				subDirective.Order = len(stack[len(stack)-1].Children)
-				stack[len(stack)-1].AddDirective(subDirective)
+				subDirective.Order = len(parentDirective.Children)
+				parentDirective.AddDirective(subDirective)
 				newDirective = false
 			} else {
 				subDirective.AddArgs(token.Text)

@@ -68,7 +68,9 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 	}
 
 	caddyfileBlock := caddyfile.CreateBlock()
+	controlledServers := []string{}
 
+	// Add caddyfile from path
 	if g.options.CaddyfilePath != "" {
 		dat, err := ioutil.ReadFile(g.options.CaddyfilePath)
 		if err != nil {
@@ -85,8 +87,33 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 		logsBuffer.WriteString("[INFO] Skipping default Caddyfile because no path is set\n")
 	}
 
-	controlledServers := []string{}
+	// Add Caddyfile from swarm configs
+	if g.swarmIsAvailable {
+		configs, err := g.dockerClient.ConfigList(context.Background(), types.ConfigListOptions{})
+		if err == nil {
+			for _, config := range configs {
+				if _, hasLabel := config.Spec.Labels[g.options.LabelPrefix]; hasLabel {
+					fullConfig, _, err := g.dockerClient.ConfigInspectWithRaw(context.Background(), config.ID)
+					if err != nil {
+						logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+					} else {
+						block, err := caddyfile.Unmarshal(fullConfig.Spec.Data)
+						if err != nil {
+							logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+						} else {
+							caddyfileBlock.Merge(block)
+						}
+					}
+				}
+			}
+		} else {
+			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+		}
+	} else {
+		logsBuffer.WriteString("[INFO] Skipping configs because swarm is not available\n")
+	}
 
+	// Add containers
 	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err == nil {
 		for _, container := range containers {
@@ -114,6 +141,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 		logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 	}
 
+	// Add services
 	if g.swarmIsAvailable {
 		services, err := g.dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
 		if err == nil {
@@ -143,32 +171,6 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 		}
 	} else {
 		logsBuffer.WriteString("[INFO] Skipping services because swarm is not available\n")
-	}
-
-	// Write swarm configs
-	if g.swarmIsAvailable {
-		configs, err := g.dockerClient.ConfigList(context.Background(), types.ConfigListOptions{})
-		if err == nil {
-			for _, config := range configs {
-				if _, hasLabel := config.Spec.Labels[g.options.LabelPrefix]; hasLabel {
-					fullConfig, _, err := g.dockerClient.ConfigInspectWithRaw(context.Background(), config.ID)
-					if err != nil {
-						logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
-					} else {
-						block, err := caddyfile.Unmarshal(fullConfig.Spec.Data)
-						if err != nil {
-							logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
-						} else {
-							caddyfileBlock.Merge(block)
-						}
-					}
-				}
-			}
-		} else {
-			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
-		}
-	} else {
-		logsBuffer.WriteString("[INFO] Skipping configs because swarm is not available\n")
 	}
 
 	// Write global blocks first

@@ -1,0 +1,38 @@
+version: '3.7'
+
+configs:
+  caddy-basic-content:
+    file: ./CaddyfileConfig
+    labels:
+        caddy:
+
+services:
+
+  caddy:
+    image: caddy-docker-proxy:local
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - caddy
+    environment:
+      - CADDY_DOCKER_PROXY_SERVICE_TASKS=true
+      - CADDY_DOCKER_PROCESS_CADDYFILE=true
+      - CADDY_DOCKER_CADDYFILE_PATH=/test/Caddyfile
+    volumes:
+      - ./Caddyfile:/test/Caddyfile
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  whoami0:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    deploy:
+      labels:
+        caddy: whoami0.local
+        caddy.reverse_proxy: "/whoami {{upstreams 8000}}"
+        caddy.tls: "internal"
+
+networks:
+  caddy:
+    driver: overlay
