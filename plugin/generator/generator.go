@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"regexp"
 	"time"
 
@@ -93,7 +94,9 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 					logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 				} else {
 					for _, ip := range ips {
-						controlledServers = append(controlledServers, ip)
+						if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
+							controlledServers = append(controlledServers, ip)
+						}
 					}
 				}
 			}
@@ -119,7 +122,9 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 						logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 					} else {
 						for _, ip := range ips {
-							controlledServers = append(controlledServers, ip)
+							if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
+								controlledServers = append(controlledServers, ip)
+							}
 						}
 					}
 				}

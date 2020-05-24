@@ -16,7 +16,7 @@ type Options struct {
 	PollingInterval        time.Duration
 	Mode                   Mode
 	Secret                 string
-	ControllerSubnet       *net.IPNet
+	ControllerNetwork      *net.IPNet
 }
 
 // Mode represents how this instance should run

@@ -2,8 +2,8 @@
 
 set -e
 
-docker stack deploy -c compose.yaml --prune caddy_test
+. ../functions.sh
 
-sleep 2
+docker stack deploy -c compose.yaml --prune caddy_test
 
 docker service logs caddy_test_caddy

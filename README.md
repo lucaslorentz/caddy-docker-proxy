@@ -316,6 +316,8 @@ Server instances doesn't need access to docker host socket and you can run it in
 
 Controller monitors your docker cluster, generates Caddy configuration and pushes to all servers it finds in your docker cluster.
 
+When Controller instances are connected to more than one network, it is also necessary to define the controller network via CLI option `controller-network` or environment variable `CADDY_CONTROLLER_NETWORK`.
+
 Controller instances requires access to docker host socket.
 
 A single controller instance can configure all server instances in your cluster.

@@ -4,7 +4,7 @@ set -e
 
 for d in */
 do
-  (cd $d && ./run.sh)
+  (cd $d && . run.sh)
 done
 
 docker stack rm caddy_test
