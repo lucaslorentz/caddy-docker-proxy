@@ -1,0 +1,22 @@
+caddy       = localhost
+caddy.1_bbb = value
+caddy.2_aaa = value
+caddy.3_merged.a = value
+caddy.3_merged.b = value
+caddy.4_isolated.a = value
+caddy.5_isolated.b = value
+----------
+localhost {
+	bbb value
+	aaa value
+	merged {
+		a value
+		b value
+	}
+	isolated {
+		a value
+	}
+	isolated {
+		b value
+	}
+}

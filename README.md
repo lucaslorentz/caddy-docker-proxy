@@ -75,17 +75,6 @@ caddy.aaa=value
 }
 ```
 
-Prefix &lt;number&gt;_ defines a custom ordering for directives, and directives without order prefix will go last:
-```
-caddy.1_bbb=value
-caddy.2_aaa=value
-↓
-{
-	bbb value
-	aaa value
-}
-```
-
 Suffix _&lt;number&gt; isolates directives that otherwise would be grouped:
 ```
 caddy.group_0.a=value
@@ -98,6 +87,19 @@ caddy.group_1.b=value
 	group {
 		b value
 	}
+}
+```
+
+Prefix &lt;number&gt;_ isolates directives but also defines a custom ordering for directives, and directives without order prefix will go last:
+```
+caddy.1_bbb=value
+caddy.2_aaa=value
+caddy.3_aaa=value
+↓
+{
+	bbb value
+	aaa value
+	aaa value
 }
 ```
 

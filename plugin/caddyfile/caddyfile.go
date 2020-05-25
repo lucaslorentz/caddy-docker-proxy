@@ -49,8 +49,8 @@ func (block *Block) AddDirective(directive *Directive) {
 }
 
 // GetOrCreateDirective gets an existing directive or create a new one if not found
-func (block *Block) GetOrCreateDirective(name string, discriminator string) *Directive {
-	existing := block.GetFirstMatch(name, discriminator)
+func (block *Block) GetOrCreateDirective(order int, name string, discriminator string) *Directive {
+	existing := block.GetFirstMatch(order, name, discriminator)
 	if existing == nil {
 		existing = CreateDirective(name, discriminator)
 		block.AddDirective(existing)
@@ -59,9 +59,9 @@ func (block *Block) GetOrCreateDirective(name string, discriminator string) *Dir
 }
 
 // GetFirstMatch gets the first subdirective that matches parameters
-func (block *Block) GetFirstMatch(name string, discriminator string) *Directive {
+func (block *Block) GetFirstMatch(order int, name string, discriminator string) *Directive {
 	for _, directive := range block.Children {
-		if directive.Name == name && directive.Discriminator == discriminator {
+		if directive.Order == order && directive.Name == name && directive.Discriminator == discriminator {
 			return directive
 		}
 	}
