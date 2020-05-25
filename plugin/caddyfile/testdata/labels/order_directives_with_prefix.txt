@@ -1,8 +1,0 @@
-caddy       = localhost
-caddy.1_bbb = value
-caddy.2_aaa = value
-----------
-localhost {
-	bbb value
-	aaa value
-}

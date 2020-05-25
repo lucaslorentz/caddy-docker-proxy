@@ -33,7 +33,7 @@ func getOrCreateDirective(directives *Block, path string) *Directive {
 	var directive *Directive
 	for _, p := range strings.Split(path, ".") {
 		order, name, discriminator := parseLabelSegment(p)
-		directive = currentBlock.GetFirstMatch(name, discriminator)
+		directive = currentBlock.GetFirstMatch(order, name, discriminator)
 		if directive == nil {
 			directive = CreateDirective(name, discriminator)
 			directive.Order = order
