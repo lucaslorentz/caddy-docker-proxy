@@ -476,11 +476,7 @@ docker rm -f caddy whoami0 whoami1
 ```
 
 ## Building it
-You can use our caddy build wrapper **build.sh** and include additional plugins on https://github.com/lucaslorentz/caddy-docker-proxy/blob/master/main.go#L8
 
-Or, you can build from caddy repository and import  **caddy-docker-proxy** plugin on file https://github.com/caddyserver/caddy/blob/master/cmd/caddy/main.go#L33 :
-```
-import (
-	_ "github.com/lucaslorentz/caddy-docker-proxy/plugin/v2"
-)
-```
+You can build caddy using [xcaddy](https://github.com/caddyserver/xcaddy) or [caddy docker builder](https://hub.docker.com/_/caddy).
+
+Use module name **github.com/lucaslorentz/caddy-docker-proxy/plugin/v2** to add this plugin to your build.

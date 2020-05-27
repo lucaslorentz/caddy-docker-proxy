@@ -7,8 +7,12 @@ jobs:
   - task: GoTool@0
     inputs:
       version: '1.14'
+      GOPATH: '$(Agent.BuildDirectory)/go'
+      GOBIN: '$(GOPATH)/bin'
 
-  - bash: . build.sh
+  - bash: |
+      export PATH="$GOBIN:$PATH"
+      . build.sh
     env:
       ARTIFACTS: '$(Build.ArtifactStagingDirectory)'
     displayName: Build
