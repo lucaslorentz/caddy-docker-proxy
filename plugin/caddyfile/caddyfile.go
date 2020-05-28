@@ -7,101 +7,112 @@ import (
 
 var snippetRegex = regexp.MustCompile(`^\(.*\)$`)
 
-// Directive represents a segment in caddyfile
-type Directive struct {
-	*Block
+// Block represents any element in a caddyfile:
+// - GlobalOptions
+// - Snippet
+// - Site
+// - MatcherDefinition
+// - Option
+// - Directive
+// - Subdirective
+// It's structure is rendering in a caddyfile as:
+// Name Args[0] Args[1] ... {
+//	...Children
+// }
+type Block struct {
+	*Container
 	Order         int
 	Name          string
 	Discriminator string
 	Args          []string
 }
 
-// Block represents a collection of directives
-type Block struct {
-	Children []*Directive
+// Container represents a collection of blocks
+type Container struct {
+	Children []*Block
 }
 
-// CreateDirective creates a directive with a name and a discriminator
-func CreateDirective(name string, discriminator string) *Directive {
-	return &Directive{
-		Block:         CreateBlock(),
+// CreateBlock creates a block with a name and a discriminator
+func CreateBlock(name string, discriminator string) *Block {
+	return &Block{
+		Container:     CreateContainer(),
 		Order:         math.MaxInt32,
 		Name:          name,
 		Discriminator: discriminator,
 	}
 }
 
-// CreateBlock creates a directive container
-func CreateBlock() *Block {
-	return &Block{
-		Children: []*Directive{},
+// CreateContainer creates a block container
+func CreateContainer() *Container {
+	return &Container{
+		Children: []*Block{},
 	}
 }
 
-// AddArgs add one or more arguments to directive
-func (directive *Directive) AddArgs(args ...string) {
-	directive.Args = append(directive.Args, args...)
+// AddArgs add one or more arguments to block
+func (block *Block) AddArgs(args ...string) {
+	block.Args = append(block.Args, args...)
 }
 
-// AddDirective adds a directive to a container
-func (block *Block) AddDirective(directive *Directive) {
-	block.Children = append(block.Children, directive)
+// AddBlock adds a block to a container
+func (container *Container) AddBlock(block *Block) {
+	container.Children = append(container.Children, block)
 }
 
-// GetOrCreateDirective gets an existing directive or create a new one if not found
-func (block *Block) GetOrCreateDirective(order int, name string, discriminator string) *Directive {
-	existing := block.GetFirstMatch(order, name, discriminator)
+// GetOrCreateBlock gets an existing block or create a new one if not found
+func (container *Container) GetOrCreateBlock(order int, name string, discriminator string) *Block {
+	existing := container.GetFirstMatch(order, name, discriminator)
 	if existing == nil {
-		existing = CreateDirective(name, discriminator)
-		block.AddDirective(existing)
+		existing = CreateBlock(name, discriminator)
+		container.AddBlock(existing)
 	}
 	return existing
 }
 
-// GetFirstMatch gets the first subdirective that matches parameters
-func (block *Block) GetFirstMatch(order int, name string, discriminator string) *Directive {
-	for _, directive := range block.Children {
-		if directive.Order == order && directive.Name == name && directive.Discriminator == discriminator {
-			return directive
+// GetFirstMatch gets the first block that matches parameters
+func (container *Container) GetFirstMatch(order int, name string, discriminator string) *Block {
+	for _, block := range container.Children {
+		if block.Order == order && block.Name == name && block.Discriminator == discriminator {
+			return block
 		}
 	}
 	return nil
 }
 
-// GetAllByName gets all subdirectives with that name
-func (block *Block) GetAllByName(name string) []*Directive {
-	matched := []*Directive{}
-	for _, directive := range block.Children {
-		if directive.Name == name {
-			matched = append(matched, directive)
+// GetAllByName gets all blocks with that name
+func (container *Container) GetAllByName(name string) []*Block {
+	matched := []*Block{}
+	for _, block := range container.Children {
+		if block.Name == name {
+			matched = append(matched, block)
 		}
 	}
 	return matched
 }
 
-// Remove removes a specific subdirective
-func (block *Block) Remove(directiveToDelete *Directive) {
-	newItems := []*Directive{}
-	for _, directive := range block.Children {
-		if directive != directiveToDelete {
-			newItems = append(newItems, directive)
+// Remove removes a specific block
+func (container *Container) Remove(blockToDelete *Block) {
+	newItems := []*Block{}
+	for _, block := range container.Children {
+		if block != blockToDelete {
+			newItems = append(newItems, block)
 		}
 	}
-	block.Children = newItems
+	container.Children = newItems
 }
 
-// RemoveAllMatches removes all matching subdirectives
-func (block *Block) RemoveAllMatches(name string, discriminator string) {
-	newItems := []*Directive{}
-	for _, directive := range block.Children {
-		if directive.Name != name || directive.Discriminator != discriminator {
-			newItems = append(newItems, directive)
+// RemoveAllMatches removes all matching blocks
+func (container *Container) RemoveAllMatches(name string, discriminator string) {
+	newItems := []*Block{}
+	for _, block := range container.Children {
+		if block.Name != name || block.Discriminator != discriminator {
+			newItems = append(newItems, block)
 		}
 	}
-	block.Children = newItems
+	container.Children = newItems
 }
 
-// IsGlobalBlock returns if directive is global directive
-func (directive *Directive) IsGlobalBlock() bool {
-	return len(directive.Args) == 0
+// IsGlobalBlock returns if block is a global block
+func (block *Block) IsGlobalBlock() bool {
+	return len(block.Args) == 0
 }

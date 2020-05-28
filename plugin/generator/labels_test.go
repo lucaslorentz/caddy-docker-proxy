@@ -65,7 +65,7 @@ func TestLabelsToCaddyfile(t *testing.T) {
 		assert.NoError(t, err, "expected no error in %s", filename)
 
 		// compare the actual and expected Caddyfiles
-		actualCaddyfile := strings.TrimSpace(caddyfileBlock.MarshalString())
+		actualCaddyfile := strings.TrimSpace(string(caddyfileBlock.Marshal()))
 		assert.Equal(t, expectedCaddyfile, actualCaddyfile,
 			"comparison failed in %s: \nExpected:\n%s\n\nActual:\n%s\n",
 			filename, expectedCaddyfile, actualCaddyfile)

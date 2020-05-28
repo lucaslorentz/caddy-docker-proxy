@@ -13,44 +13,48 @@ var whitespaceRegex = regexp.MustCompile("\\s+")
 var labelSegmentRegex = regexp.MustCompile(`^(?:(\d+)_)?(.*?)(?:_(\d+))?$`)
 
 // FromLabels converts key value labels into a caddyfile
-func FromLabels(labels map[string]string, templateData interface{}, templateFuncs template.FuncMap) (*Block, error) {
-	block := CreateBlock()
+func FromLabels(labels map[string]string, templateData interface{}, templateFuncs template.FuncMap) (*Container, error) {
+	container := CreateContainer()
 
 	for label, value := range labels {
-		directive := getOrCreateDirective(block, label)
+		block := getOrCreateBlock(container, label)
 		argsText, err := processVariables(templateData, templateFuncs, value)
 		if err != nil {
 			return nil, err
 		}
-		directive.Args = parseArgs(argsText)
+		block.Args = parseArgs(argsText)
 	}
 
-	return block, nil
+	return container, nil
 }
 
-func getOrCreateDirective(directives *Block, path string) *Directive {
-	currentBlock := directives
-	var directive *Directive
-	for _, p := range strings.Split(path, ".") {
-		order, name, discriminator := parseLabelSegment(p)
-		directive = currentBlock.GetFirstMatch(order, name, discriminator)
-		if directive == nil {
-			directive = CreateDirective(name, discriminator)
-			directive.Order = order
-			currentBlock.AddDirective(directive)
+func getOrCreateBlock(container *Container, path string) *Block {
+	currentContainer := container
+	var block *Block
+	for i, p := range strings.Split(path, ".") {
+		order, name, discriminator := parseLabelSegment(p, i)
+		block = currentContainer.GetFirstMatch(order, name, discriminator)
+		if block == nil {
+			block = CreateBlock(name, discriminator)
+			block.Order = order
+			currentContainer.AddBlock(block)
 		}
-		currentBlock = directive.Block
+		currentContainer = block.Container
 	}
-	return directive
+	return block
 }
 
-func parseLabelSegment(text string) (int, string, string) {
+func parseLabelSegment(text string, index int) (int, string, string) {
 	match := labelSegmentRegex.FindStringSubmatch(text)
 	order := math.MaxInt32
+	name := ""
 	if match[1] != "" {
 		order, _ = strconv.Atoi(match[1])
 	}
-	return order, match[2], match[3]
+	if index > 0 {
+		name = match[2]
+	}
+	return order, name, match[3]
 }
 
 func processVariables(data interface{}, funcs template.FuncMap, content string) (string, error) {

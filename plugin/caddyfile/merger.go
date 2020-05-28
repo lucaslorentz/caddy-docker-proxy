@@ -2,50 +2,50 @@ package caddyfile
 
 import "strings"
 
-// Merge a second caddyfile block into the current block
-func (blockA *Block) Merge(blockB *Block) {
+// Merge a second caddyfile container into the current container
+func (containerA *Container) Merge(containerB *Container) {
 OuterLoop:
-	for _, directiveB := range blockB.Children {
-		name := directiveB.Name
-		for _, directiveA := range blockA.GetAllByName(name) {
-			if name == "reverse_proxy" && getMatcher(directiveA) == getMatcher(directiveB) {
-				mergeReverseProxy(directiveA, directiveB)
+	for _, blockB := range containerB.Children {
+		name := blockB.Name
+		for _, blockA := range containerA.GetAllByName(name) {
+			if name == "reverse_proxy" && getMatcher(blockA) == getMatcher(blockB) {
+				mergeReverseProxy(blockA, blockB)
 				continue OuterLoop
-			} else if directiveArgsAreEqual(directiveA, directiveB) {
-				directiveA.Block.Merge(directiveB.Block)
+			} else if blocksAreEqual(blockA, blockB) {
+				blockA.Container.Merge(blockB.Container)
 				continue OuterLoop
 			}
 		}
-		blockA.AddDirective(directiveB)
+		containerA.AddBlock(blockB)
 	}
 }
 
-func mergeReverseProxy(directiveA *Directive, directiveB *Directive) {
-	for index, arg := range directiveB.Args {
+func mergeReverseProxy(blockA *Block, blockB *Block) {
+	for index, arg := range blockB.Args {
 		if index > 0 || !isMatcher(arg) {
-			directiveA.AddArgs(arg)
+			blockA.AddArgs(arg)
 		}
 	}
-	directiveA.Block.Merge(directiveB.Block)
+	blockA.Container.Merge(blockB.Container)
 }
 
-func getMatcher(directive *Directive) string {
-	if len(directive.Args) == 0 || !isMatcher(directive.Args[0]) {
+func getMatcher(block *Block) string {
+	if len(block.Args) == 0 || !isMatcher(block.Args[0]) {
 		return "*"
 	}
-	return directive.Args[0]
+	return block.Args[0]
 }
 
 func isMatcher(value string) bool {
 	return value == "*" || strings.HasPrefix(value, "/") || strings.HasPrefix(value, "@")
 }
 
-func directiveArgsAreEqual(directiveA *Directive, directiveB *Directive) bool {
-	if len(directiveA.Args) != len(directiveB.Args) {
+func blocksAreEqual(blockA *Block, blockB *Block) bool {
+	if len(blockA.Args) != len(blockB.Args) {
 		return false
 	}
-	for i := 0; i < len(directiveA.Args); i++ {
-		if directiveA.Args[i] != directiveB.Args[i] {
+	for i := 0; i < len(blockA.Args); i++ {
+		if blockA.Args[i] != blockB.Args[i] {
 			return false
 		}
 	}

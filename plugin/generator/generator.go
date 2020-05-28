@@ -67,7 +67,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 		g.swarmIsAvailableTime = time.Now()
 	}
 
-	caddyfileBlock := caddyfile.CreateBlock()
+	caddyfileBlock := caddyfile.CreateContainer()
 	controlledServers := []string{}
 
 	// Add caddyfile from path
@@ -174,10 +174,10 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 	}
 
 	// Write global blocks first
-	for _, directive := range caddyfileBlock.Children {
-		if directive.IsGlobalBlock() {
-			directive.Write(&caddyfileBuffer, 0)
-			caddyfileBlock.Remove(directive)
+	for _, block := range caddyfileBlock.Children {
+		if block.IsGlobalBlock() {
+			block.Write(&caddyfileBuffer, 0)
+			caddyfileBlock.Remove(block)
 		}
 	}
 

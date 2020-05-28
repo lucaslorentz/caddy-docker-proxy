@@ -12,7 +12,7 @@ import (
 	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/caddyfile"
 )
 
-func (g *CaddyfileGenerator) getServiceCaddyfile(service *swarm.Service, logsBuffer *bytes.Buffer) (*caddyfile.Block, error) {
+func (g *CaddyfileGenerator) getServiceCaddyfile(service *swarm.Service, logsBuffer *bytes.Buffer) (*caddyfile.Container, error) {
 	caddyLabels := g.filterLabels(service.Spec.Labels)
 
 	return labelsToCaddyfile(caddyLabels, service, func() ([]string, error) {

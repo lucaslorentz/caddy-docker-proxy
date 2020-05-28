@@ -47,21 +47,21 @@ func TestLabelsToCaddyfile(t *testing.T) {
 		expectedCaddyfile = winNewlines.ReplaceAllString(expectedCaddyfile, "\n")
 
 		// convert the labels to a Caddyfile
-		caddyfileBlock, err := FromLabels(labels, nil, template.FuncMap{})
+		caddyfileContainer, err := FromLabels(labels, nil, template.FuncMap{})
 
 		// if the result is nil then we expect an empty Caddyfile
-		if caddyfileBlock == nil {
+		if caddyfileContainer == nil {
 			if expectedCaddyfile != "" {
 				t.Errorf("got nil in %s but expected: %s", filename, expectedCaddyfile)
 			}
 			continue
 		}
 
-		// if caddyfileBlock is not nil, we expect no error
+		// if caddyfileContainer is not nil, we expect no error
 		assert.NoError(t, err, "expected no error in %s", filename)
 
 		// compare the actual and expected Caddyfiles
-		actualCaddyfile := strings.TrimSpace(caddyfileBlock.MarshalString())
+		actualCaddyfile := strings.TrimSpace(string(caddyfileContainer.Marshal()))
 		assert.Equal(t, expectedCaddyfile, actualCaddyfile,
 			"comparison failed in %s: \nExpected:\n%s\n\nActual:\n%s\n",
 			filename, expectedCaddyfile, actualCaddyfile)

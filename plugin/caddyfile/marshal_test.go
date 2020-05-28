@@ -41,8 +41,8 @@ func TestMarshalUnmarshal(t *testing.T) {
 		parts := strings.Split(content, "----------\n")
 		beforeCaddyfile, expectedCaddyfile := parts[0], parts[1]
 
-		block, _ := Unmarshal([]byte(beforeCaddyfile))
-		result := block.MarshalString()
+		container, _ := Unmarshal([]byte(beforeCaddyfile))
+		result := string(container.Marshal())
 
 		actualCaddyfile := string(result)
 

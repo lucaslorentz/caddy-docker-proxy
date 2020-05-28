@@ -10,7 +10,7 @@ import (
 
 type targetsProvider func() ([]string, error)
 
-func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTargets targetsProvider) (*caddyfile.Block, error) {
+func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTargets targetsProvider) (*caddyfile.Container, error) {
 	funcMap := template.FuncMap{
 		"upstreams": func(options ...interface{}) (string, error) {
 			targets, err := getTargets()
