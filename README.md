@@ -237,32 +237,34 @@ caddy.reverse_proxy = {{upstreams}}
 Proxying domain root to container path
 ```
 caddy = example.com
-caddy.0_rewrite = * /target{path}
-caddy.1_reverse_proxy = {{upstreams}}
+caddy.rewrite = * /target{path}
+caddy.reverse_proxy = {{upstreams}}
 ```
 
 Proxying domain path to container root
 ```
 caddy = example.com
-caddy.reverse_proxy = /source/* {{upstreams http 8080}}
+caddy.route = /source/*
+caddy.route.0_uri = strip_prefix /source
+caddy.route.1_reverse_proxy = {{upstreams}}
 ```
 
 Proxying domain path to different container path
 ```
 caddy = example.com
 caddy.route = /source/*
-caddy.0_uri = strip_prefix /source
-caddy.1_rewrite = * /target{path}
-caddy.2_reverse_proxy = {{upstreams}}
+caddy.route.0_uri = strip_prefix /source
+caddy.route.1_rewrite = * /target{path}
+caddy.route.2_reverse_proxy = {{upstreams}}
 ```
 
 Proxying domain path to subpath
 ```
 caddy = example.com
 caddy.route = /source/*
-caddy.0_uri = strip_prefix /source
-caddy.1_rewrite = * /source/target{path}
-caddy.2_reverse_proxy = {{upstreams}}
+caddy.route.0_uri = strip_prefix /source
+caddy.route.1_rewrite = * /source/target{path}
+caddy.route.2_reverse_proxy = {{upstreams}}
 ```
 
 Proxying multiple domains to container
