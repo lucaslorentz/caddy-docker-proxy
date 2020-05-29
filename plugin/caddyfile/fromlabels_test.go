@@ -28,43 +28,46 @@ func TestLabelsToCaddyfile(t *testing.T) {
 
 		// read the test file
 		filename := f.Name()
-		data, err := ioutil.ReadFile("./testdata/labels/" + filename)
-		if err != nil {
-			t.Errorf("failed to read %s dir: %s", filename, err)
-		}
 
-		// split the labels (first) and Caddyfile (second) parts
-		parts := strings.Split(string(data), "----------")
-		labelsString, expectedCaddyfile := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
-
-		// parse label key-value pairs
-		labels, err := parseLabelsFromString(labelsString)
-		if err != nil {
-			t.Errorf("failed to parse labels from %s", filename)
-		}
-
-		// replace windows newlines in the json with unix newlines
-		expectedCaddyfile = winNewlines.ReplaceAllString(expectedCaddyfile, "\n")
-
-		// convert the labels to a Caddyfile
-		caddyfileContainer, err := FromLabels(labels, nil, template.FuncMap{})
-
-		// if the result is nil then we expect an empty Caddyfile
-		if caddyfileContainer == nil {
-			if expectedCaddyfile != "" {
-				t.Errorf("got nil in %s but expected: %s", filename, expectedCaddyfile)
+		t.Run(filename, func(t *testing.T) {
+			data, err := ioutil.ReadFile("./testdata/labels/" + filename)
+			if err != nil {
+				t.Errorf("failed to read %s dir: %s", filename, err)
 			}
-			continue
-		}
 
-		// if caddyfileContainer is not nil, we expect no error
-		assert.NoError(t, err, "expected no error in %s", filename)
+			// split the labels (first) and Caddyfile (second) parts
+			parts := strings.Split(string(data), "----------")
+			labelsString, expectedCaddyfile := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 
-		// compare the actual and expected Caddyfiles
-		actualCaddyfile := strings.TrimSpace(string(caddyfileContainer.Marshal()))
-		assert.Equal(t, expectedCaddyfile, actualCaddyfile,
-			"comparison failed in %s: \nExpected:\n%s\n\nActual:\n%s\n",
-			filename, expectedCaddyfile, actualCaddyfile)
+			// parse label key-value pairs
+			labels, err := parseLabelsFromString(labelsString)
+			if err != nil {
+				t.Errorf("failed to parse labels from %s", filename)
+			}
+
+			// replace windows newlines in the json with unix newlines
+			expectedCaddyfile = winNewlines.ReplaceAllString(expectedCaddyfile, "\n")
+
+			// convert the labels to a Caddyfile
+			caddyfileContainer, err := FromLabels(labels, nil, template.FuncMap{})
+
+			// if the result is nil then we expect an empty Caddyfile
+			if caddyfileContainer == nil {
+				if expectedCaddyfile != "" {
+					t.Errorf("got nil in %s but expected: %s", filename, expectedCaddyfile)
+				}
+				return
+			}
+
+			// if caddyfileContainer is not nil, we expect no error
+			assert.NoError(t, err, "expected no error in %s", filename)
+
+			// compare the actual and expected Caddyfiles
+			actualCaddyfile := strings.TrimSpace(string(caddyfileContainer.Marshal()))
+			assert.Equal(t, expectedCaddyfile, actualCaddyfile,
+				"comparison failed in %s: \nExpected:\n%s\n\nActual:\n%s\n",
+				filename, expectedCaddyfile, actualCaddyfile)
+		})
 	}
 }
 

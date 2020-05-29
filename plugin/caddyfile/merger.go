@@ -2,13 +2,13 @@ package caddyfile
 
 import "strings"
 
-// Merge a second caddyfile container into the current container
+// Merge a second caddyfile container into this container
 func (containerA *Container) Merge(containerB *Container) {
 OuterLoop:
 	for _, blockB := range containerB.Children {
-		name := blockB.Name
-		for _, blockA := range containerA.GetAllByName(name) {
-			if name == "reverse_proxy" && getMatcher(blockA) == getMatcher(blockB) {
+		firstKey := blockB.GetFirstKey()
+		for _, blockA := range containerA.GetAllByFirstKey(firstKey) {
+			if firstKey == "reverse_proxy" && getMatcher(blockA) == getMatcher(blockB) {
 				mergeReverseProxy(blockA, blockB)
 				continue OuterLoop
 			} else if blocksAreEqual(blockA, blockB) {
@@ -21,19 +21,19 @@ OuterLoop:
 }
 
 func mergeReverseProxy(blockA *Block, blockB *Block) {
-	for index, arg := range blockB.Args {
-		if index > 0 || !isMatcher(arg) {
-			blockA.AddArgs(arg)
+	for index, key := range blockB.Keys[1:] {
+		if index > 0 || !isMatcher(key) {
+			blockA.AddKeys(key)
 		}
 	}
 	blockA.Container.Merge(blockB.Container)
 }
 
 func getMatcher(block *Block) string {
-	if len(block.Args) == 0 || !isMatcher(block.Args[0]) {
+	if len(block.Keys) <= 1 || !isMatcher(block.Keys[1]) {
 		return "*"
 	}
-	return block.Args[0]
+	return block.Keys[1]
 }
 
 func isMatcher(value string) bool {
@@ -41,11 +41,11 @@ func isMatcher(value string) bool {
 }
 
 func blocksAreEqual(blockA *Block, blockB *Block) bool {
-	if len(blockA.Args) != len(blockB.Args) {
+	if len(blockA.Keys) != len(blockB.Keys) {
 		return false
 	}
-	for i := 0; i < len(blockA.Args); i++ {
-		if blockA.Args[i] != blockB.Args[i] {
+	for i := 0; i < len(blockA.Keys); i++ {
+		if blockA.Keys[i] != blockB.Keys[i] {
 			return false
 		}
 	}

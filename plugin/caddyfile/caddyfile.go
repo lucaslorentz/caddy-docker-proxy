@@ -2,12 +2,9 @@ package caddyfile
 
 import (
 	"math"
-	"regexp"
 )
 
-var snippetRegex = regexp.MustCompile(`^\(.*\)$`)
-
-// Block represents any element in a caddyfile:
+// Block can represent any of those caddyfile elements:
 // - GlobalOptions
 // - Snippet
 // - Site
@@ -15,16 +12,19 @@ var snippetRegex = regexp.MustCompile(`^\(.*\)$`)
 // - Option
 // - Directive
 // - Subdirective
-// It's structure is rendering in a caddyfile as:
-// Name Args[0] Args[1] ... {
-//	...Children
+//
+// It's structure is rendered in caddyfile as:
+// Keys[0] Keys[1] Keys[2]
+//
+// When children are defined, each child is also recursively rendered as:
+// Keys[0] Keys[1] Keys[2] {
+//	Children[0].Keys[0] Children[0].Keys[1]
+//	Children[1].Keys[0] Children[1].Keys[1]
 // }
 type Block struct {
 	*Container
-	Order         int
-	Name          string
-	Discriminator string
-	Args          []string
+	Order int
+	Keys  []string
 }
 
 // Container represents a collection of blocks
@@ -32,58 +32,45 @@ type Container struct {
 	Children []*Block
 }
 
-// CreateBlock creates a block with a name and a discriminator
-func CreateBlock(name string, discriminator string) *Block {
+// CreateBlock creates a block
+func CreateBlock() *Block {
 	return &Block{
-		Container:     CreateContainer(),
-		Order:         math.MaxInt32,
-		Name:          name,
-		Discriminator: discriminator,
+		Container: CreateContainer(),
+		Order:     math.MaxInt32,
+		Keys:      []string{},
 	}
 }
 
-// CreateContainer creates a block container
+// CreateContainer creates a container
 func CreateContainer() *Container {
 	return &Container{
 		Children: []*Block{},
 	}
 }
 
-// AddArgs add one or more arguments to block
-func (block *Block) AddArgs(args ...string) {
-	block.Args = append(block.Args, args...)
+// AddKeys to block
+func (block *Block) AddKeys(keys ...string) {
+	block.Keys = append(block.Keys, keys...)
 }
 
-// AddBlock adds a block to a container
+// AddBlock to container
 func (container *Container) AddBlock(block *Block) {
 	container.Children = append(container.Children, block)
 }
 
-// GetOrCreateBlock gets an existing block or create a new one if not found
-func (container *Container) GetOrCreateBlock(order int, name string, discriminator string) *Block {
-	existing := container.GetFirstMatch(order, name, discriminator)
-	if existing == nil {
-		existing = CreateBlock(name, discriminator)
-		container.AddBlock(existing)
+// GetFirstKey from block
+func (block *Block) GetFirstKey() string {
+	if len(block.Keys) == 0 {
+		return ""
 	}
-	return existing
+	return block.Keys[0]
 }
 
-// GetFirstMatch gets the first block that matches parameters
-func (container *Container) GetFirstMatch(order int, name string, discriminator string) *Block {
-	for _, block := range container.Children {
-		if block.Order == order && block.Name == name && block.Discriminator == discriminator {
-			return block
-		}
-	}
-	return nil
-}
-
-// GetAllByName gets all blocks with that name
-func (container *Container) GetAllByName(name string) []*Block {
+// GetAllByFirstKey gets all blocks with the specified firstKey
+func (container *Container) GetAllByFirstKey(firstKey string) []*Block {
 	matched := []*Block{}
 	for _, block := range container.Children {
-		if block.Name == name {
+		if block.GetFirstKey() == firstKey {
 			matched = append(matched, block)
 		}
 	}
@@ -101,18 +88,7 @@ func (container *Container) Remove(blockToDelete *Block) {
 	container.Children = newItems
 }
 
-// RemoveAllMatches removes all matching blocks
-func (container *Container) RemoveAllMatches(name string, discriminator string) {
-	newItems := []*Block{}
-	for _, block := range container.Children {
-		if block.Name != name || block.Discriminator != discriminator {
-			newItems = append(newItems, block)
-		}
-	}
-	container.Children = newItems
-}
-
 // IsGlobalBlock returns if block is a global block
 func (block *Block) IsGlobalBlock() bool {
-	return len(block.Args) == 0
+	return len(block.Keys) == 0
 }

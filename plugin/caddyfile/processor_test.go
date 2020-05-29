@@ -28,26 +28,29 @@ func TestProcessCaddyfile(t *testing.T) {
 
 		// read the test file
 		filename := f.Name()
-		data, err := ioutil.ReadFile("./testdata/process/" + filename)
-		if err != nil {
-			t.Errorf("failed to read %s dir: %s", filename, err)
-		}
 
-		// replace windows newlines in the json with unix newlines
-		content := winNewlines.ReplaceAllString(string(data), "\n")
+		t.Run(filename, func(t *testing.T) {
+			data, err := ioutil.ReadFile("./testdata/process/" + filename)
+			if err != nil {
+				t.Errorf("failed to read %s dir: %s", filename, err)
+			}
 
-		// split two Caddyfile parts
-		parts := strings.Split(content, "----------\n")
-		beforeCaddyfile, expectedCaddyfile := parts[0], parts[1]
+			// replace windows newlines in the json with unix newlines
+			content := winNewlines.ReplaceAllString(string(data), "\n")
 
-		// process the Caddyfile
-		result, _ := Process([]byte(beforeCaddyfile))
+			// split two Caddyfile parts
+			parts := strings.Split(content, "----------\n")
+			beforeCaddyfile, expectedCaddyfile := parts[0], parts[1]
 
-		actualCaddyfile := string(result)
+			// process the Caddyfile
+			result, _ := Process([]byte(beforeCaddyfile))
 
-		// compare the actual and expected Caddyfiles
-		assert.Equal(t, expectedCaddyfile, actualCaddyfile,
-			"failed to process in %s, \nExpected:\n%s\nActual:\n%s",
-			filename, expectedCaddyfile, actualCaddyfile)
+			actualCaddyfile := string(result)
+
+			// compare the actual and expected Caddyfiles
+			assert.Equal(t, expectedCaddyfile, actualCaddyfile,
+				"failed to process in %s, \nExpected:\n%s\nActual:\n%s",
+				filename, expectedCaddyfile, actualCaddyfile)
+		})
 	}
 }

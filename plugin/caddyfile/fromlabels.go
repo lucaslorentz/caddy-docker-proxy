@@ -5,56 +5,61 @@ import (
 	"math"
 	"regexp"
 	"strconv"
-	"strings"
 	"text/template"
 )
 
 var whitespaceRegex = regexp.MustCompile("\\s+")
-var labelSegmentRegex = regexp.MustCompile(`^(?:(\d+)_)?(.*?)(?:_(\d+))?$`)
+var labelParserRegex = regexp.MustCompile(`^(?:(.+)\.)?(?:(\d+)_)?([^.]+?)(?:_(\d+))?$`)
 
 // FromLabels converts key value labels into a caddyfile
 func FromLabels(labels map[string]string, templateData interface{}, templateFuncs template.FuncMap) (*Container, error) {
 	container := CreateContainer()
 
+	blocksByPath := map[string]*Block{}
 	for label, value := range labels {
-		block := getOrCreateBlock(container, label)
+		block := getOrCreateBlock(container, label, blocksByPath)
 		argsText, err := processVariables(templateData, templateFuncs, value)
 		if err != nil {
 			return nil, err
 		}
-		block.Args = parseArgs(argsText)
+		block.AddKeys(parseArgs(argsText)...)
 	}
 
 	return container, nil
 }
 
-func getOrCreateBlock(container *Container, path string) *Block {
-	currentContainer := container
-	var block *Block
-	for i, p := range strings.Split(path, ".") {
-		order, name, discriminator := parseLabelSegment(p, i)
-		block = currentContainer.GetFirstMatch(order, name, discriminator)
-		if block == nil {
-			block = CreateBlock(name, discriminator)
-			block.Order = order
-			currentContainer.AddBlock(block)
-		}
-		currentContainer = block.Container
+func getOrCreateBlock(container *Container, path string, blocksByPath map[string]*Block) *Block {
+	if block, blockExists := blocksByPath[path]; blockExists {
+		return block
 	}
+
+	parentPath, order, name := parsePath(path)
+
+	block := CreateBlock()
+	block.Order = order
+
+	if parentPath != "" {
+		parentBlock := getOrCreateBlock(container, parentPath, blocksByPath)
+		block.AddKeys(name)
+		parentBlock.AddBlock(block)
+	} else {
+		container.AddBlock(block)
+	}
+
+	blocksByPath[path] = block
+
 	return block
 }
 
-func parseLabelSegment(text string, index int) (int, string, string) {
-	match := labelSegmentRegex.FindStringSubmatch(text)
+func parsePath(path string) (string, int, string) {
+	match := labelParserRegex.FindStringSubmatch(path)
+	parentPath := match[1]
 	order := math.MaxInt32
-	name := ""
-	if match[1] != "" {
-		order, _ = strconv.Atoi(match[1])
+	if match[2] != "" {
+		order, _ = strconv.Atoi(match[2])
 	}
-	if index > 0 {
-		name = match[2]
-	}
-	return order, name, match[3]
+	name := match[3]
+	return parentPath, order, name
 }
 
 func processVariables(data interface{}, funcs template.FuncMap, content string) (string, error) {
