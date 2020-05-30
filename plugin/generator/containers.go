@@ -8,7 +8,7 @@ import (
 	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/caddyfile"
 )
 
-func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container, logsBuffer *bytes.Buffer) (*caddyfile.Block, error) {
+func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container, logsBuffer *bytes.Buffer) (*caddyfile.Container, error) {
 	caddyLabels := g.filterLabels(container.Labels)
 
 	return labelsToCaddyfile(caddyLabels, container, func() ([]string, error) {

@@ -29,25 +29,28 @@ func TestMarshalUnmarshal(t *testing.T) {
 
 		// read the test file
 		filename := f.Name()
-		data, err := ioutil.ReadFile(folder + "/" + filename)
-		if err != nil {
-			t.Errorf("failed to read %s dir: %s", filename, err)
-		}
 
-		// replace windows newlines in the json with unix newlines
-		content := winNewlines.ReplaceAllString(string(data), "\n")
+		t.Run(filename, func(t *testing.T) {
+			data, err := ioutil.ReadFile(folder + "/" + filename)
+			if err != nil {
+				t.Errorf("failed to read %s dir: %s", filename, err)
+			}
 
-		// split two Caddyfile parts
-		parts := strings.Split(content, "----------\n")
-		beforeCaddyfile, expectedCaddyfile := parts[0], parts[1]
+			// replace windows newlines in the json with unix newlines
+			content := winNewlines.ReplaceAllString(string(data), "\n")
 
-		block, _ := Unmarshal([]byte(beforeCaddyfile))
-		result := block.MarshalString()
+			// split two Caddyfile parts
+			parts := strings.Split(content, "----------\n")
+			beforeCaddyfile, expectedCaddyfile := parts[0], parts[1]
 
-		actualCaddyfile := string(result)
+			container, _ := Unmarshal([]byte(beforeCaddyfile))
+			result := string(container.Marshal())
 
-		// compare the actual and expected Caddyfiles
-		assert.Equal(t, expectedCaddyfile, actualCaddyfile,
-			"failed to process in %s", filename)
+			actualCaddyfile := string(result)
+
+			// compare the actual and expected Caddyfiles
+			assert.Equal(t, expectedCaddyfile, actualCaddyfile,
+				"failed to process in %s", filename)
+		})
 	}
 }
