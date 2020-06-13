@@ -90,7 +90,8 @@ services:
 
 networks:
   caddy:
-    driver: overlay
+    name: caddy_test
+    external: true
   caddy_controller:
     driver: overlay
     ipam:

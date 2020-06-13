@@ -35,4 +35,5 @@ services:
 
 networks:
   caddy:
-    driver: overlay
+    name: caddy_test
+    external: true
