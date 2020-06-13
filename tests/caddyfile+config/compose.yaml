@@ -16,8 +16,6 @@ services:
     networks:
       - caddy
     environment:
-      - CADDY_DOCKER_PROXY_SERVICE_TASKS=true
-      - CADDY_DOCKER_PROCESS_CADDYFILE=true
       - CADDY_DOCKER_CADDYFILE_PATH=/test/Caddyfile
     volumes:
       - ./Caddyfile:/test/Caddyfile

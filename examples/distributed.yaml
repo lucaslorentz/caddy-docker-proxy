@@ -24,8 +24,6 @@ services:
       - caddy_controller
       - caddy
     environment:
-      - CADDY_DOCKER_PROXY_SERVICE_TASKS=true
-      - CADDY_DOCKER_PROCESS_CADDYFILE=true
       - CADDY_DOCKER_MODE=controller
       - CADDY_CONTROLLER_NETWORK=10.200.200.0/24
     volumes:

@@ -15,9 +15,6 @@ services:
       - 443:443
     networks:
       - caddy
-    environment:
-      - CADDY_DOCKER_PROXY_SERVICE_TASKS=true
-      - CADDY_DOCKER_PROCESS_CADDYFILE=true
     labels: # Global options
       caddy.email: you@example.com
     volumes:
