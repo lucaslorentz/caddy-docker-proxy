@@ -174,15 +174,17 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 	}
 
 	// Write global blocks first
+	globalCaddyfile := caddyfile.CreateContainer()
 	for _, block := range caddyfileBlock.Children {
 		if block.IsGlobalBlock() {
-			block.Write(&caddyfileBuffer, 0)
+			globalCaddyfile.AddBlock(block)
 			caddyfileBlock.Remove(block)
 		}
 	}
+	caddyfileBuffer.Write(globalCaddyfile.Marshal())
 
 	// Write remaining blocks
-	caddyfileBlock.Write(&caddyfileBuffer, 0)
+	caddyfileBuffer.Write(caddyfileBlock.Marshal())
 
 	caddyfileContent := caddyfileBuffer.Bytes()
 
