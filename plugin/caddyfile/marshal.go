@@ -11,21 +11,21 @@ import (
 
 // Marshal container into caddyfile bytes
 func (container *Container) Marshal() []byte {
+	container.sort()
 	buffer := &bytes.Buffer{}
-	container.Write(buffer, 0)
+	container.write(buffer, 0)
 	return buffer.Bytes()
 }
 
-// Write all blocks to a buffer
-func (container *Container) Write(buffer *bytes.Buffer, level int) {
-	container.sort()
+// write all blocks to a buffer
+func (container *Container) write(buffer *bytes.Buffer, level int) {
 	for _, block := range container.Children {
-		block.Write(buffer, level)
+		block.write(buffer, level)
 	}
 }
 
-// Write block to a buffer
-func (block *Block) Write(buffer *bytes.Buffer, level int) {
+// write block to a buffer
+func (block *Block) write(buffer *bytes.Buffer, level int) {
 	buffer.WriteString(strings.Repeat("\t", level))
 	needsWhitespace := false
 	for _, key := range block.Keys {
@@ -48,32 +48,68 @@ func (block *Block) Write(buffer *bytes.Buffer, level int) {
 			buffer.WriteString(" ")
 		}
 		buffer.WriteString("{\n")
-		block.Container.Write(buffer, level+1)
+		block.Container.write(buffer, level+1)
 		buffer.WriteString(strings.Repeat("\t", level) + "}")
 	}
 	buffer.WriteString("\n")
 }
 
 func (container *Container) sort() {
+	// Sort children first
+	for _, block := range container.Children {
+		block.Container.sort()
+	}
+	// Sort container
 	items := container.Children
 	sort.SliceStable(items, func(i, j int) bool {
-		// Global blocks first
-		if items[i].IsGlobalBlock() && !items[j].IsGlobalBlock() {
-			return true
-		}
-		// Then follow order
-		if items[i].Order != items[j].Order {
-			return items[i].Order < items[j].Order
-		}
-		// Then compare common keys
-		for keyIndex := 0; keyIndex < min(len(items[i].Keys), len(items[j].Keys)); keyIndex++ {
-			if items[i].Keys[keyIndex] != items[j].Keys[keyIndex] {
-				return items[i].Keys[keyIndex] < items[j].Keys[keyIndex]
-			}
-		}
-		// Then the block with less keys first
-		return len(items[i].Keys) < len(items[j].Keys)
+		return compareBlocks(items[i], items[j]) == -1
 	})
+}
+
+func compareBlocks(blockA *Block, blockB *Block) int {
+	// Global blocks first
+	if blockA.IsGlobalBlock() && !blockB.IsGlobalBlock() {
+		return -1
+	}
+	// Then follow order
+	if blockA.Order != blockB.Order {
+		if blockA.Order < blockB.Order {
+			return -1
+		}
+		return 1
+	}
+	// Then compare common keys
+	for keyIndex := 0; keyIndex < min(len(blockB.Keys), len(blockB.Keys)); keyIndex++ {
+		if blockA.Keys[keyIndex] != blockB.Keys[keyIndex] {
+			if blockA.Keys[keyIndex] < blockB.Keys[keyIndex] {
+				return -1
+			}
+			return 1
+		}
+	}
+	// Then the block with less keys first
+	if len(blockA.Keys) != len(blockB.Keys) {
+		if len(blockA.Keys) < len(blockB.Keys) {
+			return -1
+		}
+		return 1
+	}
+	// Then based on children
+	commonChildrenLength := min(len(blockA.Container.Children), len(blockB.Container.Children))
+	for c := 0; c < commonChildrenLength; c++ {
+		childComparison := compareBlocks(blockA.Container.Children[c], blockB.Container.Children[c])
+		if childComparison != 0 {
+			return childComparison
+		}
+	}
+	// Then the block with less children first
+	if len(blockA.Container.Children) != len(blockB.Container.Children) {
+		if len(blockA.Container.Children) < len(blockB.Container.Children) {
+			return -1
+		}
+		return 1
+	}
+	return 0
 }
 
 func min(a, b int) int {

@@ -353,7 +353,7 @@ Usage of docker-proxy:
   -polling-interval duration
     	Interval caddy should manually check docker for a new caddyfile (default 30s)
   -process-caddyfile
-    	Process Caddyfile before loading it, removing invalid servers
+    	Process Caddyfile before loading it, removing invalid servers (default true)
   -proxy-service-tasks
     	Proxy to service tasks instead of service load balancer
   -validate-network
