@@ -155,6 +155,7 @@ func (dockerLoader *DockerLoader) update() bool {
 
 		if err != nil {
 			log.Printf("[ERROR] Failed to convert caddyfile into json config: %s", err)
+			return false
 		}
 
 		log.Printf("[INFO] New Config JSON:\n%s", configJSON)
