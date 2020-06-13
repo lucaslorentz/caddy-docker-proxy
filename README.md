@@ -157,7 +157,7 @@ localhost {
 }
 ```
 
-Global options can be defined by not setting any value for caddy. It can be set in any container/service, including caddy-docker-proxy itself. [Here is an example](examples/standalone.yaml#L22)
+Global options can be defined by not setting any value for caddy. It can be set in any container/service, including caddy-docker-proxy itself. [Here is an example](examples/standalone.yaml#L19)
 ```
 caddy.email = you@example.com
 ↓
@@ -355,7 +355,7 @@ Usage of docker-proxy:
   -process-caddyfile
     	Process Caddyfile before loading it, removing invalid servers (default true)
   -proxy-service-tasks
-    	Proxy to service tasks instead of service load balancer
+    	Proxy to service tasks instead of service load balancer (default true)
   -validate-network
     	Validates if caddy container and target are in same network (default true)
 ```

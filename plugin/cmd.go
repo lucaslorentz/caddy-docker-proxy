@@ -28,7 +28,7 @@ func init() {
 			fs.String("controller-network", "", "Network allowed to configure caddy server in CIDR notation. Ex: 10.200.200.0/24")
 			fs.String("caddyfile-path", "", "Path to a base Caddyfile that will be extended with docker sites")
 			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
-			fs.Bool("proxy-service-tasks", false, "Proxy to service tasks instead of service load balancer")
+			fs.Bool("proxy-service-tasks", true, "Proxy to service tasks instead of service load balancer")
 			fs.Bool("validate-network", true, "Validates if caddy container and target are in same network")
 			fs.Bool("process-caddyfile", true, "Process Caddyfile before loading it, removing invalid servers")
 			fs.Duration("polling-interval", 30*time.Second, "Interval caddy should manually check docker for a new caddyfile")
