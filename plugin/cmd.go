@@ -30,7 +30,7 @@ func init() {
 			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
 			fs.Bool("proxy-service-tasks", false, "Proxy to service tasks instead of service load balancer")
 			fs.Bool("validate-network", true, "Validates if caddy container and target are in same network")
-			fs.Bool("process-caddyfile", false, "Process Caddyfile before loading it, removing invalid servers")
+			fs.Bool("process-caddyfile", true, "Process Caddyfile before loading it, removing invalid servers")
 			fs.Duration("polling-interval", 30*time.Second, "Interval caddy should manually check docker for a new caddyfile")
 			return fs
 		}(),
