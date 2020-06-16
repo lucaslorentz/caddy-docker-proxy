@@ -9,15 +9,14 @@ import (
 
 // Process caddyfile and removes wrong server blocks
 func Process(caddyfileContent []byte) ([]byte, []byte) {
-	logsBuffer := bytes.Buffer{}
-
-	container, err := Unmarshal(caddyfileContent)
-
-	if err != nil {
-		logsBuffer.WriteString(fmt.Sprintf("[ERROR] Error parsing caddyfile: %s\n", err.Error()))
+	if len(caddyfileContent) == 0 {
+		return caddyfileContent, nil
 	}
 
-	var newCaddyfileBuffer bytes.Buffer
+	newCaddyfileBuffer := bytes.Buffer{}
+	logsBuffer := bytes.Buffer{}
+
+	container, _ := Unmarshal(caddyfileContent)
 
 	for _, block := range container.Children {
 		newContainer := CreateContainer()
