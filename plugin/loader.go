@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -29,7 +30,7 @@ type DockerLoader struct {
 	skipEvents     bool
 	lastCaddyfile  []byte
 	lastLogs       string
-	lastAppsConfig []byte
+	lastJsonConfig []byte
 	updatedServers map[string]struct{}
 }
 
@@ -160,12 +161,7 @@ func (dockerLoader *DockerLoader) update() bool {
 
 		log.Printf("[INFO] New Config JSON:\n%s", configJSON)
 
-		var full map[string]interface{}
-		json.Unmarshal(configJSON, &full)
-		apps, _ := full["apps"]
-		appsConfig, _ := json.Marshal(apps)
-
-		dockerLoader.lastAppsConfig = appsConfig
+		dockerLoader.lastJsonConfig = configJSON
 		dockerLoader.updatedServers = map[string]struct{}{}
 	}
 
@@ -188,9 +184,15 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 
 	log.Printf("[INFO] Sending configuration to %v", server)
 
-	url := "http://" + server + ":2019/config/apps"
+	url := "http://" + server + ":2019/load"
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(dockerLoader.lastAppsConfig))
+	postBody, err := addAdminListen(dockerLoader.lastJsonConfig, "tcp/"+server+":2019")
+	if err != nil {
+		log.Printf("[ERROR] Failed to add admin listen to %v: %s", server, err)
+		return
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(postBody))
 	if err != nil {
 		log.Printf("[ERROR] Failed to create request to %v: %s", server, err)
 		return
@@ -217,4 +219,16 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 	dockerLoader.updatedServers[server] = struct{}{}
 
 	log.Printf("[INFO] Successfully configured %v", server)
+}
+
+func addAdminListen(configJSON []byte, listen string) ([]byte, error) {
+	config := &caddy.Config{}
+	err := json.Unmarshal(configJSON, config)
+	if err != nil {
+		return nil, err
+	}
+	config.Admin = &caddy.AdminConfig{
+		Listen: listen,
+	}
+	return json.Marshal(config)
 }
