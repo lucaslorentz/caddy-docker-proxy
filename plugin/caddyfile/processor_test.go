@@ -40,16 +40,26 @@ func TestProcessCaddyfile(t *testing.T) {
 
 			// split two Caddyfile parts
 			parts := strings.Split(content, "----------\n")
-			beforeCaddyfile, expectedCaddyfile := parts[0], parts[1]
+			beforeCaddyfile, expectedCaddyfile, expectedLogs := parts[0], parts[1], ""
+
+			if len(parts) > 2 {
+				expectedLogs = parts[2]
+			}
 
 			// process the Caddyfile
-			result, _ := Process([]byte(beforeCaddyfile))
+			result, logs := Process([]byte(beforeCaddyfile))
 
 			actualCaddyfile := string(result)
+			actualLogs := string(logs)
+
+			// compare the actual and expected log
+			assert.Equal(t, expectedLogs, actualLogs,
+				"invalid process logs %s, \nExpected:\n%s\nActual:\n%s",
+				filename, expectedLogs, actualLogs)
 
 			// compare the actual and expected Caddyfiles
 			assert.Equal(t, expectedCaddyfile, actualCaddyfile,
-				"failed to process in %s, \nExpected:\n%s\nActual:\n%s",
+				"invalid process result %s, \nExpected:\n%s\nActual:\n%s",
 				filename, expectedCaddyfile, actualCaddyfile)
 		})
 	}

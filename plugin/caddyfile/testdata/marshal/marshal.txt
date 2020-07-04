@@ -1,6 +1,9 @@
 {
 	email you@example.com
 }
+(snippet) {
+	tls internal
+}
 service2.example.com {
 	respond 200 /
 	route * {
@@ -20,6 +23,9 @@ service3.example.com {
 ----------
 {
 	email you@example.com
+}
+(snippet) {
+	tls internal
 }
 service2.example.com {
 	respond 200 /

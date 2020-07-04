@@ -1,13 +1,12 @@
-version: '3.7'
+version: "3.7"
 
 configs:
   caddy-basic-content:
     file: ./CaddyfileConfig
     labels:
-        caddy:
+      caddy:
 
 services:
-
   caddy:
     image: caddy-docker-proxy:local
     ports:
@@ -20,16 +19,19 @@ services:
     volumes:
       - ./Caddyfile:/test/Caddyfile
       - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      labels:
+        caddy.email: "test@example.com"
 
-  whoami0:
+  service:
     image: jwilder/whoami
     networks:
       - caddy
     deploy:
       labels:
-        caddy: whoami0.local
-        caddy.reverse_proxy: "/whoami {{upstreams 8000}}"
-        caddy.tls: "internal"
+        caddy: service.local
+        caddy.import_0: caddyfileSnippet
+        caddy.import_1: configSnippet
 
 networks:
   caddy:

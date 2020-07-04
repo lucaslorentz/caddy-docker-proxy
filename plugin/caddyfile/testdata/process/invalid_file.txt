@@ -1,0 +1,12 @@
+service1.example.com {
+	reverse_proxy service1:5000
+	}
+}
+----------
+----------
+[ERROR]  Invalid caddyfile: Unexpected token '}' at line 4
+service1.example.com {
+	reverse_proxy service1:5000
+	}
+}
+

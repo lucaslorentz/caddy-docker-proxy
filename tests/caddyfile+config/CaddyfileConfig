@@ -1,5 +1,8 @@
-# This is an example Caddyfile stored inside docker swarm config
-whoami0.local {
-    respond /config "Config" 200
+(configSnippet) {
+    respond /config "config" 200
+}
+
+config.local {
+    respond / "config" 200
     tls internal
 }
