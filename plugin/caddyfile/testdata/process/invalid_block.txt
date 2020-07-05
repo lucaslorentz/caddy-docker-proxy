@@ -27,12 +27,15 @@ service3.example.com {
 {
 	email you@example.com
 }
+(mysnippet) {
+	encode gzip
+}
 service2.example.com {
 	respond 200 /
 	reverse_proxy service2:5000 {
 		health_path /health
 	}
-	encode gzip
+	import mysnippet
 }
 service3.example.com {
 	respond 404 /
@@ -40,3 +43,11 @@ service3.example.com {
 		user " a \ b"
 	}
 }
+----------
+[ERROR]  Removing invalid block: parsing caddyfile tokens for 'reverse_proxy': Caddyfile:9 - Error during parsing: unrecognized subdirective invalid
+service1.example.com {
+	reverse_proxy service1:5000 {
+		invalid
+	}
+}
+

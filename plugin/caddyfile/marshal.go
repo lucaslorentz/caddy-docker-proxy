@@ -2,10 +2,10 @@ package caddyfile
 
 import (
 	"bytes"
+	"fmt"
 	"sort"
 	"strings"
 
-	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 	_ "github.com/caddyserver/caddy/v2/modules/standard" // plug standard HTTP modules
 )
 
@@ -14,6 +14,14 @@ func (container *Container) Marshal() []byte {
 	container.sort()
 	buffer := &bytes.Buffer{}
 	container.write(buffer, 0)
+	return buffer.Bytes()
+}
+
+// Marshal block into caddyfile bytes
+func (block *Block) Marshal() []byte {
+	block.Container.sort()
+	buffer := &bytes.Buffer{}
+	block.write(buffer, 0)
 	return buffer.Bytes()
 }
 
@@ -68,8 +76,18 @@ func (container *Container) sort() {
 
 func compareBlocks(blockA *Block, blockB *Block) int {
 	// Global blocks first
-	if blockA.IsGlobalBlock() && !blockB.IsGlobalBlock() {
-		return -1
+	if blockA.IsGlobalBlock() != blockB.IsGlobalBlock() {
+		if blockA.IsGlobalBlock() {
+			return -1
+		}
+		return 1
+	}
+	// Then snippets first
+	if blockA.IsSnippet() != blockB.IsSnippet() {
+		if blockA.IsSnippet() {
+			return -1
+		}
+		return 1
 	}
 	// Then follow order
 	if blockA.Order != blockB.Order {
@@ -121,54 +139,63 @@ func min(a, b int) int {
 
 // Unmarshal a Block fom caddyfile content
 func Unmarshal(caddyfileContent []byte) (*Container, error) {
-	serverBlocks, err := caddyfile.Parse("", caddyfileContent)
+	tokens, err := allTokens("", caddyfileContent)
 	if err != nil {
 		return nil, err
 	}
 
-	container := CreateContainer()
-	for index, serverBlock := range serverBlocks {
-		container.AddBlock(unmarshalBlock(&serverBlock, index))
-	}
-	return container, nil
+	return parseContainer(tokens)
 }
 
-func unmarshalBlock(serverBlock *caddyfile.ServerBlock, index int) *Block {
-	stack := []*Block{}
+func allTokens(filename string, input []byte) ([]Token, error) {
+	l := new(lexer)
+	err := l.load(bytes.NewReader(input))
+	if err != nil {
+		return nil, err
+	}
+	var tokens []Token
+	for l.next() {
+		l.token.File = filename
+		tokens = append(tokens, l.token)
+	}
+	return tokens, nil
+}
 
-	block := CreateBlock()
-	block.Order = index
-	block.AddKeys(serverBlock.Keys...)
-	stack = append(stack, block)
+func parseContainer(tokens []Token) (*Container, error) {
+	rootContainer := CreateContainer()
+	stack := []*Container{rootContainer}
+	isNewBlock := true
+	tokenLine := -1
 
-	for _, segment := range serverBlock.Segments {
-		isNewBlock := true
-		tokenLine := -1
-		var subBlock *Block
+	var currentBlock *Block
 
-		for _, token := range segment {
-			if token.Line != tokenLine {
-				if tokenLine != -1 {
-					isNewBlock = true
-				}
-				tokenLine = token.Line
+	for _, token := range tokens {
+		if token.Line != tokenLine {
+			if tokenLine != -1 {
+				isNewBlock = true
 			}
-			if token.Text == "}" {
-				stack = stack[:len(stack)-1]
-			} else if token.Text == "{" {
-				stack = append(stack, subBlock)
-			} else if isNewBlock {
+			tokenLine = token.Line
+		}
+		if token.Text == "}" {
+			if len(stack) == 1 {
+				return nil, fmt.Errorf("Unexpected token '}' at line %v", token.Line)
+			}
+			stack = stack[:len(stack)-1]
+		} else {
+			if isNewBlock {
 				parentBlock := stack[len(stack)-1]
-				subBlock = CreateBlock()
-				subBlock.Order = len(parentBlock.Children)
-				subBlock.AddKeys(token.Text)
-				parentBlock.AddBlock(subBlock)
+				currentBlock = CreateBlock()
+				currentBlock.Order = len(parentBlock.Children)
+				parentBlock.AddBlock(currentBlock)
 				isNewBlock = false
+			}
+			if token.Text == "{" {
+				stack = append(stack, currentBlock.Container)
 			} else {
-				subBlock.AddKeys(token.Text)
+				currentBlock.AddKeys(token.Text)
 			}
 		}
 	}
 
-	return block
+	return rootContainer, nil
 }

@@ -13,25 +13,28 @@ func Process(caddyfileContent []byte) ([]byte, []byte) {
 		return caddyfileContent, nil
 	}
 
-	newCaddyfileBuffer := bytes.Buffer{}
 	logsBuffer := bytes.Buffer{}
+	adapter := caddyconfig.GetAdapter("caddyfile")
 
-	container, _ := Unmarshal(caddyfileContent)
+	container, err := Unmarshal(caddyfileContent)
+	if err != nil {
+		logsBuffer.WriteString(fmt.Sprintf("[ERROR]  Invalid caddyfile: %s\n%s\n", err.Error(), caddyfileContent))
+		return nil, logsBuffer.Bytes()
+	}
 
+	newContainer := CreateContainer()
+
+	container.sort()
 	for _, block := range container.Children {
-		newContainer := CreateContainer()
 		newContainer.AddBlock(block)
 
-		blockCaddyfileContent := newContainer.Marshal()
+		_, _, err := adapter.Adapt(newContainer.Marshal(), nil)
 
-		adapter := caddyconfig.GetAdapter("caddyfile")
-
-		_, _, err := adapter.Adapt(blockCaddyfileContent, nil)
-		if err == nil {
-			newCaddyfileBuffer.Write(blockCaddyfileContent)
-		} else {
-			logsBuffer.WriteString(fmt.Sprintf("[ERROR]  Removing invalid block: %s\n%s\n", err.Error(), blockCaddyfileContent))
+		if err != nil {
+			newContainer.Remove(block)
+			logsBuffer.WriteString(fmt.Sprintf("[ERROR]  Removing invalid block: %s\n%s\n", err.Error(), block.Marshal()))
 		}
 	}
-	return newCaddyfileBuffer.Bytes(), logsBuffer.Bytes()
+
+	return newContainer.Marshal(), logsBuffer.Bytes()
 }

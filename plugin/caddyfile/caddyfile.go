@@ -2,6 +2,7 @@ package caddyfile
 
 import (
 	"math"
+	"strings"
 )
 
 // Block can represent any of those caddyfile elements:
@@ -91,4 +92,9 @@ func (container *Container) Remove(blockToDelete *Block) {
 // IsGlobalBlock returns if block is a global block
 func (block *Block) IsGlobalBlock() bool {
 	return len(block.Keys) == 0
+}
+
+// IsSnippet returns if block is a snippet
+func (block *Block) IsSnippet() bool {
+	return len(block.Keys) == 1 && strings.HasPrefix(block.Keys[0], "(") && strings.HasSuffix(block.Keys[0], ")")
 }
