@@ -201,7 +201,7 @@ For services, that would be the service DNS name when **proxy-service-tasks** is
 
 For containers, that would be the container IPs.
 
-Resource networks are validated and only addresses available to caddy network are returned. You can set **validate-network** to **false** to disable that validation 
+Resource networks are validated and only addresses in caddy ingress networks are returned. You can override caddy ingress networks using CLI option `ingress-networks` or environment variable `CADDY_INGRESS_NETWORKS`
 
 Usage: `upstreams [http|https] [port]`  
 
@@ -343,21 +343,22 @@ Run `caddy help docker-proxy` to see all available flags.
 ```
 Usage of docker-proxy:
   -caddyfile-path string
-    	Path to a base Caddyfile that will be extended with docker sites
+        Path to a base Caddyfile that will be extended with docker sites
   -controller-network string
-    	Defines from which network a caddy server instance will accept configuration
+        Network allowed to configure caddy server in CIDR notation. Ex: 10.200.200.0/24
+  -ingress-networks string
+        Comma separated name of ingress networks connecting caddy servers to containers.
+        When not defined, networks attached to controller container are considered ingress networks
   -label-prefix string
-    	Prefix for Docker labels (default "caddy")
+        Prefix for Docker labels (default "caddy")
   -mode
-    	Which mode this instance should run: standalone | controller | server
+        Which mode this instance should run: standalone | controller | server
   -polling-interval duration
-    	Interval caddy should manually check docker for a new caddyfile (default 30s)
+        Interval caddy should manually check docker for a new caddyfile (default 30s)
   -process-caddyfile
-    	Process Caddyfile before loading it, removing invalid servers (default true)
+        Process Caddyfile before loading it, removing invalid servers (default true)
   -proxy-service-tasks
-    	Proxy to service tasks instead of service load balancer (default true)
-  -validate-network
-    	Validates if caddy container and target are in same network (default true)
+        Proxy to service tasks instead of service load balancer (default true)
 ```
 
 Those flags can also be set via environment variables:
@@ -365,6 +366,7 @@ Those flags can also be set via environment variables:
 ```
 CADDY_DOCKER_CADDYFILE_PATH=<string>
 CADDY_CONTROLLER_NETWORK=<string>
+CADDY_INGRESS_NETWORKS=<string>
 CADDY_DOCKER_LABEL_PREFIX=<string>
 CADDY_DOCKER_MODE=<string>
 CADDY_DOCKER_POLLING_INTERVAL=<duration>
