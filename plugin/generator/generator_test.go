@@ -138,6 +138,7 @@ func createBasicDockerClientMock() *docker.ClientMock {
 		ServicesData:   []swarm.Service{},
 		ConfigsData:    []swarm.Config{},
 		TasksData:      []swarm.Task{},
+		NetworksData:   []types.NetworkResource{},
 		InfoData: types.Info{
 			Swarm: swarm.Info{
 				LocalNodeState: swarm.LocalNodeStateActive,

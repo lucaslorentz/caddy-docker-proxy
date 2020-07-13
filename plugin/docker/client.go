@@ -17,6 +17,7 @@ type Client interface {
 	Info(ctx context.Context) (types.Info, error)
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
 	NetworkInspect(ctx context.Context, networkID string, options types.NetworkInspectOptions) (types.NetworkResource, error)
+	NetworkList(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error)
 	ConfigList(ctx context.Context, options types.ConfigListOptions) ([]swarm.Config, error)
 	ConfigInspectWithRaw(ctx context.Context, id string) (swarm.Config, []byte, error)
 	Events(ctx context.Context, options types.EventsOptions) (<-chan events.Message, <-chan error)
@@ -59,6 +60,10 @@ func (wrapper *clientWrapper) ContainerInspect(ctx context.Context, containerID 
 
 func (wrapper *clientWrapper) NetworkInspect(ctx context.Context, networkID string, options types.NetworkInspectOptions) (types.NetworkResource, error) {
 	return wrapper.client.NetworkInspect(ctx, networkID, options)
+}
+
+func (wrapper *clientWrapper) NetworkList(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error) {
+	return wrapper.client.NetworkList(ctx, options)
 }
 
 func (wrapper *clientWrapper) ConfigInspectWithRaw(ctx context.Context, id string) (swarm.Config, []byte, error) {

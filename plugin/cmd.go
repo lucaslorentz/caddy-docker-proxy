@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/caddyserver/caddy/v2"
@@ -26,6 +27,7 @@ func init() {
 			fs := flag.NewFlagSet("docker-proxy", flag.ExitOnError)
 			fs.Bool("mode", false, "Which mode this instance should run: standalone | controller | server")
 			fs.String("controller-network", "", "Network allowed to configure caddy server in CIDR notation. Ex: 10.200.200.0/24")
+			fs.String("ingress-networks", "", "Comma separated name of ingress networks connected to caddy servers")
 			fs.String("caddyfile-path", "", "Path to a base Caddyfile that will be extended with docker sites")
 			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
 			fs.Bool("proxy-service-tasks", true, "Proxy to service tasks instead of service load balancer")
@@ -101,6 +103,7 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	pollingIntervalFlag := flags.Duration("polling-interval")
 	modeFlag := flags.String("mode")
 	controllerSubnetFlag := flags.String("controller-network")
+	ingressNetworksFlag := flags.String("ingress-networks")
 
 	options := &config.Options{}
 
@@ -134,6 +137,12 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		} else if ipNet != nil {
 			options.ControllerNetwork = ipNet
 		}
+	}
+
+	if ingressNetworksEnv := os.Getenv("CADDY_INGRESS_NETWORKS"); ingressNetworksEnv != "" {
+		options.IngressNetworks = strings.Split(ingressNetworksEnv, ",")
+	} else if ingressNetworksFlag != "" {
+		options.IngressNetworks = strings.Split(ingressNetworksFlag, ",")
 	}
 
 	if caddyfilePathEnv := os.Getenv("CADDY_DOCKER_CADDYFILE_PATH"); caddyfilePathEnv != "" {

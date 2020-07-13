@@ -16,16 +16,16 @@ func (g *CaddyfileGenerator) getServiceCaddyfile(service *swarm.Service, logsBuf
 	caddyLabels := g.filterLabels(service.Spec.Labels)
 
 	return labelsToCaddyfile(caddyLabels, service, func() ([]string, error) {
-		return g.getServiceProxyTargets(service, logsBuffer)
+		return g.getServiceProxyTargets(service, logsBuffer, true)
 	})
 }
 
-func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service, logsBuffer *bytes.Buffer) ([]string, error) {
+func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service, logsBuffer *bytes.Buffer, ingress bool) ([]string, error) {
 	if g.options.ProxyServiceTasks {
-		return g.getServiceTasksIps(service, logsBuffer)
+		return g.getServiceTasksIps(service, logsBuffer, ingress)
 	}
 
-	_, err := g.getServiceVirtualIps(service, logsBuffer)
+	_, err := g.getServiceVirtualIps(service, logsBuffer, ingress)
 	if err != nil {
 		return nil, err
 	}
@@ -33,11 +33,11 @@ func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service, logs
 	return []string{service.Spec.Name}, nil
 }
 
-func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service, logsBuffer *bytes.Buffer) ([]string, error) {
+func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service, logsBuffer *bytes.Buffer, ingress bool) ([]string, error) {
 	virtualIps := []string{}
 
 	for _, virtualIP := range service.Endpoint.VirtualIPs {
-		if !g.options.ValidateNetwork || g.caddyNetworks[virtualIP.NetworkID] {
+		if !ingress || !g.options.ValidateNetwork || g.ingressNetworks[virtualIP.NetworkID] {
 			virtualIps = append(virtualIps, virtualIP.Addr)
 		}
 	}
@@ -49,7 +49,7 @@ func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service, logsBu
 	return virtualIps, nil
 }
 
-func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logsBuffer *bytes.Buffer) ([]string, error) {
+func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logsBuffer *bytes.Buffer, ingress bool) ([]string, error) {
 	taskListFilter := filters.NewArgs()
 	taskListFilter.Add("service", service.ID)
 	taskListFilter.Add("desired-state", "running")
@@ -65,7 +65,7 @@ func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logsBuff
 		if task.Status.State == swarm.TaskStateRunning {
 			hasRunningTasks = true
 			for _, networkAttachment := range task.NetworksAttachments {
-				if !g.options.ValidateNetwork || g.caddyNetworks[networkAttachment.Network.ID] {
+				if !ingress || !g.options.ValidateNetwork || g.ingressNetworks[networkAttachment.Network.ID] {
 					for _, address := range networkAttachment.Addresses {
 						ipAddress, _, _ := net.ParseCIDR(address)
 						tasksIps = append(tasksIps, ipAddress.String())

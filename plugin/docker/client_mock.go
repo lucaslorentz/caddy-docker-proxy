@@ -14,6 +14,7 @@ type ClientMock struct {
 	ServicesData         []swarm.Service
 	ConfigsData          []swarm.Config
 	TasksData            []swarm.Task
+	NetworksData         []types.NetworkResource
 	InfoData             types.Info
 	ContainerInspectData map[string]types.ContainerJSON
 	NetworkInspectData   map[string]types.NetworkResource
@@ -49,6 +50,11 @@ func (mock *ClientMock) TaskList(ctx context.Context, options types.TaskListOpti
 // ConfigList list all configs
 func (mock *ClientMock) ConfigList(ctx context.Context, options types.ConfigListOptions) ([]swarm.Config, error) {
 	return mock.ConfigsData, nil
+}
+
+// NetworkList list all networks
+func (mock *ClientMock) NetworkList(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error) {
+	return mock.NetworksData, nil
 }
 
 // Info retrieves information about docker host

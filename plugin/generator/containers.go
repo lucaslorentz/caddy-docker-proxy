@@ -12,15 +12,15 @@ func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container, l
 	caddyLabels := g.filterLabels(container.Labels)
 
 	return labelsToCaddyfile(caddyLabels, container, func() ([]string, error) {
-		return g.getContainerIPAddresses(container, logsBuffer)
+		return g.getContainerIPAddresses(container, logsBuffer, true)
 	})
 }
 
-func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container, logsBuffer *bytes.Buffer) ([]string, error) {
+func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container, logsBuffer *bytes.Buffer, ingress bool) ([]string, error) {
 	ips := []string{}
 
 	for _, network := range container.NetworkSettings.Networks {
-		if !g.options.ValidateNetwork || g.caddyNetworks[network.NetworkID] {
+		if !ingress || !g.options.ValidateNetwork || g.ingressNetworks[network.NetworkID] {
 			ips = append(ips, network.IPAddress)
 		}
 	}
