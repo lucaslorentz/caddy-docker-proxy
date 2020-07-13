@@ -11,7 +11,6 @@ type Options struct {
 	LabelPrefix            string
 	ControlledServersLabel string
 	ProxyServiceTasks      bool
-	ValidateNetwork        bool
 	ProcessCaddyfile       bool
 	PollingInterval        time.Duration
 	Mode                   Mode

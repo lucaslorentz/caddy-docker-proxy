@@ -31,7 +31,6 @@ func init() {
 			fs.String("caddyfile-path", "", "Path to a base Caddyfile that will be extended with docker sites")
 			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
 			fs.Bool("proxy-service-tasks", true, "Proxy to service tasks instead of service load balancer")
-			fs.Bool("validate-network", true, "Validates if caddy container and target are in same network")
 			fs.Bool("process-caddyfile", true, "Process Caddyfile before loading it, removing invalid servers")
 			fs.Duration("polling-interval", 30*time.Second, "Interval caddy should manually check docker for a new caddyfile")
 			return fs
@@ -98,7 +97,6 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	caddyfilePath := flags.String("caddyfile-path")
 	labelPrefixFlag := flags.String("label-prefix")
 	proxyServiceTasksFlag := flags.Bool("proxy-service-tasks")
-	validateNetworkFlag := flags.Bool("validate-network")
 	processCaddyfileFlag := flags.Bool("process-caddyfile")
 	pollingIntervalFlag := flags.Duration("polling-interval")
 	modeFlag := flags.String("mode")
@@ -162,12 +160,6 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		options.ProxyServiceTasks = isTrue.MatchString(proxyServiceTasksEnv)
 	} else {
 		options.ProxyServiceTasks = proxyServiceTasksFlag
-	}
-
-	if validateNetworkEnv := os.Getenv("CADDY_DOCKER_VALIDATE_NETWORK"); validateNetworkEnv != "" {
-		options.ValidateNetwork = isTrue.MatchString(validateNetworkEnv)
-	} else {
-		options.ValidateNetwork = validateNetworkFlag
 	}
 
 	if processCaddyfileEnv := os.Getenv("CADDY_DOCKER_PROCESS_CADDYFILE"); processCaddyfileEnv != "" {

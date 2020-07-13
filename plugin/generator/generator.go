@@ -50,7 +50,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 	var caddyfileBuffer bytes.Buffer
 	var logsBuffer bytes.Buffer
 
-	if g.options.ValidateNetwork && g.ingressNetworks == nil {
+	if g.ingressNetworks == nil {
 		ingressNetworks, err := g.getIngressNetworks()
 		if err == nil {
 			g.ingressNetworks = ingressNetworks

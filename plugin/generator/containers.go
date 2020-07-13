@@ -20,7 +20,7 @@ func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container,
 	ips := []string{}
 
 	for _, network := range container.NetworkSettings.Networks {
-		if !ingress || !g.options.ValidateNetwork || g.ingressNetworks[network.NetworkID] {
+		if !ingress || g.ingressNetworks[network.NetworkID] {
 			ips = append(ips, network.IPAddress)
 		}
 	}

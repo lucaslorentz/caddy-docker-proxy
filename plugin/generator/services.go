@@ -37,7 +37,7 @@ func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service, logsBu
 	virtualIps := []string{}
 
 	for _, virtualIP := range service.Endpoint.VirtualIPs {
-		if !ingress || !g.options.ValidateNetwork || g.ingressNetworks[virtualIP.NetworkID] {
+		if !ingress || g.ingressNetworks[virtualIP.NetworkID] {
 			virtualIps = append(virtualIps, virtualIP.Addr)
 		}
 	}
@@ -65,7 +65,7 @@ func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logsBuff
 		if task.Status.State == swarm.TaskStateRunning {
 			hasRunningTasks = true
 			for _, networkAttachment := range task.NetworksAttachments {
-				if !ingress || !g.options.ValidateNetwork || g.ingressNetworks[networkAttachment.Network.ID] {
+				if !ingress || g.ingressNetworks[networkAttachment.Network.ID] {
 					for _, address := range networkAttachment.Addresses {
 						ipAddress, _, _ := net.ParseCIDR(address)
 						tasksIps = append(tasksIps, ipAddress.String())

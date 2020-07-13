@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/config"
 )
 
 func TestServices_TemplateData(t *testing.T) {
@@ -57,7 +58,7 @@ func TestServices_TemplateData(t *testing.T) {
 		"	}\n" +
 		"}\n"
 
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, skipCaddyfileText)
 }
 
 func TestServices_DifferentNetwork(t *testing.T) {
@@ -91,11 +92,17 @@ func TestServices_DifferentNetwork(t *testing.T) {
 	const expectedLogs = skipCaddyfileText +
 		"[WARNING] Service SERVICE-ID and caddy are not in same network\n"
 
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, expectedLogs)
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
 
-func TestServices_DifferentNetworkSkipValidation(t *testing.T) {
+func TestServices_ManualIngressNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
+	dockerClient.NetworksData = []types.NetworkResource{
+		{
+			ID:   "other-network-id",
+			Name: "other-network-name",
+		},
+	}
 	dockerClient.ServicesData = []swarm.Service{
 		{
 			ID: "SERVICE-ID",
@@ -124,7 +131,9 @@ func TestServices_DifferentNetworkSkipValidation(t *testing.T) {
 
 	const expectedLogs = skipCaddyfileText
 
-	testGeneration(t, dockerClient, false, false, expectedCaddyfile, expectedLogs)
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.IngressNetworks = []string{"other-network-name"}
+	}, expectedCaddyfile, expectedLogs)
 }
 
 func TestServices_SwarmDisabled(t *testing.T) {
@@ -162,7 +171,7 @@ func TestServices_SwarmDisabled(t *testing.T) {
 		"[INFO] Skipping configs because swarm is not available\n" +
 		"[INFO] Skipping services because swarm is not available\n"
 
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, expectedLogs)
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
 
 func TestServiceTasks_Empty(t *testing.T) {
@@ -196,7 +205,9 @@ func TestServiceTasks_Empty(t *testing.T) {
 	const expectedLogs = skipCaddyfileText +
 		"[WARNING] Service SERVICEID doesn't have any task in running state\n"
 
-	testGeneration(t, dockerClient, true, true, expectedCaddyfile, expectedLogs)
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.ProxyServiceTasks = true
+	}, expectedCaddyfile, expectedLogs)
 }
 
 func TestServiceTasks_NotRunning(t *testing.T) {
@@ -258,7 +269,9 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 	const expectedLogs = skipCaddyfileText +
 		"[WARNING] Service SERVICEID doesn't have any task in running state\n"
 
-	testGeneration(t, dockerClient, true, true, expectedCaddyfile, expectedLogs)
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.ProxyServiceTasks = true
+	}, expectedCaddyfile, expectedLogs)
 }
 
 func TestServiceTasks_DifferentNetwork(t *testing.T) {
@@ -307,10 +320,12 @@ func TestServiceTasks_DifferentNetwork(t *testing.T) {
 	const expectedLogs = skipCaddyfileText +
 		"[WARNING] Service SERVICEID and caddy are not in same network\n"
 
-	testGeneration(t, dockerClient, true, true, expectedCaddyfile, expectedLogs)
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.ProxyServiceTasks = true
+	}, expectedCaddyfile, expectedLogs)
 }
 
-func TestServiceTasks_DifferentNetworkSkipValidation(t *testing.T) {
+func TestServiceTasks_ManualIngressNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
 		{
@@ -333,6 +348,12 @@ func TestServiceTasks_DifferentNetworkSkipValidation(t *testing.T) {
 			},
 		},
 	}
+	dockerClient.NetworksData = []types.NetworkResource{
+		{
+			ID:   "other-network-id",
+			Name: "other-network-name",
+		},
+	}
 	dockerClient.TasksData = []swarm.Task{
 		{
 			ServiceID: "SERVICEID",
@@ -353,7 +374,10 @@ func TestServiceTasks_DifferentNetworkSkipValidation(t *testing.T) {
 		"	reverse_proxy 10.0.0.1:5000\n" +
 		"}\n"
 
-	testGeneration(t, dockerClient, true, false, expectedCaddyfile, skipCaddyfileText)
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.ProxyServiceTasks = true
+		options.IngressNetworks = []string{"other-network-name"}
+	}, expectedCaddyfile, skipCaddyfileText)
 }
 
 func TestServiceTasks_Running(t *testing.T) {
@@ -412,5 +436,7 @@ func TestServiceTasks_Running(t *testing.T) {
 		"	reverse_proxy 10.0.0.1:5000 10.0.0.2:5000\n" +
 		"}\n"
 
-	testGeneration(t, dockerClient, true, true, expectedCaddyfile, skipCaddyfileText)
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.ProxyServiceTasks = true
+	}, expectedCaddyfile, skipCaddyfileText)
 }
