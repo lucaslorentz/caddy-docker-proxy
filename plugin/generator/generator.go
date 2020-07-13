@@ -28,7 +28,7 @@ type CaddyfileGenerator struct {
 	labelRegex           *regexp.Regexp
 	dockerClient         docker.Client
 	dockerUtils          docker.Utils
-	caddyNetworks        map[string]bool
+	ingressNetworks      map[string]bool
 	swarmIsAvailable     bool
 	swarmIsAvailableTime time.Time
 }
@@ -50,13 +50,10 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 	var caddyfileBuffer bytes.Buffer
 	var logsBuffer bytes.Buffer
 
-	if g.options.ValidateNetwork && g.caddyNetworks == nil {
-		networks, err := g.getCaddyNetworks()
+	if g.ingressNetworks == nil {
+		ingressNetworks, err := g.getIngressNetworks()
 		if err == nil {
-			g.caddyNetworks = map[string]bool{}
-			for _, network := range networks {
-				g.caddyNetworks[network] = true
-			}
+			g.ingressNetworks = ingressNetworks
 		} else {
 			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 		}
@@ -118,7 +115,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 	if err == nil {
 		for _, container := range containers {
 			if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {
-				ips, err := g.getContainerIPAddresses(&container, &logsBuffer)
+				ips, err := g.getContainerIPAddresses(&container, &logsBuffer, false)
 				if err != nil {
 					logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 				} else {
@@ -147,7 +144,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 		if err == nil {
 			for _, service := range services {
 				if _, isControlledServer := service.Spec.Labels[g.options.ControlledServersLabel]; isControlledServer {
-					ips, err := g.getServiceTasksIps(&service, &logsBuffer)
+					ips, err := g.getServiceTasksIps(&service, &logsBuffer, false)
 					if err != nil {
 						logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
 					} else {
@@ -219,30 +216,50 @@ func (g *CaddyfileGenerator) checkSwarmAvailability(isFirstCheck bool) {
 	}
 }
 
-func (g *CaddyfileGenerator) getCaddyNetworks() ([]string, error) {
-	containerID, err := g.dockerUtils.GetCurrentContainerID()
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("[INFO] Caddy ContainerID: %v\n", containerID)
-	container, err := g.dockerClient.ContainerInspect(context.Background(), containerID)
-	if err != nil {
-		return nil, err
-	}
+func (g *CaddyfileGenerator) getIngressNetworks() (map[string]bool, error) {
+	ingressNetworks := map[string]bool{}
 
-	var networks []string
-	for _, network := range container.NetworkSettings.Networks {
-		networkInfo, err := g.dockerClient.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
+	if len(g.options.IngressNetworks) > 0 {
+		networks, err := g.dockerClient.NetworkList(context.Background(), types.NetworkListOptions{})
 		if err != nil {
 			return nil, err
 		}
-		if !networkInfo.Ingress {
-			networks = append(networks, network.NetworkID)
+		for _, dockerNetwork := range networks {
+			if dockerNetwork.Ingress {
+				continue
+			}
+			for _, ingressNetwork := range g.options.IngressNetworks {
+				if dockerNetwork.Name == ingressNetwork {
+					ingressNetworks[dockerNetwork.ID] = true
+				}
+			}
+		}
+	} else {
+		containerID, err := g.dockerUtils.GetCurrentContainerID()
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("[INFO] Caddy ContainerID: %v\n", containerID)
+		container, err := g.dockerClient.ContainerInspect(context.Background(), containerID)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, network := range container.NetworkSettings.Networks {
+			networkInfo, err := g.dockerClient.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
+			if err != nil {
+				return nil, err
+			}
+			if networkInfo.Ingress {
+				continue
+			}
+			ingressNetworks[network.NetworkID] = true
 		}
 	}
-	log.Printf("[INFO] Caddy Networks: %v\n", networks)
 
-	return networks, nil
+	log.Printf("[INFO] IngressNetworksMap: %v\n", ingressNetworks)
+
+	return ingressNetworks, nil
 }
 
 func (g *CaddyfileGenerator) filterLabels(labels map[string]string) map[string]string {

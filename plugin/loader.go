@@ -75,7 +75,7 @@ func (dockerLoader *DockerLoader) Start() error {
 		log.Printf("[INFO] PollingInterval: %v", dockerLoader.options.PollingInterval)
 		log.Printf("[INFO] ProcessCaddyfile: %v", dockerLoader.options.ProcessCaddyfile)
 		log.Printf("[INFO] ProxyServiceTasks: %v", dockerLoader.options.ProxyServiceTasks)
-		log.Printf("[INFO] ValidateNetwork: %v", dockerLoader.options.ValidateNetwork)
+		log.Printf("[INFO] IngressNetworks: %v", dockerLoader.options.IngressNetworks)
 
 		dockerLoader.timer = time.AfterFunc(0, func() {
 			dockerLoader.update()

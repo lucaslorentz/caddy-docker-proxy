@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/caddyserver/caddy/v2"
@@ -24,14 +25,32 @@ func init() {
 		Short: "Run caddy as a docker proxy",
 		Flags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("docker-proxy", flag.ExitOnError)
-			fs.Bool("mode", false, "Which mode this instance should run: standalone | controller | server")
-			fs.String("controller-network", "", "Network allowed to configure caddy server in CIDR notation. Ex: 10.200.200.0/24")
-			fs.String("caddyfile-path", "", "Path to a base Caddyfile that will be extended with docker sites")
-			fs.String("label-prefix", generator.DefaultLabelPrefix, "Prefix for Docker labels")
-			fs.Bool("proxy-service-tasks", true, "Proxy to service tasks instead of service load balancer")
-			fs.Bool("validate-network", true, "Validates if caddy container and target are in same network")
-			fs.Bool("process-caddyfile", true, "Process Caddyfile before loading it, removing invalid servers")
-			fs.Duration("polling-interval", 30*time.Second, "Interval caddy should manually check docker for a new caddyfile")
+
+			fs.Bool("mode", false,
+				"Which mode this instance should run: standalone | controller | server")
+
+			fs.String("controller-network", "",
+				"Network allowed to configure caddy server in CIDR notation. Ex: 10.200.200.0/24")
+
+			fs.String("ingress-networks", "",
+				"Comma separated name of ingress networks connecting caddy servers to containers.\n"+
+					"When not defined, networks attached to controller container are considered ingress networks")
+
+			fs.String("caddyfile-path", "",
+				"Path to a base Caddyfile that will be extended with docker sites")
+
+			fs.String("label-prefix", generator.DefaultLabelPrefix,
+				"Prefix for Docker labels")
+
+			fs.Bool("proxy-service-tasks", true,
+				"Proxy to service tasks instead of service load balancer")
+
+			fs.Bool("process-caddyfile", true,
+				"Process Caddyfile before loading it, removing invalid servers")
+
+			fs.Duration("polling-interval", 30*time.Second,
+				"Interval caddy should manually check docker for a new caddyfile")
+
 			return fs
 		}(),
 	})
@@ -96,11 +115,11 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	caddyfilePath := flags.String("caddyfile-path")
 	labelPrefixFlag := flags.String("label-prefix")
 	proxyServiceTasksFlag := flags.Bool("proxy-service-tasks")
-	validateNetworkFlag := flags.Bool("validate-network")
 	processCaddyfileFlag := flags.Bool("process-caddyfile")
 	pollingIntervalFlag := flags.Duration("polling-interval")
 	modeFlag := flags.String("mode")
 	controllerSubnetFlag := flags.String("controller-network")
+	ingressNetworksFlag := flags.String("ingress-networks")
 
 	options := &config.Options{}
 
@@ -136,6 +155,12 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		}
 	}
 
+	if ingressNetworksEnv := os.Getenv("CADDY_INGRESS_NETWORKS"); ingressNetworksEnv != "" {
+		options.IngressNetworks = strings.Split(ingressNetworksEnv, ",")
+	} else if ingressNetworksFlag != "" {
+		options.IngressNetworks = strings.Split(ingressNetworksFlag, ",")
+	}
+
 	if caddyfilePathEnv := os.Getenv("CADDY_DOCKER_CADDYFILE_PATH"); caddyfilePathEnv != "" {
 		options.CaddyfilePath = caddyfilePathEnv
 	} else {
@@ -153,12 +178,6 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		options.ProxyServiceTasks = isTrue.MatchString(proxyServiceTasksEnv)
 	} else {
 		options.ProxyServiceTasks = proxyServiceTasksFlag
-	}
-
-	if validateNetworkEnv := os.Getenv("CADDY_DOCKER_VALIDATE_NETWORK"); validateNetworkEnv != "" {
-		options.ValidateNetwork = isTrue.MatchString(validateNetworkEnv)
-	} else {
-		options.ValidateNetwork = validateNetworkFlag
 	}
 
 	if processCaddyfileEnv := os.Getenv("CADDY_DOCKER_PROCESS_CADDYFILE"); processCaddyfileEnv != "" {

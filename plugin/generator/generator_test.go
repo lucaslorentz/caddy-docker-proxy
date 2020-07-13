@@ -78,7 +78,7 @@ func TestMergeConfigContent(t *testing.T) {
 		"	reverse_proxy 127.0.0.1 172.17.0.2\n" +
 		"}\n"
 
-	testGeneration(t, dockerClient, false, true, expectedCaddyfile, skipCaddyfileText)
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, skipCaddyfileText)
 }
 
 func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
@@ -108,24 +108,27 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 
 	const expectedCaddyfile = "# Empty caddyfile"
 
-	testGeneration(t, dockerClient, true, true, expectedCaddyfile, skipCaddyfileText)
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, skipCaddyfileText)
 }
 
 func testGeneration(
 	t *testing.T,
 	dockerClient docker.Client,
-	proxyServiceTasks bool,
-	validateNetwork bool,
+	customizeOptions func(*config.Options),
 	expectedCaddyfile string,
 	expectedLogs string,
 ) {
 	dockerUtils := createDockerUtilsMock()
 
-	generator := CreateGenerator(dockerClient, dockerUtils, &config.Options{
-		LabelPrefix:       DefaultLabelPrefix,
-		ProxyServiceTasks: proxyServiceTasks,
-		ValidateNetwork:   validateNetwork,
-	})
+	options := &config.Options{
+		LabelPrefix: DefaultLabelPrefix,
+	}
+
+	if customizeOptions != nil {
+		customizeOptions(options)
+	}
+
+	generator := CreateGenerator(dockerClient, dockerUtils, options)
 
 	caddyfileBytes, logs, _ := generator.GenerateCaddyfile()
 	assert.Equal(t, expectedCaddyfile, string(caddyfileBytes))
@@ -138,6 +141,7 @@ func createBasicDockerClientMock() *docker.ClientMock {
 		ServicesData:   []swarm.Service{},
 		ConfigsData:    []swarm.Config{},
 		TasksData:      []swarm.Task{},
+		NetworksData:   []types.NetworkResource{},
 		InfoData: types.Info{
 			Swarm: swarm.Info{
 				LocalNodeState: swarm.LocalNodeStateActive,
