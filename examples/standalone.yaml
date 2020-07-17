@@ -1,13 +1,15 @@
-version: '3.7'
+version: "3.7"
 
+# used for specific settings you have outside of your docker config
+# ex: proxies to external servers, storage configuration...
+# remove this block entirely if not needed
 configs:
   caddy-basic-content:
     file: ./Caddyfile
     labels:
-        caddy:
+      caddy:
 
 services:
-  
   caddy:
     image: lucaslorentz/caddy-docker-proxy:ci-alpine
     ports:
@@ -19,6 +21,9 @@ services:
       caddy.email: you@example.com
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      # this volume is needed to keep the certificates
+      # otherwise, new ones will be re-issued upon restart
+      - caddy_data:/data
     deploy:
       placement:
         constraints:
@@ -28,7 +33,7 @@ services:
         condition: any
       resources:
         reservations:
-          cpus: '0.1'
+          cpus: "0.1"
           memory: 200M
 
   # Proxy to service
@@ -42,7 +47,7 @@ services:
         caddy.reverse_proxy: "{{upstreams 8000}}"
         caddy.tls: "internal"
 
-  # Proxy to service
+  # Proxy to service that you want to expose to the outside world
   whoami1:
     image: jwilder/whoami
     networks:
@@ -51,7 +56,9 @@ services:
       labels:
         caddy: whoami1.example.com
         caddy.reverse_proxy: "{{upstreams 8000}}"
-        caddy.tls: "internal"
+        # remove the following line when you have verified your setup
+        # Otherwise you risk being rate limited by let's encrypt
+        caddy.tls.ca: https://acme-staging-v02.api.letsencrypt.org/directory
 
   # Proxy to container
   whoami2:
@@ -91,3 +98,6 @@ services:
 networks:
   caddy:
     driver: overlay
+
+volumes:
+  caddy_data: {}

@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 services:
   caddy:
@@ -20,13 +20,13 @@ services:
         condition: any
       resources:
         reservations:
-          cpus: '0.1'
+          cpus: "0.1"
           memory: 200M
 
 volumes:
-  caddy:
+  caddy_data:
     driver: rexray/efs
 
 networks:
-  caddy_data:
+  caddy:
     driver: overlay
