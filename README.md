@@ -201,7 +201,7 @@ For services, that would be the service DNS name when **proxy-service-tasks** is
 
 For containers, that would be the container IPs.
 
-Resource networks are validated and only addresses in caddy ingress networks are returned. You can override caddy ingress networks using CLI option `ingress-networks` or environment variable `CADDY_INGRESS_NETWORKS`
+Only addresses in caddy ingress networks are used. You can override caddy ingress networks using CLI option `ingress-networks` or environment variable `CADDY_INGRESS_NETWORKS`
 
 Usage: `upstreams [http|https] [port]`  
 
@@ -372,7 +372,6 @@ CADDY_DOCKER_MODE=<string>
 CADDY_DOCKER_POLLING_INTERVAL=<duration>
 CADDY_DOCKER_PROCESS_CADDYFILE=<bool>
 CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
-CADDY_DOCKER_VALIDATE_NETWORK=<bool>
 ```
 
 Check **examples** folder to see how to set them on a docker compose file.
