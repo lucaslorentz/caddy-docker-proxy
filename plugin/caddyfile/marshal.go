@@ -199,6 +199,7 @@ func parseContainer(tokens []Token) (*Container, error) {
 				stack = append(stack, currentBlock.Container)
 			} else {
 				currentBlock.AddKeys(token.Text)
+				tokenLine += strings.Count(token.Text, "\n")
 			}
 		}
 	}

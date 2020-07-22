@@ -19,6 +19,9 @@ service3.example.com {
 	basicauth /secret {
 		user " a \ b"
 	}
+	respond / `<html>
+		<body>Hello</body>
+	</html>` 200
 }
 ----------
 {
@@ -42,4 +45,7 @@ service3.example.com {
 	basicauth /secret {
 		user " a \ b"
 	}
+	respond / `<html>
+		<body>Hello</body>
+	</html>` 200
 }

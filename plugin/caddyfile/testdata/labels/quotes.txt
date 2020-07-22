@@ -1,4 +1,3 @@
-caddy                  = localhost
 caddy.0_with_spaces    = "a b c d"
 caddy.1_without_spaces = "abcd"
 caddy.2_multiple       = "a b c d" "abcd"
@@ -6,8 +5,9 @@ caddy.3_back           = `{"some":"json"}`
 caddy.4_escaped        = "a\"b"
 caddy.5_unbalanced     = "a
 caddy.6_unbalanced     = a"
+caddy.7_multiline      = `aNEW_LINEb` "cd"
 ----------
-localhost {
+{
 	with_spaces "a b c d"
 	without_spaces abcd
 	multiple "a b c d" abcd
@@ -15,4 +15,6 @@ localhost {
 	escaped `a"b`
 	unbalanced a
 	unbalanced `a"`
+	multiline `a
+b` cd
 }

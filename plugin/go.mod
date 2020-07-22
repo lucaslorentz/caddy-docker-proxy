@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
-	github.com/caddyserver/caddy/v2 v2.0.0
+	github.com/caddyserver/caddy/v2 v2.1.1
 	github.com/containerd/containerd v1.3.4 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190816182709-c9aee96bfd1b

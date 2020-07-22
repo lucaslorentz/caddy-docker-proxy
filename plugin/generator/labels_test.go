@@ -79,7 +79,7 @@ func parseLabelsFromString(s string) (map[string]string, error) {
 	lineNumber := 0
 
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
+		line = strings.ReplaceAll(strings.TrimSpace(line), "NEW_LINE", "\n")
 		lineNumber++
 
 		// skip lines starting with comment
