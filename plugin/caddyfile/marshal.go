@@ -41,7 +41,13 @@ func (block *Block) write(buffer *bytes.Buffer, level int) {
 			buffer.WriteString(" ")
 		}
 
-		if strings.ContainsAny(key, ` "'`) {
+		if strings.ContainsAny(key, "\n\"") {
+			// If token has line break or quote, we use backtick for readability
+			buffer.WriteString("`")
+			buffer.WriteString(strings.ReplaceAll(key, "`", "\\`"))
+			buffer.WriteString("`")
+		} else if strings.ContainsAny(key, ` `) {
+			// If token has whitespace, we use duoble quote
 			buffer.WriteString("\"")
 			buffer.WriteString(strings.ReplaceAll(key, "\"", "\\\""))
 			buffer.WriteString("\"")

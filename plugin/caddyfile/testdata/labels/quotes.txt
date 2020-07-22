@@ -11,8 +11,8 @@ localhost {
 	with_spaces "a b c d"
 	without_spaces abcd
 	multiple "a b c d" abcd
-	back "{\"some\":\"json\"}"
-	escaped "a\"b"
+	back `{"some":"json"}`
+	escaped `a"b`
 	unbalanced a
-	unbalanced "a\""
+	unbalanced `a"`
 }
