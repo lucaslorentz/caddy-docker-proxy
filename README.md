@@ -21,20 +21,47 @@ Every time a docker object changes, it updates the Caddyfile and triggers a cadd
 ## Labels to Caddyfile conversion
 Any label prefixed with caddy, will be converted to caddyfile configuration following those rules:
 
-Keys becomes directive name and value becomes arguments:
+Keys are directive name and values are whitespace separated arguments:
 ```
-caddy.directive=arg1 arg2
+caddy.directive: arg1 arg2
 ↓
 {
 	directive arg1 arg2
 }
 ```
 
+If you need whitespace or line-breaks inside one of the arguments, use double-quotes or backticks around it:
+```
+caddy.respond: / "Hello World" 200
+↓
+{
+	respond / "Hello World" 200
+}
+```
+```
+caddy.respond: / `Hello\nWorld` 200
+↓
+{
+	respond / `Hello
+World` 200
+}
+```
+```
+caddy.respond: |
+	/ `Hello
+	World` 200
+↓
+{
+	respond / `Hello
+World` 200
+}
+```
+
 Dots represents nesting and grouping is done automatically:
 ```
-caddy.directive=argA  
-caddy.directive.subdirA=valueA  
-caddy.directive.subdirB=valueB1 valueB2
+caddy.directive: argA  
+caddy.directive.subdirA: valueA  
+caddy.directive.subdirB: valueB1 valueB2
 ↓
 {
 	directive argA {  
@@ -46,7 +73,7 @@ caddy.directive.subdirB=valueB1 valueB2
 
 Labels for parent directives are optional:
 ```
-caddy.directive.subdirA=valueA
+caddy.directive.subdirA: valueA
 ↓
 {
 	directive {
@@ -57,7 +84,7 @@ caddy.directive.subdirA=valueA
 
 Labels with empty values generates directives without arguments:
 ```
-caddy.directive=
+caddy.directive:
 ↓
 {
 	directive
@@ -66,8 +93,8 @@ caddy.directive=
 
 Directives are ordered alphabetically by default:
 ```
-caddy.bbb=value
-caddy.aaa=value
+caddy.bbb: value
+caddy.aaa: value
 ↓
 {
 	aaa value 
@@ -77,8 +104,8 @@ caddy.aaa=value
 
 Suffix _&lt;number&gt; isolates directives that otherwise would be grouped:
 ```
-caddy.group_0.a=value
-caddy.group_1.b=value
+caddy.group_0.a: value
+caddy.group_1.b: value
 ↓
 {
 	group {
@@ -92,9 +119,9 @@ caddy.group_1.b=value
 
 Prefix &lt;number&gt;_ isolates directives but also defines a custom ordering for directives, and directives without order prefix will go last:
 ```
-caddy.1_bbb=value
-caddy.2_aaa=value
-caddy.3_aaa=value
+caddy.1_bbb: value
+caddy.2_aaa: value
+caddy.3_aaa: value
 ↓
 {
 	bbb value
@@ -105,8 +132,8 @@ caddy.3_aaa=value
 
 Caddy label args creates a server block:
 ```
-caddy=example.com
-caddy.respond=200 /
+caddy: example.com
+caddy.respond: 200 /
 ↓
 example.com {
 	respond 200 /
@@ -115,8 +142,8 @@ example.com {
 
 Or a snippet:
 ```
-caddy=(snippet)
-caddy.respond=200 /
+caddy: (snippet)
+caddy.respond: 200 /
 ↓
 (snippet) {
 	respond 200 /
@@ -125,12 +152,12 @@ caddy.respond=200 /
 
 It's also possible to isolate caddy configurations using suffix _&lt;number&gt;:
 ```
-caddy_0 = (snippet)
-caddy_0.tls = internal
-caddy_1 = site-a.com
-caddy_1.import = snippet
-caddy_2 = site-b.com
-caddy_2.import = snippet
+caddy_0: (snippet)
+caddy_0.tls: internal
+caddy_1: site-a.com
+caddy_1.import: snippet
+caddy_2: site-b.com
+caddy_2.import: snippet
 ↓
 (snippet) {
 	tls internal
@@ -145,9 +172,9 @@ site_b {
 
 Named matchers can be created using @ inside labels:
 ```
-caddy = localhost
-caddy.@match.path = /sourcepath /sourcepath/*
-caddy.reverse_proxy = @match localhost:6001
+caddy: localhost
+caddy.@match.path: /sourcepath /sourcepath/*
+caddy.reverse_proxy: @match localhost:6001
 ↓
 localhost {
 	@match {
@@ -159,7 +186,7 @@ localhost {
 
 Global options can be defined by not setting any value for caddy. It can be set in any container/service, including caddy-docker-proxy itself. [Here is an example](examples/standalone.yaml#L19)
 ```
-caddy.email = you@example.com
+caddy.email: you@example.com
 ↓
 {
 	email you@example.com
@@ -170,21 +197,21 @@ caddy.email = you@example.com
 
 While you can access a service name like this:
 ```
-caddy.respond = /info "{{.Spec.Name}}"
+caddy.respond: /info "{{.Spec.Name}}"
 ↓
 respond /info "myservice"
 ```
 
 The equivalent to access a container name would be:
 ```
-caddy.respond = /info "{{index .Names 0}}"
+caddy.respond: /info "{{index .Names 0}}"
 ↓
 respond /info "mycontainer"
 ```
 
 Sometimes it's not possile to have labels with empty values, like when using some UI to manage docker. If that's the case, you can also use our support for go lang templates to generate empty labels.
 ```
-caddy.directive={{""}}
+caddy.directive: {{""}}
 ↓
 directive
 ```
@@ -207,22 +234,22 @@ Usage: `upstreams [http|https] [port]`
 
 Examples:
 ```
-caddy.reverse_proxy = {{upstreams}}
+caddy.reverse_proxy: {{upstreams}}
 ↓
 reverse_proxy 192.168.0.1 192.168.0.2
 ```
 ```
-caddy.reverse_proxy = {{upstreams https}}
+caddy.reverse_proxy: {{upstreams https}}
 ↓
 reverse_proxy https://192.168.0.1 https://192.168.0.2
 ```
 ```
-caddy.reverse_proxy = {{upstreams 8080}}
+caddy.reverse_proxy: {{upstreams 8080}}
 ↓
 reverse_proxy 192.168.0.1:8080 192.168.0.2:8080
 ```
 ```
-caddy.reverse_proxy = {{upstreams http 8080}}
+caddy.reverse_proxy: {{upstreams http 8080}}
 ↓
 reverse_proxy http://192.168.0.1:8080 http://192.168.0.2:8080
 ```
@@ -230,47 +257,47 @@ reverse_proxy http://192.168.0.1:8080 http://192.168.0.2:8080
 ## Reverse proxy examples
 Proxying domain root to container root
 ```
-caddy = example.com
-caddy.reverse_proxy = {{upstreams}}
+caddy: example.com
+caddy.reverse_proxy: {{upstreams}}
 ```
 
 Proxying domain root to container path
 ```
-caddy = example.com
-caddy.rewrite = * /target{path}
-caddy.reverse_proxy = {{upstreams}}
+caddy: example.com
+caddy.rewrite: * /target{path}
+caddy.reverse_proxy: {{upstreams}}
 ```
 
 Proxying domain path to container root
 ```
-caddy = example.com
-caddy.route = /source/*
-caddy.route.0_uri = strip_prefix /source
-caddy.route.1_reverse_proxy = {{upstreams}}
+caddy: example.com
+caddy.route: /source/*
+caddy.route.0_uri: strip_prefix /source
+caddy.route.1_reverse_proxy: {{upstreams}}
 ```
 
 Proxying domain path to different container path
 ```
-caddy = example.com
-caddy.route = /source/*
-caddy.route.0_uri = strip_prefix /source
-caddy.route.1_rewrite = * /target{path}
-caddy.route.2_reverse_proxy = {{upstreams}}
+caddy: example.com
+caddy.route: /source/*
+caddy.route.0_uri: strip_prefix /source
+caddy.route.1_rewrite: * /target{path}
+caddy.route.2_reverse_proxy: {{upstreams}}
 ```
 
 Proxying domain path to subpath
 ```
-caddy = example.com
-caddy.route = /source/*
-caddy.route.0_uri = strip_prefix /source
-caddy.route.1_rewrite = * /source/target{path}
-caddy.route.2_reverse_proxy = {{upstreams}}
+caddy: example.com
+caddy.route: /source/*
+caddy.route.0_uri: strip_prefix /source
+caddy.route.1_rewrite: * /source/target{path}
+caddy.route.2_reverse_proxy: {{upstreams}}
 ```
 
 Proxying multiple domains to container
 ```
-caddy = example.com example.org
-caddy.reverse_proxy = {{upstreams}}
+caddy: example.com example.org
+caddy.reverse_proxy: {{upstreams}}
 ```
 
 ## Docker configs
@@ -287,8 +314,9 @@ To proxy swarm services, labels should be defined at service level. On a docker-
 service:
 	...
 	deploy:
-		caddy=service.example.com
-		caddy.reverse_proxy={{upstreams}}
+		labels:
+			caddy: service.example.com
+			caddy.reverse_proxy: {{upstreams}}
 ```
 
 Caddy will use service DNS name as target or all service tasks IPs, depending on configuration **proxy-service-tasks**.
@@ -298,8 +326,9 @@ To proxy containers, labels should be defined at container level. On a docker-co
 ```
 service:
 	...
-	caddy=service.example.com
-	caddy.reverse_proxy={{upstreams}}
+	labels:
+		caddy: service.example.com
+		caddy.reverse_proxy: {{upstreams}}
 ```
 
 ## Execution modes

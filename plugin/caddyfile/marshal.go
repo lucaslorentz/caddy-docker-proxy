@@ -41,7 +41,13 @@ func (block *Block) write(buffer *bytes.Buffer, level int) {
 			buffer.WriteString(" ")
 		}
 
-		if strings.ContainsAny(key, ` "'`) {
+		if strings.ContainsAny(key, "\n\"") {
+			// If token has line break or quote, we use backtick for readability
+			buffer.WriteString("`")
+			buffer.WriteString(strings.ReplaceAll(key, "`", "\\`"))
+			buffer.WriteString("`")
+		} else if strings.ContainsAny(key, ` `) {
+			// If token has whitespace, we use duoble quote
 			buffer.WriteString("\"")
 			buffer.WriteString(strings.ReplaceAll(key, "\"", "\\\""))
 			buffer.WriteString("\"")
@@ -193,6 +199,7 @@ func parseContainer(tokens []Token) (*Container, error) {
 				stack = append(stack, currentBlock.Container)
 			} else {
 				currentBlock.AddKeys(token.Text)
+				tokenLine += strings.Count(token.Text, "\n")
 			}
 		}
 	}

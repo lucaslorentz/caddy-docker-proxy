@@ -22,6 +22,9 @@ service3.example.com {
 	basicauth /secret {
 		user " a \ b"
 	}
+	respond / `<html>
+		<body>Hello</body>
+	</html>` 200
 }
 ----------
 {
@@ -42,6 +45,9 @@ service3.example.com {
 	basicauth /secret {
 		user " a \ b"
 	}
+	respond / `<html>
+		<body>Hello</body>
+	</html>` 200
 }
 ----------
 [ERROR]  Removing invalid block: parsing caddyfile tokens for 'reverse_proxy': Caddyfile:9 - Error during parsing: unrecognized subdirective invalid
