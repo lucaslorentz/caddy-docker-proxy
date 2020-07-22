@@ -76,9 +76,14 @@ func processVariables(data interface{}, funcs template.FuncMap, content string) 
 }
 
 func parseArgs(text string) []string {
-	args := whitespaceRegex.Split(text, -1)
-	if len(args) == 1 && args[0] == "" {
-		return []string{}
+	l := new(lexer)
+	err := l.load(bytes.NewReader([]byte(text)))
+	if err != nil {
+		return nil
+	}
+	var args []string
+	for l.next() {
+		args = append(args, l.token.Text)
 	}
 	return args
 }

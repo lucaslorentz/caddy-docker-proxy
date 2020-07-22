@@ -1,0 +1,12 @@
+caddy                = localhost
+caddy.0_with_spaces    = "a b c d"
+caddy.1_without_spaces = "abcd"
+caddy.2_multiple       = "a b c d" "abcd"
+caddy.3_back           = `a b c d`
+----------
+localhost {
+	with_spaces "a b c d"
+	without_spaces abcd
+	multiple "a b c d" abcd
+	back "a b c d"
+}
