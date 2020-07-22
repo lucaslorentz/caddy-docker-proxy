@@ -22,7 +22,11 @@ func FromLabels(labels map[string]string, templateData interface{}, templateFunc
 		if err != nil {
 			return nil, err
 		}
-		block.AddKeys(parseArgs(argsText)...)
+		args, err := parseArgs(argsText)
+		if err != nil {
+			return nil, err
+		}
+		block.AddKeys(args...)
 	}
 
 	return container, nil
@@ -75,15 +79,18 @@ func processVariables(data interface{}, funcs template.FuncMap, content string) 
 	return writer.String(), nil
 }
 
-func parseArgs(text string) []string {
+func parseArgs(text string) ([]string, error) {
+	if len(text) == 0 {
+		return []string{}, nil
+	}
 	l := new(lexer)
 	err := l.load(bytes.NewReader([]byte(text)))
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	var args []string
 	for l.next() {
 		args = append(args, l.token.Text)
 	}
-	return args
+	return args, nil
 }
