@@ -1,19 +1,13 @@
-FROM alpine:3.11 as alpine
-RUN apk add -U --no-cache ca-certificates
+ARG CADDY_VERSION=2.1.1
 
-# Image starts here
-FROM scratch
-LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
+FROM caddy:${CADDY_VERSION}-builder AS builder
 
-EXPOSE 80 443 2019
-ENV XDG_CONFIG_HOME /config
-ENV XDG_DATA_HOME /data
+ARG PLUGINS=
 
-WORKDIR /
-COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+RUN caddy-builder \
+    github.com/lucaslorentz/caddy-docker-proxy/plugin/v2 \
+    ${PLUGINS}
 
-COPY artifacts/binaries/linux/amd64/caddy /bin/
+FROM caddy:${CADDY_VERSION}
 
-ENTRYPOINT ["/bin/caddy"]
-
-CMD ["docker-proxy"]
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy

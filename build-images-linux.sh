@@ -3,7 +3,7 @@
 set -e
 
 chmod +x artifacts/binaries/linux/amd64/caddy
-docker build -t lucaslorentz/caddy-docker-proxy:ci -f Dockerfile .
+docker build -t lucaslorentz/caddy-docker-proxy:ci -f Dockerfile-scratch .
 docker build -t lucaslorentz/caddy-docker-proxy:ci-alpine -f Dockerfile-alpine .
 
 chmod +x artifacts/binaries/linux/arm32v6/caddy
