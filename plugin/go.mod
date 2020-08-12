@@ -1,6 +1,6 @@
 module github.com/lucaslorentz/caddy-docker-proxy/plugin/v2
 
-go 1.14
+go 1.15
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
