@@ -6,7 +6,7 @@ jobs:
   steps:
   - task: GoTool@0
     inputs:
-      version: '1.14'
+      version: '1.14.x'
       GOPATH: '$(Agent.BuildDirectory)/go'
       GOBIN: '$(GOPATH)/bin'
 
