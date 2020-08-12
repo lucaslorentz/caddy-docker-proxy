@@ -13,6 +13,10 @@ services:
     environment:
       - CADDY_DOCKER_MODE=server
       - CADDY_CONTROLLER_NETWORK=10.200.200.0/24
+    volumes:
+      # this volume is needed to keep the certificates
+      # otherwise, new ones will be re-issued upon restart
+      - caddy_data:/data
     deploy:
       replicas: 3
       labels:
@@ -38,7 +42,9 @@ services:
       labels:
         caddy: whoami0.example.com
         caddy.reverse_proxy: "{{upstreams 8000}}"
-        caddy.tls: "internal"
+        # remove the following line when you have verified your setup
+        # Otherwise you risk being rate limited by let's encrypt
+        caddy.tls.ca: https://acme-staging-v02.api.letsencrypt.org/directory
 
   # Proxy to service
   whoami1:
@@ -95,3 +101,6 @@ networks:
       driver: default
       config:
         - subnet: "10.200.200.0/24"
+
+volumes:
+  caddy_data: {}

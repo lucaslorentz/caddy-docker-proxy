@@ -17,14 +17,14 @@ services:
       - 443:443
     networks:
       - caddy
-    labels: # Global options
-      caddy.email: you@example.com
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # this volume is needed to keep the certificates
       # otherwise, new ones will be re-issued upon restart
       - caddy_data:/data
     deploy:
+      labels: # Global options
+        caddy.email: you@example.com
       placement:
         constraints:
           - node.role == manager
