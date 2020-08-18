@@ -2,7 +2,7 @@ version: "3.7"
 
 # used for specific settings you have outside of your docker config
 # ex: proxies to external servers, storage configuration...
-# remove this block entirely if not needed
+# remove this block entirely if not needed (Only used for Docker Swarm)
 configs:
   caddy-basic-content:
     file: ./Caddyfile
