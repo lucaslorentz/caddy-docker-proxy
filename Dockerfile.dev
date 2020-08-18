@@ -1,0 +1,31 @@
+
+# docker build --target xcaddy --tag xcaddy .
+FROM golang:1.14 as xcaddy
+
+# get xcaddy
+RUN go get -u github.com/caddyserver/xcaddy/cmd/xcaddy
+
+# docker build -f Dockerfile.dev --target build --tag build .
+FROM xcaddy as build
+
+WORKDIR /src/
+COPY . /src/
+
+# https://caddy.community/t/how-to-use-dns-provider-modules-in-caddy-2/8148
+RUN xcaddy build \
+    --with github.com/caddy-dns/gandi \
+    --with github.com/lucaslorentz/caddy-docker-proxy/plugin/v2=/src/plugin/
+
+RUN ls -la
+
+# docker build -f Dockerfile.dev --target cdp --tag cdp .
+FROM caddy as cdp
+COPY --from=build /src/caddy /usr/bin/caddy
+
+ENV GANDIV5_API_KEY=
+
+#oh :( want it to use the autosave file if its there - unless the /config.caddy.json is newer
+CMD [ "caddy", "docker-proxy" ]
+
+
+# docker run --rm -it -p 443:443 -p 80:80 -p 2019:2019 -e GANDIV5_API_KEY -v /run/docker.sock:/run/docker.sock -v $(pwd)/data:/data cdp 

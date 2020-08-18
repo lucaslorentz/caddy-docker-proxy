@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -266,7 +267,45 @@ func (g *CaddyfileGenerator) filterLabels(labels map[string]string) map[string]s
 	filteredLabels := map[string]string{}
 	for label, value := range labels {
 		if g.labelRegex.MatchString(label) {
+			log.Printf("[INFO]: label %s: %s\n", label, value)
 			filteredLabels[label] = value
+		}
+
+		// hardcoded virtual.port macro
+		if strings.HasPrefix(label, "virtual.port") {
+			log.Printf("[INFO]: in macro %s: %s\n", label, value)
+			filteredLabels["caddy"] = "*.loc.alho.st loc.alho.st"
+			log.Printf("[INFO]: out macro %s: %s\n", "caddy", filteredLabels["caddy"])
+
+			reverseProxy := "caddy.route.reverse_proxy"
+			if tag := strings.TrimPrefix(label, "virtual.port_"); tag != label {
+				reverseProxy = fmt.Sprintf("caddy.route_%s.reverse_proxy", tag)
+			}
+			filteredLabels[reverseProxy] = fmt.Sprintf("{{upstreams %s}}", value)
+			log.Printf("[INFO]: out macro %s: %s\n", reverseProxy, filteredLabels[reverseProxy])
+
+		}
+
+		// hardcoded virtual.host macro
+		if strings.HasPrefix(label, "virtual.host") {
+			log.Printf("[INFO]: in macro %s: %s\n", label, value)
+
+			filteredLabels["caddy"] = "*.loc.alho.st loc.alho.st"
+			log.Printf("[INFO]: out macro %s: %s\n", "caddy", filteredLabels["caddy"])
+
+			// TODO: add virtual.host_1 -> caddy.route_1
+			route := "caddy.route"
+			if tag := strings.TrimPrefix(label, "virtual.host_"); tag != label {
+				route = fmt.Sprintf("caddy.route_%s", tag)
+			}
+			host := strings.ReplaceAll(fmt.Sprintf("@%s", value), ".", "_")
+			filteredLabels[route] = host
+			log.Printf("[INFO]: out macro %s: %s\n", route, filteredLabels[route])
+
+			caddyHost := "caddy." + host + ".host"
+			filteredLabels[caddyHost] = value
+			log.Printf("[INFO]: out macro %s: %s\n", caddyHost, filteredLabels[caddyHost])
+
 		}
 	}
 	return filteredLabels

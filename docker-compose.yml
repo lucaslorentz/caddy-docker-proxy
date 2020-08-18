@@ -1,0 +1,178 @@
+version: "3.7"
+
+services:
+  caddy:
+    #image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    image: cdp
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - GANDIV5_API_KEY=
+      - STACKDOMAIN=${STACKDOMAIN:-loc.alho.st} # MUST BE SET (there's no way to set a default that's used in other compose files.)
+
+      - CADDY_DOCKER_CADDYFILE_PATH=/Caddyfile
+    #   - CADDY_CONTROLLER_NETWORK=<string>
+    #   - CADDY_INGRESS_NETWORKS=<string>
+    #   - CADDY_DOCKER_LABEL_PREFIX=<string>
+    #   - CADDY_DOCKER_MODE=<string>
+    #   - CADDY_DOCKER_POLLING_INTERVAL=<duration>
+    #   - CADDY_DOCKER_PROCESS_CADDYFILE=<bool>
+    #   - CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
+    networks:
+      - cirri_proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # this volume is needed to keep the certificates
+      # otherwise, new ones will be re-issued upon restart
+      - caddy_data:/data
+      - ./Caddyfile:/Caddyfile
+    labels: # Global options for non-swarm container
+      # TODO: move most of these into the CADDY_DOCKER_CADDYFILE_PATH=/Caddyfile
+
+      # Set to see lots more log info
+      caddy.debug: "true"
+
+      caddy_1: "(dns.${STACKDOMAIN:-loc.alho.st})"
+      caddy_1.tls.dns: "gandi {env.GANDIV5_API_KEY}"
+
+      # Darn, these go tmpl values are evaluated before the import
+      #caddy_1.header_0: 'image "{{.Image}}"'
+      #caddy_1.header: 'container "{args.0}"'
+      #caddy_1.header: 'service "{{.Spec.Name}}"'
+      # won't work, as the `caddy:` label needs to gointo the pre-caddyfile map-tree
+      #caddy_1: "*.${STACKDOMAIN:-loc.alho.st} ${STACKDOMAIN:-loc.alho.st}"
+      #caddy_1.tls.ca: https://acme-staging-v02.api.letsencrypt.org/directory
+
+      # caddy_3: "(user_headers)"
+      # # add username and role to the request header
+      # caddy_3.request_header_0: 'X-Forwarded-User "{http.auth.user.id}"'
+      # caddy_3.header_0: "-X-Forwarded-User"
+
+      # admin user gives us admin role
+      caddy_4: "(admin)"
+      # use: docker run --rm -it cdp caddy hash-password
+      caddy_4.basicauth.admin: "JDJhJDEwJFFkUTF3cmNaNzFLUmJBL3dIZnVjNnV5dC9WYlBUOEQ5T1FXdTVMLmc2Vy5MZWZvd2RJR2Nh"
+      caddy_4.request_header_1: 'role "admin"'
+      caddy_4.header_1: "-role"
+      caddy_4.import: user_headers
+
+      # admin users gives us users role
+      caddy_5: "(users)"
+      # use: docker run --rm -it cdp caddy hash-password
+      caddy_5.basicauth.first: "JDJhJDEwJFFkUTF3cmNaNzFLUmJBL3dIZnVjNnV5dC9WYlBUOEQ5T1FXdTVMLmc2Vy5MZWZvd2RJR2Nh"
+      caddy_5.basicauth.second: "JDJhJDEwJFFkUTF3cmNaNzFLUmJBL3dIZnVjNnV5dC9WYlBUOEQ5T1FXdTVMLmc2Vy5MZWZvd2RJR2Nh"
+      caddy_5.basicauth.third: "JDJhJDEwJFFkUTF3cmNaNzFLUmJBL3dIZnVjNnV5dC9WYlBUOEQ5T1FXdTVMLmc2Vy5MZWZvd2RJR2Nh"
+      caddy_5.request_header_1: 'role "users"'
+      caddy_5.header_1: "-role"
+      caddy_5.import: user_headers
+
+    deploy:
+      labels: # Global options for swarm service
+        caddy.email: you@${STACKDOMAIN:-loc.alho.st}
+        caddy.admin: "0.0.0.0:2019"
+      placement:
+        constraints:
+          - node.role == manager
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        reservations:
+          cpus: "0.1"
+          memory: 200M
+
+  # Proxy to service
+  whoami0:
+    image: jwilder/whoami
+    networks:
+      - cirri_proxy
+    labels:
+      # this one can't be a simple (virtual.port) caddy.route, as its the "default fallback"
+      #virtual.port: 8000
+      caddy: "*.${STACKDOMAIN:-loc.alho.st} ${STACKDOMAIN:-loc.alho.st}"
+      caddy.reverse_proxy: "{{upstreams 8000}}"
+      # need this once - so TODO: move to a caddy-admin-view service?
+      caddy.import_0: dns.${STACKDOMAIN:-loc.alho.st}
+      caddy.import_1: user_headers
+
+  # Proxy to service that you want to expose to the outside world
+  whoami1:
+    image: jwilder/whoami
+    networks:
+      - cirri_proxy
+    labels:
+      #caddy: "*.${STACKDOMAIN:-loc.alho.st} ${STACKDOMAIN:-loc.alho.st}"
+      #caddy.route.reverse_proxy: "{{upstreams 8000}}"
+      virtual.port: 8000
+
+      #caddy.@sub.host: "sub.${STACKDOMAIN:-loc.alho.st}"
+      #caddy.route: "@sub"
+      virtual.host: "sub.${STACKDOMAIN:-loc.alho.st}"
+
+  # Proxy to container
+  whoami2:
+    image: jwilder/whoami
+    networks:
+      - cirri_proxy
+    labels:
+      #caddy: "*.${STACKDOMAIN:-loc.alho.st} ${STACKDOMAIN:-loc.alho.st}"
+      #caddy.route.reverse_proxy: "{{upstreams 8000}}"
+      virtual.port: 8000
+
+      #caddy.@whoami2.host: "short.${STACKDOMAIN:-loc.alho.st}"
+      #caddy.route: "@whoami2"
+      virtual.host: "short.${STACKDOMAIN:-loc.alho.st}"
+
+  # Proxy with matches and 2 routes
+  echo_0:
+    image: brndnmtthws/nginx-echo-headers
+    networks:
+      - cirri_proxy
+    labels:
+      #caddy: "*.${STACKDOMAIN:-loc.alho.st} ${STACKDOMAIN:-loc.alho.st}"
+      #caddy.@echo.host: "echo.${STACKDOMAIN:-loc.alho.st}"
+      #caddy.route_1: "@echo"
+      virtual.host_1: "echo.${STACKDOMAIN:-loc.alho.st}"
+      caddy.route_1.import: users
+      #caddy.route_1.reverse_proxy: "{{upstreams 8080}}"
+      virtual.port_1: 8080
+
+      caddy.@match.path: "/sourcepath /sourcepath/*"
+      caddy.route: "@match"
+      # OH :() order matters - the import users needs to come before the reverse_proxy
+      caddy.route.0_import: users
+      caddy.route.1_uri: "strip_prefix /sourcepath"
+      caddy.route.2_rewrite: "* /targetpath{path}"
+      caddy.route.3_reverse_proxy: "{{upstreams 8080}}"
+
+      # examples of a container messing with the global (admin) snippet
+      caddy_3: "(admin)"
+      caddy_3.header_1: 'Echo-Loaded "true"'
+      caddy_2: "(admin)"
+      # this needs to be converted to caddy {args.0} for late binding
+      caddy_2.header_1: 'Image-Name "{{.Image}}"'
+
+  auth_0:
+    image: brndnmtthws/nginx-echo-headers
+    networks:
+      - cirri_proxy
+    labels:
+      #caddy: "*.${STACKDOMAIN:-loc.alho.st} ${STACKDOMAIN:-loc.alho.st}"
+      #caddy.route.reverse_proxy: "{{upstreams 8080}}"
+      virtual.port: 8080
+
+      #caddy.@auth0.host: "auth.${STACKDOMAIN:-loc.alho.st}"
+      #caddy.route: "@auth0"
+      virtual.host: "auth.${STACKDOMAIN:-loc.alho.st}"
+
+      caddy.route.import: admin
+
+networks:
+  cirri_proxy:
+    name: cirri_proxy
+    #driver: overlay
+
+volumes:
+  caddy_data:
+    name: image_caddy_data

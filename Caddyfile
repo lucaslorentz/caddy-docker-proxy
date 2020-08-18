@@ -1,0 +1,10 @@
+{
+    admin 0.0.0.0:2019
+    email sven@{env.STACKDOMAIN}
+}
+
+(user_headers) {
+    header -X-Forwarded-User
+    request_header X-Forwarded-User {http.auth.user.id}
+}
+
