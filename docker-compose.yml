@@ -82,16 +82,16 @@ services:
           cpus: "0.1"
           memory: 200M
 
-  # Proxy to service
-  whoami0:
+  # This should become the built in "404 / maintainence page"
+  # need a way to tell cirri-infra not to instanciate this, because we have one...
+  maintainence:
     image: jwilder/whoami
     networks:
       - cirri_proxy
     labels:
-      # this one can't be a simple (virtual.port) caddy.route, as its the "default fallback"
-      #virtual.port: 8000
-      caddy: "*.${STACKDOMAIN:-loc.alho.st} ${STACKDOMAIN:-loc.alho.st}"
-      caddy.reverse_proxy: "{{upstreams 8000}}"
+      # this one can't be a simple (virtual.port) caddy.route, so we use "not"
+      caddy.route: "not"
+      virtual.port: 8000
       # need this once - so TODO: move to a caddy-admin-view service?
       caddy.import_0: dns.${STACKDOMAIN:-loc.alho.st}
       caddy.import_1: user_headers
@@ -168,16 +168,22 @@ services:
 
       caddy.route.import: admin
 
+  # this is the route an (at root domain dashboard would use)
   default:
     image: jwilder/whoami
     networks:
       - cirri_proxy
     labels:
       virtual.port: 8000
+
+      # in the absense of a virtual.host, or other caddy route specifier, we kill all other routes
+      # TODO: this is a dangerous default, so CHANGEME
+      virtual.host: "${STACKDOMAIN:-loc.alho.st}"
+
       # I't be nice if, in the absense of a virtual.host, it used the service/container name
       # TODO: this has a leading / that needs removeal
       # TODO: would be nice if we could have the compose services name ala swarm...
-      virtual.host: "{{index .Names 0}}.${STACKDOMAIN:-loc.alho.st}"
+      #virtual.host: "{{index .Names 0}}.${STACKDOMAIN:-loc.alho.st}"
 
   disconnected:
     image: jwilder/whoami
