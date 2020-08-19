@@ -298,7 +298,13 @@ func (g *CaddyfileGenerator) filterLabels(labels map[string]string) map[string]s
 			if tag := strings.TrimPrefix(label, "virtual.host_"); tag != label {
 				route = fmt.Sprintf("caddy.route_%s", tag)
 			}
+			// TODO: need to replace {},[]etc too
 			host := strings.ReplaceAll(fmt.Sprintf("@%s", value), ".", "_")
+			host = strings.ReplaceAll(host, "{", "")
+			host = strings.ReplaceAll(host, "}", "")
+			host = strings.ReplaceAll(host, "[", "")
+			host = strings.ReplaceAll(host, "]", "")
+			host = strings.ReplaceAll(host, " ", "")
 			filteredLabels[route] = host
 			log.Printf("[INFO]: out macro %s: %s\n", route, filteredLabels[route])
 

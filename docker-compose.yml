@@ -8,7 +8,7 @@ services:
       - 80:80
       - 443:443
     environment:
-      - GANDIV5_API_KEY=
+      - GANDIV5_API_KEY=${GANDIV5_API_KEY}
       - STACKDOMAIN=${STACKDOMAIN:-loc.alho.st} # MUST BE SET (there's no way to set a default that's used in other compose files.)
 
       - CADDY_DOCKER_CADDYFILE_PATH=/Caddyfile
@@ -167,6 +167,28 @@ services:
       virtual.host: "auth.${STACKDOMAIN:-loc.alho.st}"
 
       caddy.route.import: admin
+
+  default:
+    image: jwilder/whoami
+    networks:
+      - cirri_proxy
+    labels:
+      virtual.port: 8000
+      # I't be nice if, in the absense of a virtual.host, it used the service/container name
+      # TODO: this has a leading / that needs removeal
+      # TODO: would be nice if we could have the compose services name ala swarm...
+      virtual.host: "{{index .Names 0}}.${STACKDOMAIN:-loc.alho.st}"
+
+  disconnected:
+    image: jwilder/whoami
+    # networks:
+    # NOT connected to caddy
+    #   - cirri_proxy
+    # this creates a virtual host but caddy then gives a 502
+    # MAYBE cdp shouldn't make the entrys?
+    labels:
+      virtual.port: 8000
+      virtual.host: "disconnected.${STACKDOMAIN:-loc.alho.st}"
 
 networks:
   cirri_proxy:
