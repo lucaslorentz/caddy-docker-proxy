@@ -301,12 +301,15 @@ caddy.reverse_proxy: {{upstreams}}
 ```
 
 ## Docker configs
+
+> Note: Docker Swarm only. Alternativly use `CADDY_DOCKER_CADDYFILE_PATH` or `-caddyfile-path`
+
 You can also add raw text to your caddyfile using docker configs. Just add caddy label prefix to your configs and the whole config content will be inserted at the beginning of the generated caddyfile, outside any server blocks.
 
 [Here is an example](examples/standalone.yaml#L4)
 
 ## Proxying services vs containers
-Caddy docker proxy is able to proxy to swarm servcies or raw containers. Both features are always enabled, and what will differentiate the proxy target is where you define your labels.
+Caddy docker proxy is able to proxy to swarm services or raw containers. Both features are always enabled, and what will differentiate the proxy target is where you define your labels.
 
 ### Services
 To proxy swarm services, labels should be defined at service level. On a docker-compose file, that means labels should be inside deploy, like:
