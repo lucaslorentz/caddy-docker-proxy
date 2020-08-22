@@ -103,7 +103,7 @@ func compareBlocks(blockA *Block, blockB *Block) int {
 		return 1
 	}
 	// Then compare common keys
-	for keyIndex := 0; keyIndex < min(len(blockB.Keys), len(blockB.Keys)); keyIndex++ {
+	for keyIndex := 0; keyIndex < min(len(blockA.Keys), len(blockB.Keys)); keyIndex++ {
 		if blockA.Keys[keyIndex] != blockB.Keys[keyIndex] {
 			if blockA.Keys[keyIndex] < blockB.Keys[keyIndex] {
 				return -1
