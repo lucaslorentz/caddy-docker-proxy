@@ -29,7 +29,7 @@ func TestExtractBasicDockerId(t *testing.T) {
 		5:cpuset:/system.slice/d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b
 		4:net_cls,net_prio:/system.slice/d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b
 		3:freezer:/system.slice/d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b
-		2:cpu,cpuacct:/system.slice/docker/d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b
+		2:cpu,cpuacct:/system.slice/d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b
 		`
 	expected := "d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b"
 
