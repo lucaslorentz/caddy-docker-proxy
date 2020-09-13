@@ -35,9 +35,14 @@ func (wrapper *dockerUtils) GetCurrentContainerID() (string, error) {
 		return "", errors.New("Cannot read /proc/self/cgroup")
 	}
 
-	cgroups := string(bytes)
-	idRegex := regexp.MustCompile(`:[^:]*\bcpu\b[^:]*:[^\n]*\/([^\n]*)`)
+	return wrapper.ExtractContainerID(string(bytes))
+
+}
+
+func (wrapper *dockerUtils) ExtractContainerID(cgroups string) (string, error) {
+	idRegex := regexp.MustCompile(`(?i):[^:]*\bcpu\b[^:]*:[^/]*/.*([[:alnum:]]{64}).*`)
 	matches := idRegex.FindStringSubmatch(cgroups)
+
 	if len(matches) == 0 {
 		return "", fmt.Errorf("Cannot find container id in cgroups: %v", cgroups)
 	}
