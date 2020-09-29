@@ -1,0 +1,12 @@
+example.com {
+	reverse_proxy /a service-a:80
+}
+----------
+example.com {
+	reverse_proxy /b service-b:81
+}
+----------
+example.com {
+	reverse_proxy /a service-a:80
+	reverse_proxy /b service-b:81
+}

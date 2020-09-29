@@ -8,8 +8,8 @@ OuterLoop:
 	for _, blockB := range containerB.Children {
 		firstKey := blockB.GetFirstKey()
 		for _, blockA := range containerA.GetAllByFirstKey(firstKey) {
-			if firstKey == "reverse_proxy" && getMatcher(blockA) == getMatcher(blockB) {
-				mergeReverseProxy(blockA, blockB)
+			if (firstKey == "reverse_proxy" || firstKey == "php_fastcgi") && getMatcher(blockA) == getMatcher(blockB) {
+				mergeReverseProxyLike(blockA, blockB)
 				continue OuterLoop
 			} else if blocksAreEqual(blockA, blockB) {
 				blockA.Container.Merge(blockB.Container)
@@ -20,7 +20,7 @@ OuterLoop:
 	}
 }
 
-func mergeReverseProxy(blockA *Block, blockB *Block) {
+func mergeReverseProxyLike(blockA *Block, blockB *Block) {
 	for index, key := range blockB.Keys[1:] {
 		if index > 0 || !isMatcher(key) {
 			blockA.AddKeys(key)
