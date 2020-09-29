@@ -1,0 +1,11 @@
+example.com {
+	php_fastcgi service-a:80
+}
+----------
+example.com {
+	php_fastcgi service-b:81
+}
+----------
+example.com {
+	php_fastcgi service-a:80 service-b:81
+}
