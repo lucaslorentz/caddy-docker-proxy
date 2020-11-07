@@ -22,23 +22,26 @@ import (
 
 // DockerLoader generates caddy files from docker swarm information
 type DockerLoader struct {
-	options        *config.Options
-	initialized    bool
-	dockerClient   docker.Client
-	generator      *generator.CaddyfileGenerator
-	timer          *time.Timer
-	skipEvents     bool
-	lastCaddyfile  []byte
-	lastLogs       string
-	lastJsonConfig []byte
-	updatedServers map[string]struct{}
+	options         *config.Options
+	initialized     bool
+	dockerClient    docker.Client
+	generator       *generator.CaddyfileGenerator
+	timer           *time.Timer
+	skipEvents      bool
+	lastCaddyfile   []byte
+	lastLogs        string
+	lastJsonConfig  []byte
+	lastVersion     int64
+	serversVersions map[string]int64
+	serversUpdating map[string]bool
 }
 
 // CreateDockerLoader creates a docker loader
 func CreateDockerLoader(options *config.Options) *DockerLoader {
 	return &DockerLoader{
-		options:        options,
-		updatedServers: map[string]struct{}{},
+		options:         options,
+		serversVersions: map[string]int64{},
+		serversUpdating: map[string]bool{},
 	}
 }
 
@@ -162,7 +165,7 @@ func (dockerLoader *DockerLoader) update() bool {
 		log.Printf("[INFO] New Config JSON:\n%s", configJSON)
 
 		dockerLoader.lastJsonConfig = configJSON
-		dockerLoader.updatedServers = map[string]struct{}{}
+		dockerLoader.lastVersion++
 	}
 
 	var wg sync.WaitGroup
@@ -178,7 +181,19 @@ func (dockerLoader *DockerLoader) update() bool {
 func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string) {
 	defer wg.Done()
 
-	if _, isUpToDate := dockerLoader.updatedServers[server]; isUpToDate {
+	// Skip servers that are being updated already
+	if dockerLoader.serversUpdating[server] {
+		return
+	}
+
+	// Flag and unflag updating
+	dockerLoader.serversUpdating[server] = true
+	defer delete(dockerLoader.serversUpdating, server)
+
+	version := dockerLoader.lastVersion
+
+	// Skip servers that already have this version
+	if dockerLoader.serversVersions[server] >= version {
 		return
 	}
 
@@ -216,7 +231,7 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 		return
 	}
 
-	dockerLoader.updatedServers[server] = struct{}{}
+	dockerLoader.serversVersions[server] = version
 
 	log.Printf("[INFO] Successfully configured %v", server)
 }
