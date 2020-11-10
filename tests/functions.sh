@@ -3,7 +3,7 @@
 function retry {
   local n=0
   local max=5
-  local delay=10
+  local delay=20
   while true; do
     ((n=n+1))
     "$@" && break || {

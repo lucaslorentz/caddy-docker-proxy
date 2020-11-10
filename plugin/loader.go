@@ -22,23 +22,26 @@ import (
 
 // DockerLoader generates caddy files from docker swarm information
 type DockerLoader struct {
-	options        *config.Options
-	initialized    bool
-	dockerClient   docker.Client
-	generator      *generator.CaddyfileGenerator
-	timer          *time.Timer
-	skipEvents     bool
-	lastCaddyfile  []byte
-	lastLogs       string
-	lastJsonConfig []byte
-	updatedServers map[string]struct{}
+	options         *config.Options
+	initialized     bool
+	dockerClient    docker.Client
+	generator       *generator.CaddyfileGenerator
+	timer           *time.Timer
+	skipEvents      bool
+	lastCaddyfile   []byte
+	lastLogs        string
+	lastJSONConfig  []byte
+	lastVersion     int64
+	serversVersions *StringInt64CMap
+	serversUpdating *StringBoolCMap
 }
 
 // CreateDockerLoader creates a docker loader
 func CreateDockerLoader(options *config.Options) *DockerLoader {
 	return &DockerLoader{
-		options:        options,
-		updatedServers: map[string]struct{}{},
+		options:         options,
+		serversVersions: newStringInt64CMap(),
+		serversUpdating: newStringBoolCMap(),
 	}
 }
 
@@ -161,8 +164,8 @@ func (dockerLoader *DockerLoader) update() bool {
 
 		log.Printf("[INFO] New Config JSON:\n%s", configJSON)
 
-		dockerLoader.lastJsonConfig = configJSON
-		dockerLoader.updatedServers = map[string]struct{}{}
+		dockerLoader.lastJSONConfig = configJSON
+		dockerLoader.lastVersion++
 	}
 
 	var wg sync.WaitGroup
@@ -178,7 +181,19 @@ func (dockerLoader *DockerLoader) update() bool {
 func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string) {
 	defer wg.Done()
 
-	if _, isUpToDate := dockerLoader.updatedServers[server]; isUpToDate {
+	// Skip servers that are being updated already
+	if dockerLoader.serversUpdating.Get(server) {
+		return
+	}
+
+	// Flag and unflag updating
+	dockerLoader.serversUpdating.Set(server, true)
+	defer dockerLoader.serversUpdating.Delete(server)
+
+	version := dockerLoader.lastVersion
+
+	// Skip servers that already have this version
+	if dockerLoader.serversVersions.Get(server) >= version {
 		return
 	}
 
@@ -186,7 +201,7 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 
 	url := "http://" + server + ":2019/load"
 
-	postBody, err := addAdminListen(dockerLoader.lastJsonConfig, "tcp/"+server+":2019")
+	postBody, err := addAdminListen(dockerLoader.lastJSONConfig, "tcp/"+server+":2019")
 	if err != nil {
 		log.Printf("[ERROR] Failed to add admin listen to %v: %s", server, err)
 		return
@@ -216,7 +231,7 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 		return
 	}
 
-	dockerLoader.updatedServers[server] = struct{}{}
+	dockerLoader.serversVersions.Set(server, version)
 
 	log.Printf("[INFO] Successfully configured %v", server)
 }
