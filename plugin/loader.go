@@ -91,6 +91,13 @@ func (dockerLoader *DockerLoader) Start() error {
 }
 
 func (dockerLoader *DockerLoader) monitorEvents() {
+	for {
+		dockerLoader.listenEvents()
+		time.Sleep(30 * time.Second)
+	}
+}
+
+func (dockerLoader *DockerLoader) listenEvents() {
 	args := filters.NewArgs()
 	args.Add("scope", "swarm")
 	args.Add("scope", "local")
@@ -98,10 +105,15 @@ func (dockerLoader *DockerLoader) monitorEvents() {
 	args.Add("type", "container")
 	args.Add("type", "config")
 
-	eventsChan, errorChan := dockerLoader.dockerClient.Events(context.Background(), types.EventsOptions{
+	context, cancel := context.WithCancel(context.Background())
+
+	eventsChan, errorChan := dockerLoader.dockerClient.Events(context, types.EventsOptions{
 		Filters: args,
 	})
 
+	log.Printf("[INFO] Connecting to docker events")
+
+ListenEvents:
 	for {
 		select {
 		case event := <-eventsChan:
@@ -125,7 +137,11 @@ func (dockerLoader *DockerLoader) monitorEvents() {
 				dockerLoader.timer.Reset(100 * time.Millisecond)
 			}
 		case err := <-errorChan:
-			log.Println(err)
+			cancel()
+			if err != nil {
+				log.Printf("[ERROR] Docker events error: %v", err)
+			}
+			break ListenEvents
 		}
 	}
 }
