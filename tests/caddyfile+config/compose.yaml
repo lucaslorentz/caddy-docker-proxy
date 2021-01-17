@@ -32,6 +32,7 @@ services:
         caddy: service.local
         caddy.import_0: caddyfileSnippet
         caddy.import_1: configSnippet
+        caddy.tls: "internal"
 
 networks:
   caddy:

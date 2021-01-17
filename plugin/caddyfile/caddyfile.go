@@ -98,3 +98,8 @@ func (block *Block) IsGlobalBlock() bool {
 func (block *Block) IsSnippet() bool {
 	return len(block.Keys) == 1 && strings.HasPrefix(block.Keys[0], "(") && strings.HasSuffix(block.Keys[0], ")")
 }
+
+// IsMatcher returns if block is a matcher
+func (block *Block) IsMatcher() bool {
+	return len(block.Keys) > 0 && strings.HasPrefix(block.Keys[0], "@")
+}
