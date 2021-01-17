@@ -95,6 +95,13 @@ func compareBlocks(blockA *Block, blockB *Block) int {
 		}
 		return 1
 	}
+	// Then matchers first
+	if blockA.IsMatcher() != blockB.IsMatcher() {
+		if blockA.IsMatcher() {
+			return -1
+		}
+		return 1
+	}
 	// Then follow order
 	if blockA.Order != blockB.Order {
 		if blockA.Order < blockB.Order {

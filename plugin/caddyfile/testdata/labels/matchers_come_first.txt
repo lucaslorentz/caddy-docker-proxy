@@ -1,10 +1,12 @@
 caddy               = localhost
 caddy.@matcher.path = /path1 /path2
 caddy.respond       = @matcher 200
+caddy.1_tls			= internal
 ----------
 localhost {
 	@matcher {
 		path /path1 /path2
 	}
+	tls internal
 	respond @matcher 200
 }
