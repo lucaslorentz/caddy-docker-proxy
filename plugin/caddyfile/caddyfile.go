@@ -101,5 +101,5 @@ func (block *Block) IsSnippet() bool {
 
 // IsMatcher returns if block is a matcher
 func (block *Block) IsMatcher() bool {
-	return len(block.Keys) == 1 && strings.HasPrefix(block.Keys[0], "@")
+	return len(block.Keys) > 0 && strings.HasPrefix(block.Keys[0], "@")
 }
