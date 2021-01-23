@@ -6,12 +6,7 @@ import (
 
 func TestFailExtractBasicDockerId(t *testing.T) {
 	read :=
-		`5:cpu,cpuacct:/system.slice/d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442.scope
-		4:cpu,cpuacct:/system.slice/d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442
-		3:zpu,cpuacct:/system.slice/d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b
-		2:cpu,cpuacct:system.slice:d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b
-		1:cpu,cpuacct:/system.slice/d39fa516d8377ecddf9bf8ef33f81cbf5 8b4d604d85293ced7cdb0c7fc52442b.scope
-		`
+		`1:cpu:/not_an_id`
 
 	utils := dockerUtils{}
 
@@ -166,6 +161,37 @@ func TestExtractECSDockerId(t *testing.T) {
 	`
 
 	expected := "3137c30c56add55d7212fdef77fd796c69b08f7845aa9a3d3fdb720c2a885a1d"
+
+	utils := dockerUtils{}
+
+	actual, err := utils.ExtractContainerID(read)
+
+	if err != nil {
+		t.Fatalf("Could not extract container id : %v", err)
+	}
+
+	if actual != expected {
+		t.Fatalf("id mismatch: actual %v, expected %v", actual, expected)
+	}
+}
+
+func TestExtractRootlessDockerId(t *testing.T) {
+	read :=
+		`11:rdma:/
+		10:freezer:/
+		9:cpuset:/
+		8:net_cls,net_prio:/
+		7:cpu,cpuacct:/
+		6:devices:/user.slice
+		5:memory:/user.slice/user-1000.slice/user@1000.service
+		4:perf_event:/
+		3:pids:/user.slice/user-1000.slice/user@1000.service
+		2:blkio:/
+		1:name=systemd:/user.slice/user-1000.slice/user@1000.service/docker.service/f7df0c0b3a8d4350647486b24a5bd5785d494c1a0910cfaee66d3db0db784093
+		0::/user.slice/user-1000.slice/user@1000.service/docker.service
+	`
+
+	expected := "f7df0c0b3a8d4350647486b24a5bd5785d494c1a0910cfaee66d3db0db784093"
 
 	utils := dockerUtils{}
 

@@ -40,7 +40,7 @@ func (wrapper *dockerUtils) GetCurrentContainerID() (string, error) {
 }
 
 func (wrapper *dockerUtils) ExtractContainerID(cgroups string) (string, error) {
-	idRegex := regexp.MustCompile(`(?i):[^:]*\bcpu\b[^:]*:[^/]*/.*([[:alnum:]]{64}).*`)
+	idRegex := regexp.MustCompile(`(?im)^[^:]*:[^:]*:.*\b([[:alnum:]]{64})\b`)
 	matches := idRegex.FindStringSubmatch(cgroups)
 
 	if len(matches) == 0 {
