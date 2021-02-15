@@ -12,16 +12,29 @@ cd ../
 
 go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
+# AMD64
 CGO_ENABLED=0 GOARCH=amd64 GOOS=linux \
     xcaddy build \
     --output ${ARTIFACTS}/binaries/linux/amd64/caddy \
     --with github.com/lucaslorentz/caddy-docker-proxy/plugin=$PWD/plugin
 
+# ARM
 CGO_ENABLED=0 GOARCH=arm GOARM=6 GOOS=linux \
     xcaddy build \
-    --output ${ARTIFACTS}/binaries/linux/arm32v6/caddy \
+    --output ${ARTIFACTS}/binaries/linux/arm/v6/caddy \
+    --with github.com/lucaslorentz/caddy-docker-proxy/plugin/v2=$PWD/plugin
+
+CGO_ENABLED=0 GOARCH=arm GOARM=7 GOOS=linux \
+    xcaddy build \
+    --output ${ARTIFACTS}/binaries/linux/arm/v7/caddy \
+    --with github.com/lucaslorentz/caddy-docker-proxy/plugin/v2=$PWD/plugin
+
+CGO_ENABLED=0 GOARCH=arm64 GOOS=linux \
+    xcaddy build \
+    --output ${ARTIFACTS}/binaries/linux/arm64/caddy \
     --with github.com/lucaslorentz/caddy-docker-proxy/plugin=$PWD/plugin
 
+# AMD64 WINDOWS
 CGO_ENABLED=0 GOARCH=amd64 GOOS=windows \
     xcaddy build \
     --output ${ARTIFACTS}/binaries/windows/amd64/caddy.exe \

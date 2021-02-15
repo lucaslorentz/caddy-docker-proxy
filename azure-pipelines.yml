@@ -43,17 +43,10 @@ jobs:
       ./build-images-linux.sh
     displayName: 'Build images'
 
-  - bash: |
-      ./push-images-linux.sh
-    env:
-      DOCKER_PASSWORD: '$(DOCKER_PASSWORD)'
-    condition: succeeded()
-    displayName: 'Push images'
-
 - job: Build_Images_Windows
   dependsOn: Build_Binaries
   pool:
-    vmImage: 'windows-2019'
+    vmImage: 'windows-2022'
   steps:
   - task: DownloadBuildArtifacts@0
     displayName: 'Download Build Artifacts'
@@ -64,10 +57,3 @@ jobs:
   - bash: |
       ./build-images-windows.sh
     displayName: 'Build images'
-
-  - bash: |
-      ./push-images-windows.sh
-    env:
-      DOCKER_PASSWORD: '$(DOCKER_PASSWORD)'
-    condition: succeeded()
-    displayName: 'Push images'
