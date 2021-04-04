@@ -18,6 +18,57 @@ Then it generates an in memory Caddyfile with website entries and proxies direct
 
 Every time a docker object changes, it updates the Caddyfile and triggers a caddy zero-downtime reload.
 
+## Basic Usage Example, using docker-compose:
+```
+docker network create caddy
+```
+caddy/docker-compose.yml
+```
+version: "3.7"
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - caddy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - caddy_data:/data
+    restart: unless-stopped
+
+networks:
+  caddy:
+    external: true
+	
+volumes:
+  caddy_data: {}
+```
+```
+docker-compose up -d
+```
+whoami/docker-compose.yml
+```
+version: '3.7'
+services:
+  whoami:
+    image: jwilder/whoami
+    networks:
+      - caddy
+    labels:
+      caddy: whoami.example.com
+      caddy.reverse_proxy: "{{upstreams 8000}}"
+
+networks:
+  caddy:
+    external: true
+```
+```
+docker-compose up -d
+```
+visit whoami.example.com. The site with be served automatically over https with a Let's Encrypt Certificate
+		
 ## Labels to Caddyfile conversion
 Any label prefixed with caddy, will be converted to caddyfile configuration following those rules:
 
