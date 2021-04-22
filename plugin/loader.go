@@ -29,6 +29,7 @@ type DockerLoader struct {
 	timer           *time.Timer
 	skipEvents      bool
 	lastCaddyfile   []byte
+	lastControlledServers   []string
 	lastLogs        string
 	lastJSONConfig  []byte
 	lastVersion     int64
@@ -154,7 +155,12 @@ func (dockerLoader *DockerLoader) update() bool {
 
 	caddyfileChanged := !bytes.Equal(dockerLoader.lastCaddyfile, caddyfile)
 	logsChanged := dockerLoader.lastLogs != logs
-
+	
+	updateControlledServers := dockerLoader.lastControlledServers
+	if len( updateControlledServers) ) == 0 {
+	    updateControlledServers = controlledServers
+	}
+	dockerLoader.lastControlledServers = controlledServers
 	dockerLoader.lastCaddyfile = caddyfile
 	dockerLoader.lastLogs = logs
 
@@ -185,7 +191,7 @@ func (dockerLoader *DockerLoader) update() bool {
 	}
 
 	var wg sync.WaitGroup
-	for _, server := range controlledServers {
+	for _, server := range updateControlledServers {
 		wg.Add(1)
 		go dockerLoader.updateServer(&wg, server)
 	}
