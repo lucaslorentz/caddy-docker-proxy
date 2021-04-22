@@ -157,7 +157,7 @@ func (dockerLoader *DockerLoader) update() bool {
 	logsChanged := dockerLoader.lastLogs != logs
 	
 	updateControlledServers := dockerLoader.lastControlledServers
-	if len( updateControlledServers)  == 0 {
+	if len( updateControlledServers) == 0 {
 	    updateControlledServers = controlledServers
 	}
 	dockerLoader.lastControlledServers = controlledServers
