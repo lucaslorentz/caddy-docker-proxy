@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/caddyserver/caddy/v2"
@@ -184,22 +185,30 @@ func (dockerLoader *DockerLoader) update() bool {
 		dockerLoader.lastVersion++
 	}
 
+	var errorCounter uint64
 	var wg sync.WaitGroup
 	for _, server := range controlledServers {
 		wg.Add(1)
+		go func() {
+			if (!(dockerLoader.updateServer(server))) {
+   				atomic.AddUint64(&errorCounter, 1)
+			}
+			wg.Done()
+		}()
 		go dockerLoader.updateServer(&wg, server)
 	}
 	wg.Wait()
-
+	if errorCounter > 0 {
+		updateServer("localhost")
+	}
 	return true
 }
 
-func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string) {
-	defer wg.Done()
+func (dockerLoader *DockerLoader) updateServer(server string) bool {
 
 	// Skip servers that are being updated already
 	if dockerLoader.serversUpdating.Get(server) {
-		return
+		return true
 	}
 
 	// Flag and unflag updating
@@ -210,7 +219,7 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 
 	// Skip servers that already have this version
 	if dockerLoader.serversVersions.Get(server) >= version {
-		return
+		return true
 	}
 
 	log.Printf("[INFO] Sending configuration to %v", server)
@@ -220,36 +229,37 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 	postBody, err := addAdminListen(dockerLoader.lastJSONConfig, "tcp/"+server+":2019")
 	if err != nil {
 		log.Printf("[ERROR] Failed to add admin listen to %v: %s", server, err)
-		return
+		return false
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(postBody))
 	if err != nil {
 		log.Printf("[ERROR] Failed to create request to %v: %s", server, err)
-		return
+		return false
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 
 	if err != nil {
 		log.Printf("[ERROR] Failed to send configuration to %v: %s", server, err)
-		return
+		return false
 	}
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("[ERROR] Failed to read response from %v: %s", server, err)
-		return
+		return false
 	}
 
 	if resp.StatusCode != 200 {
 		log.Printf("[ERROR] Error response from %v: %v - %s", server, resp.StatusCode, bodyBytes)
-		return
+		return false
 	}
 
 	dockerLoader.serversVersions.Set(server, version)
 
 	log.Printf("[INFO] Successfully configured %v", server)
+	return true
 }
 
 func addAdminListen(configJSON []byte, listen string) ([]byte, error) {
