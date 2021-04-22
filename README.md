@@ -31,6 +31,8 @@ services:
     ports:
       - 80:80
       - 443:443
+    environment:
+      - CADDY_INGRESS_NETWORKS=caddy
     networks:
       - caddy
     volumes:
@@ -279,7 +281,9 @@ For services, that would be the service DNS name when **proxy-service-tasks** is
 
 For containers, that would be the container IPs.
 
-Only addresses in caddy ingress networks are used. You can override caddy ingress networks using CLI option `ingress-networks` or environment variable `CADDY_INGRESS_NETWORKS`
+Only upstreams containers/services that are connected to caddy ingress networks are used.
+
+> :warning: Caddy docker proxy does a best effort to automatically detect what are the ingress networks. But that logic fails on some scenarios: [#207](https://github.com/lucaslorentz/caddy-docker-proxy/issues/207). To have a more resilient solution, you can manually configure caddy ingress network using CLI option `ingress-networks` or environment variable `CADDY_INGRESS_NETWORKS`.
 
 Usage: `upstreams [http|https] [port]`  
 
