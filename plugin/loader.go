@@ -220,10 +220,13 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 	postBody, err := addAdminListen(dockerLoader.lastJSONConfig, "tcp/"+server+":2019")
 	if err != nil {
 		log.Printf("[ERROR] Failed to add admin listen to %v: %s", server, err)
-		postBody, err := addAdminListen(dockerLoader.lastJSONConfig, "tcp/localhost:2019")
-		if err != nil {
-			log.Printf("[ERROR] Failed to add admin listen to %v: %s", server, err)
+		addressRetry := "tcp/localhost:2019"
+		postBodyRetry, errRetry := addAdminListen(dockerLoader.lastJSONConfig, addressRetry)
+		if errRetry != nil {
+			log.Printf("[ERROR] Failed to add admin listen to %v: %s", addressRetry, errRetry)
 			return
+		} else {
+			postBody = postBodyRetry
 		}
 	}
 
