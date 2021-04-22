@@ -200,7 +200,7 @@ func (dockerLoader *DockerLoader) update() bool {
 	if errorCounter > 0 {
 		server := "localhost"
 		log.Printf("[INFO] Retrying after failure on %v", server)
-		updateServer(server)
+		dockerLoader.updateServer(server)
 	}
 	return true
 }
