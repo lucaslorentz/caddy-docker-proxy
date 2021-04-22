@@ -198,7 +198,9 @@ func (dockerLoader *DockerLoader) update() bool {
 	}
 	wg.Wait()
 	if errorCounter > 0 {
-		updateServer("localhost")
+		server := "localhost"
+		log.Printf("[INFO] Retrying after failure on %v", server)
+		updateServer(server)
 	}
 	return true
 }
