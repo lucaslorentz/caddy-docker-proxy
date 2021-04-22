@@ -195,7 +195,6 @@ func (dockerLoader *DockerLoader) update() bool {
 			}
 			wg.Done()
 		}()
-		go dockerLoader.updateServer(&wg, server)
 	}
 	wg.Wait()
 	if errorCounter > 0 {
