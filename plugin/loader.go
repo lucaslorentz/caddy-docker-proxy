@@ -29,7 +29,6 @@ type DockerLoader struct {
 	timer           *time.Timer
 	skipEvents      bool
 	lastCaddyfile   []byte
-	lastControlledServers   []string
 	lastLogs        string
 	lastJSONConfig  []byte
 	lastVersion     int64
@@ -155,12 +154,7 @@ func (dockerLoader *DockerLoader) update() bool {
 
 	caddyfileChanged := !bytes.Equal(dockerLoader.lastCaddyfile, caddyfile)
 	logsChanged := dockerLoader.lastLogs != logs
-	
-	updateControlledServers := dockerLoader.lastControlledServers
-	if len( updateControlledServers) == 0 {
-	    updateControlledServers = controlledServers
-	}
-	dockerLoader.lastControlledServers = controlledServers
+
 	dockerLoader.lastCaddyfile = caddyfile
 	dockerLoader.lastLogs = logs
 
@@ -191,7 +185,7 @@ func (dockerLoader *DockerLoader) update() bool {
 	}
 
 	var wg sync.WaitGroup
-	for _, server := range updateControlledServers {
+	for _, server := range controlledServers {
 		wg.Add(1)
 		go dockerLoader.updateServer(&wg, server)
 	}
@@ -222,11 +216,15 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 	log.Printf("[INFO] Sending configuration to %v", server)
 
 	url := "http://" + server + ":2019/load"
-
+	
 	postBody, err := addAdminListen(dockerLoader.lastJSONConfig, "tcp/"+server+":2019")
 	if err != nil {
 		log.Printf("[ERROR] Failed to add admin listen to %v: %s", server, err)
-		return
+		postBody, err := addAdminListen(dockerLoader.lastJSONConfig, "tcp/localhost:2019")
+		if err != nil {
+			log.Printf("[ERROR] Failed to add admin listen to %v: %s", server, err)
+			return
+		}
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(postBody))
