@@ -1,31 +1,31 @@
 package generator
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"net"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/caddyfile"
+
+	"go.uber.org/zap"
 )
 
-func (g *CaddyfileGenerator) getServiceCaddyfile(service *swarm.Service, logsBuffer *bytes.Buffer) (*caddyfile.Container, error) {
+func (g *CaddyfileGenerator) getServiceCaddyfile(service *swarm.Service, logger *zap.Logger) (*caddyfile.Container, error) {
 	caddyLabels := g.filterLabels(service.Spec.Labels)
 
 	return labelsToCaddyfile(caddyLabels, service, func() ([]string, error) {
-		return g.getServiceProxyTargets(service, logsBuffer, true)
+		return g.getServiceProxyTargets(service, logger, true)
 	})
 }
 
-func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service, logsBuffer *bytes.Buffer, ingress bool) ([]string, error) {
+func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service, logger *zap.Logger, ingress bool) ([]string, error) {
 	if g.options.ProxyServiceTasks {
-		return g.getServiceTasksIps(service, logsBuffer, ingress)
+		return g.getServiceTasksIps(service, logger, ingress)
 	}
 
-	_, err := g.getServiceVirtualIps(service, logsBuffer, ingress)
+	_, err := g.getServiceVirtualIps(service, logger, ingress)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service, logs
 	return []string{service.Spec.Name}, nil
 }
 
-func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service, logsBuffer *bytes.Buffer, ingress bool) ([]string, error) {
+func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service, logger *zap.Logger, ingress bool) ([]string, error) {
 	virtualIps := []string{}
 
 	for _, virtualIP := range service.Endpoint.VirtualIPs {
@@ -43,13 +43,13 @@ func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service, logsBu
 	}
 
 	if len(virtualIps) == 0 {
-		logsBuffer.WriteString(fmt.Sprintf("[WARNING] Service %v and caddy are not in same network\n", service.ID))
+		logger.Warn("Service is not in same network as caddy", zap.String("service", service.Spec.Name), zap.String("servic id", service.ID))
 	}
 
 	return virtualIps, nil
 }
 
-func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logsBuffer *bytes.Buffer, ingress bool) ([]string, error) {
+func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logger *zap.Logger, ingress bool) ([]string, error) {
 	taskListFilter := filters.NewArgs()
 	taskListFilter.Add("service", service.ID)
 	taskListFilter.Add("desired-state", "running")
@@ -76,9 +76,10 @@ func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logsBuff
 	}
 
 	if !hasRunningTasks {
-		logsBuffer.WriteString(fmt.Sprintf("[WARNING] Service %v doesn't have any task in running state\n", service.ID))
+		logger.Warn("Service has no tasks in running stat", zap.String("service", service.Spec.Name), zap.String("servic id", service.ID))
+
 	} else if len(tasksIps) == 0 {
-		logsBuffer.WriteString(fmt.Sprintf("[WARNING] Service %v and caddy are not in same network\n", service.ID))
+		logger.Warn("Service is not in same network as caddy", zap.String("service", service.Spec.Name), zap.String("servic id", service.ID))
 	}
 
 	return tasksIps, nil
