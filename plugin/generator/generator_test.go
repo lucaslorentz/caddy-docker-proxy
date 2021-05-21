@@ -1,6 +1,8 @@
 package generator
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -12,12 +14,21 @@ import (
 	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/docker"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var caddyContainerID = "container-id"
 var caddyNetworkID = "network-id"
 
-const skipCaddyfileText = "[INFO] Skipping default Caddyfile because no path is set\n"
+const newLine = "\n"
+const containerIdLog = `INFO	Caddy ContainerID	{"ID": "container-id"}` + newLine
+const ingressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[network-id:true]"}` + newLine
+const otherIngressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[other-network-id:true]"}` + newLine
+const swarmIsAvailableLog = `INFO	Swarm is available	{"new": true}` + newLine
+const swarmIsDisabledLog = `INFO	Swarm is available	{"new": false}` + newLine
+const skipCaddyfileLog = "INFO	Skipping default Caddyfile because no path is set" + newLine
+const commonLogs = containerIdLog + ingressNetworksMapLog + swarmIsAvailableLog
 
 func init() {
 	log.SetOutput(ioutil.Discard)
@@ -78,7 +89,9 @@ func TestMergeConfigContent(t *testing.T) {
 		"	reverse_proxy 127.0.0.1 172.17.0.2\n" +
 		"}\n"
 
-	testGeneration(t, dockerClient, nil, expectedCaddyfile, skipCaddyfileText)
+	const expectedLogs = commonLogs + skipCaddyfileLog
+
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
 
 func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
@@ -108,7 +121,9 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 
 	const expectedCaddyfile = "# Empty caddyfile"
 
-	testGeneration(t, dockerClient, nil, expectedCaddyfile, skipCaddyfileText)
+	const expectedLogs = commonLogs + skipCaddyfileLog
+
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
 
 func testGeneration(
@@ -130,9 +145,17 @@ func testGeneration(
 
 	generator := CreateGenerator(dockerClient, dockerUtils, options)
 
-	caddyfileBytes, logs, _ := generator.GenerateCaddyfile()
+	var logsBuffer bytes.Buffer
+	encoderConfig := zap.NewDevelopmentEncoderConfig()
+	encoderConfig.TimeKey = ""
+	encoder := zapcore.NewConsoleEncoder(encoderConfig)
+	writer := bufio.NewWriter(&logsBuffer)
+	logger := zap.New(zapcore.NewCore(encoder, zapcore.AddSync(writer), zapcore.InfoLevel))
+
+	caddyfileBytes, _ := generator.GenerateCaddyfile(logger)
+	writer.Flush()
 	assert.Equal(t, expectedCaddyfile, string(caddyfileBytes))
-	assert.Equal(t, expectedLogs, logs)
+	assert.Equal(t, expectedLogs, logsBuffer.String())
 }
 
 func createBasicDockerClientMock() *docker.ClientMock {

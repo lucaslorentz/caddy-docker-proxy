@@ -43,7 +43,7 @@ func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service, logger
 	}
 
 	if len(virtualIps) == 0 {
-		logger.Warn("Service is not in same network as caddy", zap.String("service", service.Spec.Name), zap.String("servic id", service.ID))
+		logger.Warn("Service is not in same network as caddy", zap.String("service", service.Spec.Name), zap.String("serviceId", service.ID))
 	}
 
 	return virtualIps, nil
@@ -76,10 +76,10 @@ func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logger *
 	}
 
 	if !hasRunningTasks {
-		logger.Warn("Service has no tasks in running stat", zap.String("service", service.Spec.Name), zap.String("servic id", service.ID))
+		logger.Warn("Service has no tasks in running state", zap.String("service", service.Spec.Name), zap.String("serviceId", service.ID))
 
 	} else if len(tasksIps) == 0 {
-		logger.Warn("Service is not in same network as caddy", zap.String("service", service.Spec.Name), zap.String("servic id", service.ID))
+		logger.Warn("Service is not in same network as caddy", zap.String("service", service.Spec.Name), zap.String("serviceId", service.ID))
 	}
 
 	return tasksIps, nil

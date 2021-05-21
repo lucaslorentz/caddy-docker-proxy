@@ -173,7 +173,7 @@ func (dockerLoader *DockerLoader) update() bool {
 		configJSON, warn, err := adapter.Adapt(caddyfile, nil)
 
 		if warn != nil {
-			logger().Warn("Caddyfile to json warning: %v", zap.String("warn", fmt.Sprintf("%v", warn)))
+			logger().Warn("Caddyfile to json warning", zap.String("warn", fmt.Sprintf("%v", warn)))
 		}
 
 		if err != nil {
@@ -246,7 +246,7 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 	}
 
 	if resp.StatusCode != 200 {
-		logger().Error("Error response from %v - %s", zap.String("server", server), zap.Int("status code", resp.StatusCode), zap.ByteString("body", bodyBytes))
+		logger().Error("Error response from server", zap.String("server", server), zap.Int("status code", resp.StatusCode), zap.ByteString("body", bodyBytes))
 		return
 	}
 
