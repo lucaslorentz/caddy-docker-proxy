@@ -61,9 +61,10 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 	caddy.TrapSignals()
 
 	options := createOptions(flags)
+	log := logger()
 
 	if options.Mode&config.Server == config.Server {
-		logger().Info("Running caddy proxy server")
+		log.Info("Running caddy proxy server")
 
 		caddy.Run(&caddy.Config{
 			Admin: &caddy.AdminConfig{
@@ -73,7 +74,7 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 	}
 
 	if options.Mode&config.Controller == config.Controller {
-		logger().Info("Running caddy proxy controller")
+		log.Info("Running caddy proxy controller")
 		loader := CreateDockerLoader(options)
 		loader.Start()
 	}
@@ -84,13 +85,15 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 func getAdminListen(options *config.Options) string {
 	if options.ControllerNetwork != nil {
 		ifaces, err := net.Interfaces()
+		log := logger()
+
 		if err != nil {
-			logger().Error("Failed to get network interfaces", zap.Error(err))
+			log.Error("Failed to get network interfaces", zap.Error(err))
 		}
 		for _, i := range ifaces {
 			addrs, err := i.Addrs()
 			if err != nil {
-				logger().Error("Failed to get network interface addresses", zap.Error(err))
+				log.Error("Failed to get network interface addresses", zap.Error(err))
 				continue
 			}
 			for _, a := range addrs {
@@ -140,17 +143,19 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		options.Mode = config.Standalone
 	}
 
+	log := logger()
+
 	if controllerIPRangeEnv := os.Getenv("CADDY_CONTROLLER_NETWORK"); controllerIPRangeEnv != "" {
 		_, ipNet, err := net.ParseCIDR(controllerIPRangeEnv)
 		if err != nil {
-			logger().Error("Failed to parse CADDY_CONTROLLER_NETWORK", zap.String("CADDY_CONTROLLER_NETWORK", controllerIPRangeEnv), zap.Error(err))
+			log.Error("Failed to parse CADDY_CONTROLLER_NETWORK", zap.String("CADDY_CONTROLLER_NETWORK", controllerIPRangeEnv), zap.Error(err))
 		} else if ipNet != nil {
 			options.ControllerNetwork = ipNet
 		}
 	} else if controllerSubnetFlag != "" {
 		_, ipNet, err := net.ParseCIDR(controllerSubnetFlag)
 		if err != nil {
-			logger().Error("Failed to parse controller-network", zap.String("controller-network", controllerSubnetFlag), zap.Error(err))
+			log.Error("Failed to parse controller-network", zap.String("controller-network", controllerSubnetFlag), zap.Error(err))
 		} else if ipNet != nil {
 			options.ControllerNetwork = ipNet
 		}
@@ -189,7 +194,7 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 
 	if pollingIntervalEnv := os.Getenv("CADDY_DOCKER_POLLING_INTERVAL"); pollingIntervalEnv != "" {
 		if p, err := time.ParseDuration(pollingIntervalEnv); err != nil {
-			logger().Error("Failed to parse CADDY_DOCKER_POLLING_INTERVAL", zap.String("CADDY_DOCKER_POLLING_INTERVAL", pollingIntervalEnv), zap.Error(err))
+			log.Error("Failed to parse CADDY_DOCKER_POLLING_INTERVAL", zap.String("CADDY_DOCKER_POLLING_INTERVAL", pollingIntervalEnv), zap.Error(err))
 			options.PollingInterval = pollingIntervalFlag
 		} else {
 			options.PollingInterval = p
