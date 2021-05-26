@@ -89,7 +89,7 @@ services:
       - caddy
     labels:
       caddy: whoami.example.com
-      caddy.reverse_proxy: "{{upstreams 8000}}"
+      caddy.reverse_proxy: {{upstreams 8000}}
 
 networks:
   caddy:
@@ -324,7 +324,7 @@ For containers, that would be the container IPs.
 
 Only containers/services that are connected to caddy ingress networks are used.
 
-> :warning: Caddy docker proxy does a best effort to automatically detect what are the ingress networks. But that logic fails on some scenarios: [#207](https://github.com/lucaslorentz/caddy-docker-proxy/issues/207). To have a more resilient solution, you can manually configure caddy ingress network using CLI option `ingress-networks` or environment variable `CADDY_INGRESS_NETWORKS`.
+:warning: Caddy docker proxy does a best effort to automatically detect what are the ingress networks. But that logic fails on some scenarios: [#207](https://github.com/lucaslorentz/caddy-docker-proxy/issues/207). To have a more resilient solution, you can manually configure caddy ingress network using CLI option `ingress-networks` or environment variable `CADDY_INGRESS_NETWORKS`.
 
 Usage: `upstreams [http|https] [port]`  
 
@@ -348,6 +348,13 @@ reverse_proxy 192.168.0.1:8080 192.168.0.2:8080
 caddy.reverse_proxy: {{upstreams http 8080}}
 ↓
 reverse_proxy http://192.168.0.1:8080 http://192.168.0.2:8080
+```
+
+:no_entry: Do not add quotes around upstreams function:
+```
+caddy.reverse_proxy: "{{upstreams}}"
+↓
+reverse_proxy "192.168.0.1 192.168.0.2"
 ```
 
 ## Reverse proxy examples
