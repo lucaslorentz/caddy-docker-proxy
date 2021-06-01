@@ -196,8 +196,9 @@ func (dockerLoader *DockerLoader) update() bool {
 	var wg sync.WaitGroup
 	for _, server := range controlledServers {
 		wg.Add(1)
+		updateServer := server
 		go func() {
-			if (!(dockerLoader.updateServer(server))) {
+			if (!(dockerLoader.updateServer(updateServer))) {
    				atomic.AddUint64(&errorCounter, 1)
 			}
 			wg.Done()
@@ -206,7 +207,7 @@ func (dockerLoader *DockerLoader) update() bool {
 	wg.Wait()
 	if errorCounter > 0 {
 		server := "localhost"
-		log.Printf("[INFO] Retrying after failure on %v", server)
+		log.Info("Retrying after failure", zap.String("server", server))
 		dockerLoader.updateServer(server)
 	}
 	return true
@@ -238,36 +239,37 @@ func (dockerLoader *DockerLoader) updateServer(server string) bool {
 	postBody, err := addAdminListen(dockerLoader.lastJSONConfig, "tcp/"+server+":2019")
 	if err != nil {
 		log.Error("Failed to add admin listen to", zap.String("server", server), zap.Error(err))
-		return
+		return false
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(postBody))
 	if err != nil {
 		log.Error("Failed to create request to", zap.String("server", server), zap.Error(err))
-		return
+		return false
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 
 	if err != nil {
 		log.Error("Failed to send configuration to", zap.String("server", server), zap.Error(err))
-		return
+		return false
 	}
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error("Failed to read response from", zap.String("server", server), zap.Error(err))
-		return
+		return false
 	}
 
 	if resp.StatusCode != 200 {
 		log.Error("Error response from server", zap.String("server", server), zap.Int("status code", resp.StatusCode), zap.ByteString("body", bodyBytes))
-		return
+		return false
 	}
 
 	dockerLoader.serversVersions.Set(server, version)
 
 	log.Info("Successfully configured", zap.String("server", server))
+	return true
 }
 
 func addAdminListen(configJSON []byte, listen string) ([]byte, error) {
