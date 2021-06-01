@@ -1,22 +1,20 @@
 package generator
 
 import (
-	"bytes"
-	"fmt"
-
 	"github.com/docker/docker/api/types"
 	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/caddyfile"
+	"go.uber.org/zap"
 )
 
-func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container, logsBuffer *bytes.Buffer) (*caddyfile.Container, error) {
+func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container, logger *zap.Logger) (*caddyfile.Container, error) {
 	caddyLabels := g.filterLabels(container.Labels)
 
 	return labelsToCaddyfile(caddyLabels, container, func() ([]string, error) {
-		return g.getContainerIPAddresses(container, logsBuffer, true)
+		return g.getContainerIPAddresses(container, logger, true)
 	})
 }
 
-func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container, logsBuffer *bytes.Buffer, ingress bool) ([]string, error) {
+func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container, logger *zap.Logger, ingress bool) ([]string, error) {
 	ips := []string{}
 
 	for _, network := range container.NetworkSettings.Networks {
@@ -26,7 +24,8 @@ func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container,
 	}
 
 	if len(ips) == 0 {
-		logsBuffer.WriteString(fmt.Sprintf("[WARNING] Container %v and caddy are not in same network\n", container.ID))
+		logger.Warn("Container is not in same network as caddy", zap.String("container", container.ID), zap.String("container id", container.ID))
+
 	}
 
 	return ips, nil

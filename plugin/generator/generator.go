@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"regexp"
 	"time"
@@ -15,6 +14,8 @@ import (
 	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/caddyfile"
 	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/docker"
+
+	"go.uber.org/zap"
 )
 
 // DefaultLabelPrefix for caddy labels in docker
@@ -46,21 +47,20 @@ func CreateGenerator(dockerClient docker.Client, dockerUtils docker.Utils, optio
 }
 
 // GenerateCaddyfile generates a caddy file config from docker metadata
-func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
+func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []string) {
 	var caddyfileBuffer bytes.Buffer
-	var logsBuffer bytes.Buffer
 
 	if g.ingressNetworks == nil {
-		ingressNetworks, err := g.getIngressNetworks()
+		ingressNetworks, err := g.getIngressNetworks(logger)
 		if err == nil {
 			g.ingressNetworks = ingressNetworks
 		} else {
-			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+			logger.Error("Failed to get ingress networks", zap.Error(err))
 		}
 	}
 
 	if time.Since(g.swarmIsAvailableTime) > swarmAvailabilityCacheInterval {
-		g.checkSwarmAvailability(time.Time.IsZero(g.swarmIsAvailableTime))
+		g.checkSwarmAvailability(logger, time.Time.IsZero(g.swarmIsAvailableTime))
 		g.swarmIsAvailableTime = time.Now()
 	}
 
@@ -71,17 +71,17 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 	if g.options.CaddyfilePath != "" {
 		dat, err := ioutil.ReadFile(g.options.CaddyfilePath)
 		if err != nil {
-			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+			logger.Error("Failed to read Caddyfile", zap.String("path", g.options.CaddyfilePath), zap.Error(err))
 		} else {
 			block, err := caddyfile.Unmarshal(dat)
 			if err != nil {
-				logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+				logger.Error("Failed to parse Caddyfile", zap.String("path", g.options.CaddyfilePath), zap.Error(err))
 			} else {
 				caddyfileBlock.Merge(block)
 			}
 		}
 	} else {
-		logsBuffer.WriteString("[INFO] Skipping default Caddyfile because no path is set\n")
+		logger.Info("Skipping default Caddyfile because no path is set")
 	}
 
 	// Add Caddyfile from swarm configs
@@ -92,11 +92,12 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 				if _, hasLabel := config.Spec.Labels[g.options.LabelPrefix]; hasLabel {
 					fullConfig, _, err := g.dockerClient.ConfigInspectWithRaw(context.Background(), config.ID)
 					if err != nil {
-						logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+						logger.Error("Failed to inspect Swarm Config", zap.String("config", config.Spec.Name), zap.Error(err))
+
 					} else {
 						block, err := caddyfile.Unmarshal(fullConfig.Spec.Data)
 						if err != nil {
-							logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+							logger.Error("Failed to parse Swarm Config caddyfile format", zap.String("config", config.Spec.Name), zap.Error(err))
 						} else {
 							caddyfileBlock.Merge(block)
 						}
@@ -104,10 +105,10 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 				}
 			}
 		} else {
-			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+			logger.Error("Failed to get Swarm configs", zap.Error(err))
 		}
 	} else {
-		logsBuffer.WriteString("[INFO] Skipping configs because swarm is not available\n")
+		logger.Info("Skipping swarm config caddyfiles because swarm is not available")
 	}
 
 	// Add containers
@@ -115,9 +116,9 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 	if err == nil {
 		for _, container := range containers {
 			if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {
-				ips, err := g.getContainerIPAddresses(&container, &logsBuffer, false)
+				ips, err := g.getContainerIPAddresses(&container, logger, false)
 				if err != nil {
-					logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+					logger.Error("Failed to get Container IPs", zap.String("container", container.ID), zap.Error(err))
 				} else {
 					for _, ip := range ips {
 						if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
@@ -127,15 +128,15 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 				}
 			}
 
-			containerCaddyfile, err := g.getContainerCaddyfile(&container, &logsBuffer)
+			containerCaddyfile, err := g.getContainerCaddyfile(&container, logger)
 			if err == nil {
 				caddyfileBlock.Merge(containerCaddyfile)
 			} else {
-				logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+				logger.Error("Failed to get Container Caddyfile", zap.String("container", container.ID), zap.Error(err))
 			}
 		}
 	} else {
-		logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+		logger.Error("Failed to get ContainerList", zap.Error(err))
 	}
 
 	// Add services
@@ -143,10 +144,12 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 		services, err := g.dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
 		if err == nil {
 			for _, service := range services {
+				logger.Debug("Swarm service", zap.String("service", service.Spec.Name))
+
 				if _, isControlledServer := service.Spec.Labels[g.options.ControlledServersLabel]; isControlledServer {
-					ips, err := g.getServiceTasksIps(&service, &logsBuffer, false)
+					ips, err := g.getServiceTasksIps(&service, logger, false)
 					if err != nil {
-						logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+						logger.Error("Failed to  get Swarm service IPs", zap.String("service", service.Spec.Name), zap.Error(err))
 					} else {
 						for _, ip := range ips {
 							if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
@@ -156,18 +159,19 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 					}
 				}
 
-				serviceCaddyfile, err := g.getServiceCaddyfile(&service, &logsBuffer)
+				// caddy. labels based config
+				serviceCaddyfile, err := g.getServiceCaddyfile(&service, logger)
 				if err == nil {
 					caddyfileBlock.Merge(serviceCaddyfile)
 				} else {
-					logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+					logger.Error("Failed to get Swarm service caddyfile", zap.String("service", service.Spec.Name), zap.Error(err))
 				}
 			}
 		} else {
-			logsBuffer.WriteString(fmt.Sprintf("[ERROR] %v\n", err.Error()))
+			logger.Error("Failed to get Swarm services", zap.Error(err))
 		}
 	} else {
-		logsBuffer.WriteString("[INFO] Skipping services because swarm is not available\n")
+		logger.Info("Skipping swarm services because swarm is not available")
 	}
 
 	// Write global blocks first
@@ -188,7 +192,9 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 	if g.options.ProcessCaddyfile {
 		processCaddyfileContent, processLogs := caddyfile.Process(caddyfileContent)
 		caddyfileContent = processCaddyfileContent
-		logsBuffer.Write(processLogs)
+		if len(processLogs) > 0 {
+			logger.Info("Process Caddyfile", zap.ByteString("logs", processLogs))
+		}
 	}
 
 	if len(caddyfileContent) == 0 {
@@ -199,24 +205,24 @@ func (g *CaddyfileGenerator) GenerateCaddyfile() ([]byte, string, []string) {
 		controlledServers = append(controlledServers, "localhost")
 	}
 
-	return caddyfileContent, logsBuffer.String(), controlledServers
+	return caddyfileContent, controlledServers
 }
 
-func (g *CaddyfileGenerator) checkSwarmAvailability(isFirstCheck bool) {
+func (g *CaddyfileGenerator) checkSwarmAvailability(logger *zap.Logger, isFirstCheck bool) {
 	info, err := g.dockerClient.Info(context.Background())
 	if err == nil {
 		newSwarmIsAvailable := info.Swarm.LocalNodeState == swarm.LocalNodeStateActive
 		if isFirstCheck || newSwarmIsAvailable != g.swarmIsAvailable {
-			log.Printf("[INFO] Swarm is available: %v\n", newSwarmIsAvailable)
+			logger.Info("Swarm is available", zap.Bool("new", newSwarmIsAvailable))
 		}
 		g.swarmIsAvailable = newSwarmIsAvailable
 	} else {
-		log.Printf("[ERROR] Swarm availability check failed: %v\n", err.Error())
+		logger.Error("Swarm availability check failed", zap.Error(err))
 		g.swarmIsAvailable = false
 	}
 }
 
-func (g *CaddyfileGenerator) getIngressNetworks() (map[string]bool, error) {
+func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]bool, error) {
 	ingressNetworks := map[string]bool{}
 
 	if len(g.options.IngressNetworks) > 0 {
@@ -239,7 +245,7 @@ func (g *CaddyfileGenerator) getIngressNetworks() (map[string]bool, error) {
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("[INFO] Caddy ContainerID: %v\n", containerID)
+		logger.Info("Caddy ContainerID", zap.String("ID", containerID))
 		container, err := g.dockerClient.ContainerInspect(context.Background(), containerID)
 		if err != nil {
 			return nil, err
@@ -257,7 +263,7 @@ func (g *CaddyfileGenerator) getIngressNetworks() (map[string]bool, error) {
 		}
 	}
 
-	log.Printf("[INFO] IngressNetworksMap: %v\n", ingressNetworks)
+	logger.Info("IngressNetworksMap", zap.String("ingres", fmt.Sprintf("%v", ingressNetworks)))
 
 	return ingressNetworks, nil
 }
