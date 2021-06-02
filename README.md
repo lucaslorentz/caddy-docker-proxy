@@ -89,7 +89,7 @@ services:
       - caddy
     labels:
       caddy: whoami.example.com
-      caddy.reverse_proxy: {{upstreams 8000}}
+      caddy.reverse_proxy: "{{upstreams 8000}}"
 
 networks:
   caddy:
