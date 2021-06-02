@@ -350,7 +350,7 @@ caddy.reverse_proxy: {{upstreams http 8080}}
 reverse_proxy http://192.168.0.1:8080 http://192.168.0.2:8080
 ```
 
-:no_entry: **DO NOT** add quotes around upstreams function:
+:warning: Be carefull with quotes around upstreams. Quotes should only be added when using yaml. 
 ```
 caddy.reverse_proxy: "{{upstreams}}"
 ↓
