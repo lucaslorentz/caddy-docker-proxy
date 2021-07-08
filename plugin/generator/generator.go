@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -111,32 +112,26 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		logger.Info("Skipping swarm config caddyfiles because swarm is not available")
 	}
 
-	// Add containers
-	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
-	if err == nil {
-		for _, container := range containers {
-			if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {
-				ips, err := g.getContainerIPAddresses(&container, logger, false)
-				if err != nil {
-					logger.Error("Failed to get Container IPs", zap.String("container", container.ID), zap.Error(err))
-				} else {
-					for _, ip := range ips {
-						if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
-							controlledServers = append(controlledServers, ip)
-						}
+	// Add Caddyfile templates from swarm configs
+	if g.swarmIsAvailable {
+		configs, err := g.dockerClient.ConfigList(context.Background(), types.ConfigListOptions{})
+		if err == nil {
+			caddyTemplateLabelName := strings.Join([]string{g.options.LabelPrefix, "template"}, ".")
+			for _, config := range configs {
+				if _, hasLabel := config.Spec.Labels[caddyTemplateLabelName]; hasLabel {
+					fullConfig, _, err := g.dockerClient.ConfigInspectWithRaw(context.Background(), config.ID)
+					if err != nil {
+						logger.Error("Failed to get Swarm config label", zap.Error(err))
+					} else {
+						NewTemplate(config.Spec.Name, string(fullConfig.Spec.Data))
 					}
 				}
 			}
-
-			containerCaddyfile, err := g.getContainerCaddyfile(&container, logger)
-			if err == nil {
-				caddyfileBlock.Merge(containerCaddyfile)
-			} else {
-				logger.Error("Failed to get Container Caddyfile", zap.String("container", container.ID), zap.Error(err))
-			}
+		} else {
+			logger.Error("Failed to get Swarm config ", zap.Error(err))
 		}
 	} else {
-		logger.Error("Failed to get ContainerList", zap.Error(err))
+		logger.Info("Skipping swarm config templates because swarm is not available")
 	}
 
 	// Add services
@@ -166,12 +161,66 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 				} else {
 					logger.Error("Failed to get Swarm service caddyfile", zap.String("service", service.Spec.Name), zap.Error(err))
 				}
+
+				// template files based config
+				containerTemplateCaddyfile, err := g.getServiceTemplatedCaddyfile(&service, logger)
+				if err == nil {
+					// logsBuffer.WriteString(fmt.Sprintf("[DEBUG] Swarm service caddy template %s\n", containerTemplateCaddyfile.Marshal()))
+					caddyfileBlock.Merge(containerTemplateCaddyfile)
+				} else {
+					logger.Error("Failed to generate templated Swarm service caddyfile", zap.String("service", service.Spec.Name), zap.Error(err))
+				}
 			}
 		} else {
 			logger.Error("Failed to get Swarm services", zap.Error(err))
 		}
 	} else {
 		logger.Info("Skipping swarm services because swarm is not available")
+	}
+
+	// Add containers
+	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
+	if err == nil {
+		for _, container := range containers {
+			if _ /*serviceName */, isService := container.Labels["com.docker.swarm.service.id"]; isService {
+				//logger.Debug("Skipping, as its a Swarm service task", zap.String("container", container.Names[0]), zap.String("service", serviceName))
+				continue
+			}
+			logger.Debug("Container", zap.String("container", container.Names[0]))
+
+			if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {
+				ips, err := g.getContainerIPAddresses(&container, logger, false)
+				if err != nil {
+					logger.Error("Failed to get Container IPs", zap.String("container", container.Names[0]), zap.Error(err))
+				} else {
+					for _, ip := range ips {
+						if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
+							controlledServers = append(controlledServers, ip)
+						}
+					}
+				}
+			}
+
+			// caddy. labels based config
+			containerCaddyfile, err := g.getContainerCaddyfile(&container, logger)
+			if err == nil {
+				caddyfileBlock.Merge(containerCaddyfile)
+			} else {
+				logger.Error("Failed to get Container Caddyfile", zap.String("container", container.Names[0]), zap.Error(err))
+			}
+
+			// template files based config
+			containerTemplateCaddyfile, err := g.getContainerTemplatedCaddyfile(&container, logger)
+			if err == nil {
+				// logsBuffer.WriteString(fmt.Sprintf("[DEBUG] Container caddy template %s\n", containerTemplateCaddyfile.Marshal()))
+
+				caddyfileBlock.Merge(containerTemplateCaddyfile)
+			} else {
+				logger.Error("Failed to get templated Container Caddyfile", zap.String("container", container.Names[0]), zap.Error(err))
+			}
+		}
+	} else {
+		logger.Error("Failed to get ContainerList", zap.Error(err))
 	}
 
 	// Write global blocks first
@@ -204,6 +253,10 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 	if g.options.Mode&config.Server == config.Server {
 		controlledServers = append(controlledServers, "localhost")
 	}
+
+	// TODO: make optional
+	// TODO: get the file location...
+	ioutil.WriteFile("/config/caddy/docker-plugin.caddyfile", caddyfileContent, 0644)
 
 	return caddyfileContent, controlledServers
 }
