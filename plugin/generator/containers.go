@@ -24,7 +24,11 @@ func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container,
 	}
 
 	if len(ips) == 0 {
-		logger.Warn("Container is not in same network as caddy", zap.String("container", container.Names[0]), zap.String("container id", container.ID))
+		name := container.ID
+		if len(container.Names) > 0 {
+			name = container.Names[0]
+		}
+		logger.Warn("Container is not in same network as caddy", zap.String("container", name), zap.String("container id", container.ID))
 	}
 
 	return ips, nil
