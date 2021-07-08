@@ -194,12 +194,16 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 				//logger.Debug("Skipping, as its a Swarm service task", zap.String("container", container.Names[0]), zap.String("service", serviceName))
 				continue
 			}
-			logger.Debug("Container", zap.String("container", container.Names[0]))
+			name := container.ID
+			if len(container.Names) > 0 {
+				name = container.Names[0]
+			}
+			logger.Debug("Container", zap.String("container", name))
 
 			if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {
 				ips, err := g.getContainerIPAddresses(&container, logger, false)
 				if err != nil {
-					logger.Error("Failed to get Container IPs", zap.String("container", container.Names[0]), zap.Error(err))
+					logger.Error("Failed to get Container IPs", zap.String("container", name), zap.Error(err))
 				} else {
 					for _, ip := range ips {
 						if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
@@ -214,7 +218,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 			if err == nil {
 				caddyfileBlock.Merge(containerCaddyfile)
 			} else {
-				logger.Error("Failed to get Container Caddyfile", zap.String("container", container.Names[0]), zap.Error(err))
+				logger.Error("Failed to get Container Caddyfile", zap.String("container", name), zap.Error(err))
 			}
 
 			// template files based config
@@ -224,7 +228,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 
 				caddyfileBlock.Merge(containerTemplateCaddyfile)
 			} else {
-				logger.Error("Failed to get templated Container Caddyfile", zap.String("container", container.Names[0]), zap.Error(err))
+				logger.Error("Failed to get templated Container Caddyfile", zap.String("container", name), zap.Error(err))
 			}
 		}
 	} else {

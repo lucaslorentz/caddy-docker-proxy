@@ -77,7 +77,11 @@ func (g *CaddyfileGenerator) getContainerTemplatedCaddyfile(container *types.Con
 		// don't exit, we'll try again later..
 	}
 
-	matcher := strings.TrimPrefix(container.Names[0], "/")
+	name := container.ID
+	if len(container.Names) > 0 {
+		name = container.Names[0]
+	}
+	matcher := strings.TrimPrefix(name, "/")
 	logger.Debug("getContainerTemplatedCaddyfile", zap.String("matcher", matcher), zap.String("labels", fmt.Sprintf("%v", container.Labels)))
 
 	funcMap := template.FuncMap{
@@ -113,7 +117,7 @@ func (g *CaddyfileGenerator) getContainerTemplatedCaddyfile(container *types.Con
 					return host, nil
 				}
 			}
-			return strings.TrimPrefix(container.Names[0], "/"), nil
+			return strings.TrimPrefix(name, "/"), nil
 		},
 	}
 	return g.getTemplatedCaddyfile(container, funcMap, logger)

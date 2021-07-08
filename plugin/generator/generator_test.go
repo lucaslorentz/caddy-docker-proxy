@@ -28,7 +28,8 @@ const otherIngressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[othe
 const swarmIsAvailableLog = `INFO	Swarm is available	{"new": true}` + newLine
 const swarmIsDisabledLog = `INFO	Swarm is available	{"new": false}` + newLine
 const skipCaddyfileLog = "INFO	Skipping default Caddyfile because no path is set" + newLine
-const commonLogs = containerIdLog + ingressNetworksMapLog + swarmIsAvailableLog
+const noTemplateDirToWatch = `INFO	no template dir to watch	{"error": "stat /home/dow184/.config/caddy/docker-proxy: no such file or directory"}` + newLine
+const commonLogs = noTemplateDirToWatch + containerIdLog + ingressNetworksMapLog + swarmIsAvailableLog
 
 func init() {
 	log.SetOutput(ioutil.Discard)
@@ -89,7 +90,7 @@ func TestMergeConfigContent(t *testing.T) {
 		"	reverse_proxy 127.0.0.1 172.17.0.2\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -121,7 +122,7 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 
 	const expectedCaddyfile = "# Empty caddyfile"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -143,8 +144,6 @@ func testGeneration(
 		customizeOptions(options)
 	}
 
-	generator := CreateGenerator(dockerClient, dockerUtils, options)
-
 	var logsBuffer bytes.Buffer
 	encoderConfig := zap.NewDevelopmentEncoderConfig()
 	encoderConfig.TimeKey = ""
@@ -152,6 +151,7 @@ func testGeneration(
 	writer := bufio.NewWriter(&logsBuffer)
 	logger := zap.New(zapcore.NewCore(encoder, zapcore.AddSync(writer), zapcore.InfoLevel))
 
+	generator := CreateGenerator(dockerClient, dockerUtils, logger, options)
 	caddyfileBytes, _ := generator.GenerateCaddyfile(logger)
 	writer.Flush()
 	assert.Equal(t, expectedCaddyfile, string(caddyfileBytes))

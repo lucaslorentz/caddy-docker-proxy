@@ -58,7 +58,7 @@ func TestServices_TemplateData(t *testing.T) {
 		"	}\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -92,7 +92,7 @@ func TestServices_DifferentNetwork(t *testing.T) {
 		"}\n"
 
 	const expectedLogs = commonLogs + skipCaddyfileLog +
-		`WARN	Service is not in same network as caddy	{"service": "service", "serviceId": "SERVICE-ID"}` + newLine
+		`WARN	Service is not in same network as caddy	{"service": "service", "serviceId": "SERVICE-ID"}` + newLine + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -131,7 +131,7 @@ func TestServices_ManualIngressNetwork(t *testing.T) {
 		"	reverse_proxy service\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog + skipCaddyfileLog
+	const expectedLogs = noTemplateDirToWatch + otherIngressNetworksMapLog + swarmIsAvailableLog + skipCaddyfileLog + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.IngressNetworks = []string{"other-network-name"}
@@ -169,8 +169,9 @@ func TestServices_SwarmDisabled(t *testing.T) {
 
 	const expectedCaddyfile = "# Empty caddyfile"
 
-	const expectedLogs = containerIdLog + ingressNetworksMapLog + swarmIsDisabledLog + skipCaddyfileLog +
+	const expectedLogs = noTemplateDirToWatch + containerIdLog + ingressNetworksMapLog + swarmIsDisabledLog + skipCaddyfileLog +
 		"INFO	Skipping swarm config caddyfiles because swarm is not available\n" +
+		"INFO	Skipping swarm config templates because swarm is not available\n" +
 		"INFO	Skipping swarm services because swarm is not available\n"
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
@@ -205,7 +206,7 @@ func TestServiceTasks_Empty(t *testing.T) {
 		"}\n"
 
 	const expectedLogs = commonLogs + skipCaddyfileLog +
-		`WARN	Service has no tasks in running state	{"service": "service", "serviceId": "SERVICEID"}` + newLine
+		`WARN	Service has no tasks in running state	{"service": "service", "serviceId": "SERVICEID"}` + newLine + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
@@ -269,7 +270,7 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 		"}\n"
 
 	const expectedLogs = commonLogs + skipCaddyfileLog +
-		`WARN	Service has no tasks in running state	{"service": "service", "serviceId": "SERVICEID"}` + newLine
+		`WARN	Service has no tasks in running state	{"service": "service", "serviceId": "SERVICEID"}` + newLine + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
@@ -320,7 +321,7 @@ func TestServiceTasks_DifferentNetwork(t *testing.T) {
 		"}\n"
 
 	const expectedLogs = commonLogs + skipCaddyfileLog +
-		`WARN	Service is not in same network as caddy	{"service": "service", "serviceId": "SERVICEID"}` + newLine
+		`WARN	Service is not in same network as caddy	{"service": "service", "serviceId": "SERVICEID"}` + newLine + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
@@ -376,7 +377,7 @@ func TestServiceTasks_ManualIngressNetwork(t *testing.T) {
 		"	reverse_proxy 10.0.0.1:5000\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog + skipCaddyfileLog
+	const expectedLogs = noTemplateDirToWatch + otherIngressNetworksMapLog + swarmIsAvailableLog + skipCaddyfileLog + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
@@ -440,7 +441,7 @@ func TestServiceTasks_Running(t *testing.T) {
 		"	reverse_proxy 10.0.0.1:5000 10.0.0.2:5000\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true

@@ -34,7 +34,7 @@ func TestContainers_TemplateData(t *testing.T) {
 		"	reverse_proxy 172.17.0.2:5000/api\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -43,6 +43,9 @@ func TestContainers_PicksRightNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
 		{
+			Names: []string{
+				"container-name",
+			},
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
 					"other-network": {
@@ -66,7 +69,7 @@ func TestContainers_PicksRightNetwork(t *testing.T) {
 		"	reverse_proxy 172.17.0.2\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -96,7 +99,7 @@ func TestContainers_DifferentNetwork(t *testing.T) {
 		"}\n"
 
 	const expectedLogs = commonLogs + skipCaddyfileLog +
-		`WARN	Container is not in same network as caddy	{"container": "CONTAINER-ID", "container id": "CONTAINER-ID"}` + newLine
+		`WARN	Container is not in same network as caddy	{"container": "CONTAINER-ID", "container id": "CONTAINER-ID"}` + newLine + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -131,7 +134,7 @@ func TestContainers_ManualIngressNetworks(t *testing.T) {
 		"	reverse_proxy 10.0.0.1\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog + skipCaddyfileLog
+	const expectedLogs = noTemplateDirToWatch + otherIngressNetworksMapLog + swarmIsAvailableLog + skipCaddyfileLog + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.IngressNetworks = []string{"other-network-name"}
@@ -175,7 +178,7 @@ func TestContainers_Replicas(t *testing.T) {
 		"	reverse_proxy 172.17.0.2 172.17.0.3\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -218,7 +221,7 @@ func TestContainers_DoNotMergeDifferentProxies(t *testing.T) {
 		"	reverse_proxy /b/* 172.17.0.3\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -284,7 +287,7 @@ func TestContainers_ComplexMerge(t *testing.T) {
 		"	tls internal\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -336,7 +339,7 @@ func TestContainers_WithSnippets(t *testing.T) {
 		"	reverse_proxy 172.17.0.3\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
