@@ -152,9 +152,6 @@ func init() {
 }
 
 func (g *CaddyfileGenerator) getTemplatedCaddyfile(data interface{}, funcMap template.FuncMap, logger *zap.Logger) (*caddyfile.Container, error) {
-	// TODO: how to deal with _1, _2 etc - multiple routes on one container...
-
-	// TODO: need to extract the funcMap, or abstract it better, as we need to over-ride it to cater for the difference between container and service
 	loadedTemplates = loadedTemplates.Funcs(funcMap)
 
 	// Parse any found or updated templates TMPL: prefix is to diferentiate from funcMap / named templates

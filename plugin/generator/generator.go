@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/caddyserver/caddy/v2"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/caddyfile"
@@ -260,9 +262,8 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		controlledServers = append(controlledServers, "localhost")
 	}
 
-	// TODO: make optional
-	// TODO: get the file location...
-	ioutil.WriteFile("/config/caddy/docker-plugin.caddyfile", caddyfileContent, 0644)
+	// caddy/docker-plugin.caddyfile
+	ioutil.WriteFile(filepath.Join(caddy.AppConfigDir(), "docker-plugin.caddyfile"), caddyfileContent, 0644)
 
 	return caddyfileContent, controlledServers
 }
