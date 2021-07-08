@@ -77,6 +77,7 @@ func (dockerLoader *DockerLoader) Start() error {
 		dockerLoader.generator = generator.CreateGenerator(
 			wrappedClient,
 			docker.CreateUtils(),
+			log,
 			dockerLoader.options,
 		)
 

@@ -469,15 +469,71 @@ LABEL caddy.reverse_proxy="{{upstreams http 80}}"
 
 will automatically work when you `docker run --network caddy_network --rm -it labeled_nginx:latest`, or create a service with it.
 
-## Golang template based configurations
+## Go template based configurations
 
-**TODO**
+You can use Go template files to process your own custom container, image, service and configuration labels.
+
+For example, if you have a wildcard DNS entry for your host `*.loc.alho.st`, you can use the following labels on your container to generate the caddyfile needed:
+
+- `virtual.port` - the only **_required_** label - when not set, no proxying will be setup - this is used instead of `-p <port>:<port>` mapping
+- `virtual.host` - defaults to the container name or swarm service name
+- `virtual.path` - defaults to `*`, which means all requests to this hostname - can be a sub-path like `/sven\*` (note the prefix is removed on the way into the
+container)
+
+and a `{XDG_CONFIG_HOME}/caddy/docker-proxy/virtual.tmpl` template:
+
+```
+{{ if index labels "virtual.port" }}
+*.loc.alho.st loc.alho.st {
+			import dns_api_gandi
+			@{{matcher}} {
+					host {{hostname ((index labels "virtual.host"))}}.loc.alho.st
+					{{ if index labels "virtual.path" }}
+					path {{ index labels "virtual.path" }}
+					{{ end }}
+			}
+			route @{{matcher}} {
+					reverse_proxy {{upstreams ((index labels "virtual.port" | int)) }}
+			}
+}
+{{ end }}
+```
+
+and when you start a container with `docker run -it --label virtual.port=80 --name nginx --network caddy_proxy nginx` caddy would proxy it, and make it available at https://nginx.loc.alho.st/
+
+> NOTE: this example assumes you have caddy running in a container, attached to the `caddy_proxy` network, and port mapped to the host's port 80 and 443.
+
+You can also default some of this information in your `Dockerfile`
+
+```
+# run using caddy-docker-proxy
+# docker run -d --name nginx --network caddy_proxy nginx
+FROM nginx
+LABEL virtual.port=80
+LABEL virutal.path="/files/*"
+```
 
 ### Static template files
 
 To define your own Caddyfile entries, or even process custom container labels into Caddyfile entries, you can use golang templates defined in `*.tmpl` in the `${XDG_CONFIG_HOME}/caddy/docker-proxy/` or `./caddy/docker-proxy/` (if `XGD_CONFIG_HOME` is not defined) directory. This directory is watched for changes, so you can add, remove or rename tmpl files, and they will be used.
 
-For example, to create a **TODO**
+For example, instead of modifying the `Caddyfile` that may be managed elsewhere, you could have a `caddy/docker-proxy/general.tmpl` file that defines the default certificate details, debug info, and admin portal.
+
+```
+{
+    admin 0.0.0.0:2019
+    email some@user.org
+    # debug true
+}
+
+(dns_api_gandi) {
+    tls {
+        issuer acme {
+            dns gandi {env.GANDIV5_API_KEY}
+        }
+    }
+}
+```
 
 ### Docker Swarm label template files
 
@@ -502,12 +558,6 @@ $ cat label.caddyfile.tmpl
 {{ end -}}
 $ docker config create --label caddy.template caddy-metrics-tmpl label.caddyfile.tmpl
 ```
-
-
-
-
-
-
 
 ## Execution modes
 

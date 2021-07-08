@@ -36,8 +36,14 @@ type CaddyfileGenerator struct {
 }
 
 // CreateGenerator creates a new generator
-func CreateGenerator(dockerClient docker.Client, dockerUtils docker.Utils, options *config.Options) *CaddyfileGenerator {
+func CreateGenerator(dockerClient docker.Client, dockerUtils docker.Utils, logger *zap.Logger, options *config.Options) *CaddyfileGenerator {
 	var labelRegexString = fmt.Sprintf("^%s(_\\d+)?(\\.|$)", options.LabelPrefix)
+
+	err := setupTemplateDirWatcher(logger)
+	if err != nil {
+		logger.Info("no template dir to watch", zap.Error(err))
+		// don't exit, we'll try again later..
+	}
 
 	return &CaddyfileGenerator{
 		options:      options,

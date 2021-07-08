@@ -64,9 +64,6 @@ func (g *CaddyfileGenerator) getServiceTemplatedCaddyfile(service *swarm.Service
 					return host, nil
 				}
 			}
-			// TODO: how do we deal if we have a full domain name?
-
-			// TODO: from compose, looks like caddy-docker-proxy_maintainence_1 (remove _1?)
 			return strings.TrimPrefix(service.Spec.Name, "/"), nil
 		},
 	}
@@ -116,9 +113,6 @@ func (g *CaddyfileGenerator) getContainerTemplatedCaddyfile(container *types.Con
 					return host, nil
 				}
 			}
-			// TODO: how do we deal if we have a full domain name?
-
-			// TODO: from compose, looks like caddy-docker-proxy_maintainence_1 (remove _1?)
 			return strings.TrimPrefix(container.Names[0], "/"), nil
 		},
 	}
@@ -144,13 +138,6 @@ func NewTemplate(name, tmpl string) {
 
 func init() {
 	newTemplate = make(chan tmplData, 20)
-
-	// // TODO: not the right log
-	// err := setupTemplateDirWatcher(caddy.Logs())
-	// if err != nil {
-	// 	logger.Info("no template dir to watch", zap.Error(err))
-	// 	// don't exit, we'll try again later..
-	// }
 
 	commonFuncMap := template.FuncMap{
 		"http": func() string {
