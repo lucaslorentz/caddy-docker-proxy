@@ -8,6 +8,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/caddyserver/caddy/v2"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/swarm"
@@ -28,8 +29,11 @@ const otherIngressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[othe
 const swarmIsAvailableLog = `INFO	Swarm is available	{"new": true}` + newLine
 const swarmIsDisabledLog = `INFO	Swarm is available	{"new": false}` + newLine
 const skipCaddyfileLog = "INFO	Skipping default Caddyfile because no path is set" + newLine
-const noTemplateDirToWatch = `INFO	no template dir to watch	{"error": "stat /home/dow184/.config/caddy/docker-proxy: no such file or directory"}` + newLine
-const commonLogs = noTemplateDirToWatch + containerIdLog + ingressNetworksMapLog + swarmIsAvailableLog
+
+var configPath = caddy.AppConfigDir()
+
+var noTemplateDirToWatch = `INFO	no template dir to watch	{"error": "stat ` + configPath + `/docker-proxy: no such file or directory"}` + newLine
+var commonLogs = noTemplateDirToWatch + containerIdLog + ingressNetworksMapLog + swarmIsAvailableLog
 
 func init() {
 	log.SetOutput(ioutil.Discard)
@@ -90,7 +94,7 @@ func TestMergeConfigContent(t *testing.T) {
 		"	reverse_proxy 127.0.0.1 172.17.0.2\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch
+	var expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -122,7 +126,7 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 
 	const expectedCaddyfile = "# Empty caddyfile"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch
+	var expectedLogs = commonLogs + skipCaddyfileLog + noTemplateDirToWatch
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
