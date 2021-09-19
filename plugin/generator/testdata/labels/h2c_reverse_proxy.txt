@@ -1,0 +1,6 @@
+caddy               = service.testdomain.com
+caddy.reverse_proxy = {{upstreams h2c 5000}}
+----------
+service.testdomain.com {
+	reverse_proxy h2c://target:5000
+}
