@@ -1,12 +1,12 @@
 jobs:
 - job: Build_Binaries
   pool:
-    vmImage: 'Ubuntu 16.04'
+    vmImage: 'Ubuntu 18.04'
 
   steps:
   - task: GoTool@0
     inputs:
-      version: '1.15.x'
+      version: '1.17'
       GOPATH: '$(Agent.BuildDirectory)/go'
       GOBIN: '$(GOPATH)/bin'
 
@@ -31,7 +31,7 @@ jobs:
 - job: Build_Images_Linux
   dependsOn: Build_Binaries
   pool:
-    vmImage: 'Ubuntu 16.04'
+    vmImage: 'Ubuntu 18.04'
   steps:
   - task: DownloadBuildArtifacts@0
     displayName: 'Download Build Artifacts'
