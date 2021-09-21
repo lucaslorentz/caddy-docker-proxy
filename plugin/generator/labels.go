@@ -33,6 +33,9 @@ func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTa
 		"https": func() string {
 			return "https"
 		},
+		"h2c": func() string {
+			return "h2c"
+		},
 	}
 
 	return caddyfile.FromLabels(labels, templateData, funcMap)
