@@ -30,6 +30,15 @@ func init() {
 			fs.Bool("mode", false,
 				"Which mode this instance should run: standalone | controller | server")
 
+			fs.String("docker-sockets", "",
+			"Docker sockets comma separate")
+
+			fs.String("docker-certs-path", "",
+				"Docker socket certs path comma separate")
+
+			fs.String("docker-apis-version", "",
+			"Docker socket apis version comma separate")
+
 			fs.String("controller-network", "",
 				"Network allowed to configure caddy server in CIDR notation. Ex: 10.200.200.0/24")
 
@@ -132,6 +141,9 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	pollingIntervalFlag := flags.Duration("polling-interval")
 	modeFlag := flags.String("mode")
 	controllerSubnetFlag := flags.String("controller-network")
+	dockerSocketsFlag := flags.String("docker-sockets")
+	dockerCertsPathFlag := flags.String("docker-certs-path")
+	dockerAPIsVersionFlag := flags.String("docker-apis-version")
 	ingressNetworksFlag := flags.String("ingress-networks")
 
 	options := &config.Options{}
@@ -153,6 +165,24 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	}
 
 	log := logger()
+
+	if dockerSocketsEnv := os.Getenv("CADDY_DOCKER_SOCKETS"); dockerSocketsEnv != "" {
+		options.DockerSockets = strings.Split(dockerSocketsEnv, ",")
+	} else {
+		options.DockerSockets = strings.Split(dockerSocketsFlag, ",")
+	}
+
+	if dockerCertsPathEnv := os.Getenv("CADDY_DOCKER_CERTS_PATH"); dockerCertsPathEnv != "" {
+		options.DockerCertsPath = strings.Split(dockerCertsPathEnv, ",")
+	} else {
+		options.DockerCertsPath = strings.Split(dockerCertsPathFlag, ",")
+	}
+
+	if dockerAPIsVersionEnv := os.Getenv("CADDY_DOCKER_APIS_VERSION"); dockerAPIsVersionEnv != "" {
+		options.DockerAPIsVersion = strings.Split(dockerAPIsVersionEnv, ",")
+	} else {
+		options.DockerAPIsVersion = strings.Split(dockerAPIsVersionFlag, ",")
+	}
 
 	if controllerIPRangeEnv := os.Getenv("CADDY_CONTROLLER_NETWORK"); controllerIPRangeEnv != "" {
 		_, ipNet, err := net.ParseCIDR(controllerIPRangeEnv)

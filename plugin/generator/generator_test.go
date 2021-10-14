@@ -91,7 +91,7 @@ func TestMergeConfigContent(t *testing.T) {
 
 	const expectedLogs = commonLogs + skipCaddyfileLog
 
-	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
+	testGeneration(t, [dockerClient], nil, expectedCaddyfile, expectedLogs)
 }
 
 func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
@@ -123,12 +123,12 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 
 	const expectedLogs = commonLogs + skipCaddyfileLog
 
-	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
+	testGeneration(t, [dockerClient], nil, expectedCaddyfile, expectedLogs)
 }
 
 func testGeneration(
 	t *testing.T,
-	dockerClient docker.Client,
+	dockerClients []docker.Client,
 	customizeOptions func(*config.Options),
 	expectedCaddyfile string,
 	expectedLogs string,
@@ -143,7 +143,7 @@ func testGeneration(
 		customizeOptions(options)
 	}
 
-	generator := CreateGenerator(dockerClient, dockerUtils, options)
+	generator := CreateGenerator(dockerClients, dockerUtils, options)
 
 	var logsBuffer bytes.Buffer
 	encoderConfig := zap.NewDevelopmentEncoderConfig()
