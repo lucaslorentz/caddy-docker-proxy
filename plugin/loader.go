@@ -169,9 +169,9 @@ func (dockerLoader *DockerLoader) listenEvents() {
 	args.Add("type", "container")
 	args.Add("type", "config")
 
-	context, cancel := context.WithCancel(context.Background())
-
 	for i, dockerClient := range dockerLoader.dockerClients {
+		context, cancel := context.WithCancel(context.Background())
+		
 		eventsChan, errorChan := dockerClient.Events(context, types.EventsOptions{
 			Filters: args,
 		})
@@ -179,7 +179,7 @@ func (dockerLoader *DockerLoader) listenEvents() {
 		log := logger()
 		log.Info("Connecting to docker events", zap.String("DockerSocket",dockerLoader.options.DockerSockets[i]))
 
-		ListenEventss:
+		ListenEvents:
 			for {
 				select {
 				case event := <-eventsChan:
@@ -207,7 +207,7 @@ func (dockerLoader *DockerLoader) listenEvents() {
 					if err != nil {
 						log.Error("Docker events error", zap.Error(err))
 					}
-					break ListenEventss
+					break ListenEvents
 				}
 			}
 	}
