@@ -8,7 +8,7 @@ service2.example.com {
 	respond 200 /
 	route * {
 		reverse_proxy service2:5000 {
-			health_path /health
+			health_uri /health
 		}
 	}
 	encode gzip
@@ -34,7 +34,7 @@ service2.example.com {
 	respond 200 /
 	route * {
 		reverse_proxy service2:5000 {
-			health_path /health
+			health_uri /health
 		}
 	}
 	encode gzip

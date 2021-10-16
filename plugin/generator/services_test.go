@@ -16,17 +16,17 @@ func TestServices_TemplateData(t *testing.T) {
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						fmtLabel("%s"):                           "{{.Spec.Name}}.testdomain.com",
-						fmtLabel("%s.reverse_proxy"):             "{{.Spec.Name}}:5000",
-						fmtLabel("%s.reverse_proxy.health_path"): "/health",
-						fmtLabel("%s.gzip"):                      "",
-						fmtLabel("%s.basicauth"):                 "/ user password",
-						fmtLabel("%s.tls.dns"):                   "route53",
-						fmtLabel("%s.rewrite_0"):                 "/path1 /path2",
-						fmtLabel("%s.rewrite_1"):                 "/path3 /path4",
-						fmtLabel("%s.limits.header"):             "100kb",
-						fmtLabel("%s.limits.body_0"):             "/path1 2mb",
-						fmtLabel("%s.limits.body_1"):             "/path2 4mb",
+						fmtLabel("%s"):                          "{{.Spec.Name}}.testdomain.com",
+						fmtLabel("%s.reverse_proxy"):            "{{.Spec.Name}}:5000",
+						fmtLabel("%s.reverse_proxy.health_uri"): "/health",
+						fmtLabel("%s.gzip"):                     "",
+						fmtLabel("%s.basicauth"):                "/ user password",
+						fmtLabel("%s.tls.dns"):                  "route53",
+						fmtLabel("%s.rewrite_0"):                "/path1 /path2",
+						fmtLabel("%s.rewrite_1"):                "/path3 /path4",
+						fmtLabel("%s.limits.header"):            "100kb",
+						fmtLabel("%s.limits.body_0"):            "/path1 2mb",
+						fmtLabel("%s.limits.body_1"):            "/path2 4mb",
 					},
 				},
 			},
@@ -49,7 +49,7 @@ func TestServices_TemplateData(t *testing.T) {
 		"		header 100kb\n" +
 		"	}\n" +
 		"	reverse_proxy service:5000 {\n" +
-		"		health_path /health\n" +
+		"		health_uri /health\n" +
 		"	}\n" +
 		"	rewrite /path1 /path2\n" +
 		"	rewrite /path3 /path4\n" +

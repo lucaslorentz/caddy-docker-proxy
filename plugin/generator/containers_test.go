@@ -236,13 +236,13 @@ func TestContainers_ComplexMerge(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s"):                                 "service.testdomain.com",
-				fmtLabel("%s.route"):                           "/a/*",
-				fmtLabel("%s.route.0_uri"):                     "strip_prefix /a",
-				fmtLabel("%s.route.reverse_proxy"):             "{{upstreams}}",
-				fmtLabel("%s.route.reverse_proxy.health_path"): "/health",
-				fmtLabel("%s.redir"):                           "/a /a1",
-				fmtLabel("%s.tls"):                             "internal",
+				fmtLabel("%s"):                                "service.testdomain.com",
+				fmtLabel("%s.route"):                          "/a/*",
+				fmtLabel("%s.route.0_uri"):                    "strip_prefix /a",
+				fmtLabel("%s.route.reverse_proxy"):            "{{upstreams}}",
+				fmtLabel("%s.route.reverse_proxy.health_uri"): "/health",
+				fmtLabel("%s.redir"):                          "/a /a1",
+				fmtLabel("%s.tls"):                            "internal",
 			},
 		},
 		{
@@ -255,13 +255,13 @@ func TestContainers_ComplexMerge(t *testing.T) {
 				},
 			},
 			Labels: map[string]string{
-				fmtLabel("%s"):                                 "service.testdomain.com",
-				fmtLabel("%s.route"):                           "/b/*",
-				fmtLabel("%s.route.0_uri"):                     "strip_prefix /b",
-				fmtLabel("%s.route.reverse_proxy"):             "{{upstreams}}",
-				fmtLabel("%s.route.reverse_proxy.health_path"): "/health",
-				fmtLabel("%s.redir"):                           "/b /b1",
-				fmtLabel("%s.tls"):                             "internal",
+				fmtLabel("%s"):                                "service.testdomain.com",
+				fmtLabel("%s.route"):                          "/b/*",
+				fmtLabel("%s.route.0_uri"):                    "strip_prefix /b",
+				fmtLabel("%s.route.reverse_proxy"):            "{{upstreams}}",
+				fmtLabel("%s.route.reverse_proxy.health_uri"): "/health",
+				fmtLabel("%s.redir"):                          "/b /b1",
+				fmtLabel("%s.tls"):                            "internal",
 			},
 		},
 	}
@@ -272,13 +272,13 @@ func TestContainers_ComplexMerge(t *testing.T) {
 		"	route /a/* {\n" +
 		"		uri strip_prefix /a\n" +
 		"		reverse_proxy 172.17.0.2 {\n" +
-		"			health_path /health\n" +
+		"			health_uri /health\n" +
 		"		}\n" +
 		"	}\n" +
 		"	route /b/* {\n" +
 		"		uri strip_prefix /b\n" +
 		"		reverse_proxy 172.17.0.3 {\n" +
-		"			health_path /health\n" +
+		"			health_uri /health\n" +
 		"		}\n" +
 		"	}\n" +
 		"	tls internal\n" +
