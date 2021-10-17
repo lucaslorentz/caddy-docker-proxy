@@ -13,7 +13,7 @@ service2.example.com {
 	respond 200 /
 	# Comment
 	reverse_proxy service2:5000 {
-		health_path /health
+		health_uri /health
 	}
 	import mysnippet
 }
@@ -36,7 +36,7 @@ service3.example.com {
 service2.example.com {
 	respond 200 /
 	reverse_proxy service2:5000 {
-		health_path /health
+		health_uri /health
 	}
 	import mysnippet
 }
