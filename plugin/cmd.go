@@ -66,17 +66,26 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 	if options.Mode&config.Server == config.Server {
 		log.Info("Running caddy proxy server")
 
-		caddy.Run(&caddy.Config{
+		err := caddy.Run(&caddy.Config{
 			Admin: &caddy.AdminConfig{
 				Listen: getAdminListen(options),
 			},
 		})
+		if err != nil {
+			return 1, err
+		}
 	}
 
 	if options.Mode&config.Controller == config.Controller {
 		log.Info("Running caddy proxy controller")
 		loader := CreateDockerLoader(options)
-		loader.Start()
+		if err := loader.Start(); err != nil {
+			if err := caddy.Stop(); err != nil {
+				return 1, err
+			}
+
+			return 1, err
+		}
 	}
 
 	select {}

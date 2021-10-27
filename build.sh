@@ -10,7 +10,7 @@ go vet ./...
 go test -race ./...
 cd ../
 
-go get -u github.com/caddyserver/xcaddy/cmd/xcaddy
+go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
 CGO_ENABLED=0 GOARCH=amd64 GOOS=linux \
     xcaddy build \
