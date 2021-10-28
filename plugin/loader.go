@@ -90,9 +90,12 @@ func (dockerLoader *DockerLoader) Start() error {
 			zap.String("IngressNetworks", fmt.Sprintf("%v", dockerLoader.options.IngressNetworks)),
 		)
 
+		ready := make(chan struct{})
 		dockerLoader.timer = time.AfterFunc(0, func() {
+			<-ready
 			dockerLoader.update()
 		})
+		close(ready)
 
 		go dockerLoader.monitorEvents()
 	}
