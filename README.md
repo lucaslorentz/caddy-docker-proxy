@@ -555,7 +555,7 @@ ARG CADDY_VERSION=2.4.0
 FROM caddy:${CADDY_VERSION}-builder AS builder
 
 RUN xcaddy build \
-    --with github.com/lucaslorentz/caddy-docker-proxy/plugin/v2 \
+    --with github.com/lucaslorentz/caddy-docker-proxy/plugin \
     --with <additional-plugins>
 
 FROM caddy:${CADDY_VERSION}-alpine
@@ -635,4 +635,4 @@ $ docker rm -f caddy whoami0 whoami1
 
 You can build Caddy using [xcaddy](https://github.com/caddyserver/xcaddy) or [caddy docker builder](https://hub.docker.com/_/caddy).
 
-Use module name **github.com/lucaslorentz/caddy-docker-proxy/plugin/v2** to add this plugin to your build.
+Use module name **github.com/lucaslorentz/caddy-docker-proxy/plugin** to add this plugin to your build.

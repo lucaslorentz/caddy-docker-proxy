@@ -10,8 +10,8 @@ import (
 
 	"github.com/caddyserver/caddy/v2"
 	caddycmd "github.com/caddyserver/caddy/v2/cmd"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/config"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/generator"
+	"github.com/lucaslorentz/caddy-docker-proxy/plugin/config"
+	"github.com/lucaslorentz/caddy-docker-proxy/plugin/generator"
 
 	"go.uber.org/zap"
 )
