@@ -9,7 +9,7 @@ The plugin scans Docker metadata, looking for labels indicating that the service
 
 Then, it generates an in-memory Caddyfile with site entries and proxies pointing to each Docker service by their DNS name or container IP.
 
-Every time a docker object changes, the plugin updates the Caddyfile and triggers Caddy to gracefully reload, with zero-downtime.
+Every time a Docker object changes, the plugin updates the Caddyfile and triggers Caddy to gracefully reload, with zero-downtime.
 
 ## Table of contents
 
@@ -98,7 +98,7 @@ networks:
 ```shell
 $ docker-compose up -d
 ```
-Now, visit `https://whoami.example.com`. The site with be served [automatically over HTTPS](https://caddyserver.com/docs/automatic-https) with a certificate issued by Let's Encrypt or ZeroSSL.
+Now, visit `https://whoami.example.com`. The site will be served [automatically over HTTPS](https://caddyserver.com/docs/automatic-https) with a certificate issued by Let's Encrypt or ZeroSSL.
 		
 ## Labels to Caddyfile conversion
 Please first read the [Caddyfile Concepts](https://caddyserver.com/docs/caddyfile/concepts) documentation to understand the structure of a Caddyfile.
@@ -168,7 +168,7 @@ caddy.directive.subdirA: valueA
 }
 ```
 
-Labels with empty values generates a directive without any arguments:
+Labels with empty values generate a directive without any arguments:
 ```
 caddy.directive:
 ↓
@@ -242,7 +242,7 @@ caddy.encode: zstd gzip
 }
 ```
 
-It's also possible to isolate caddy configurations using suffix _&lt;number&gt;:
+It's also possible to isolate Caddy configurations using suffix _&lt;number&gt;:
 ```
 caddy_0: (snippet)
 caddy_0.tls: internal
@@ -287,7 +287,7 @@ localhost {
 
 ### Go templates
 
-[Golang templates](https://golang.org/pkg/text/template/) can be used inside label values to increase flexibility. From templates, you have access to current docker resource information. But, keep in mind that the structure that describes a docker container is different from a service.
+[Golang templates](https://golang.org/pkg/text/template/) can be used inside label values to increase flexibility. From templates, you have access to current Docker resource information. But, keep in mind that the structure that describes a Docker container is different from a service.
 
 While you can access a service name like this:
 ```
@@ -303,7 +303,7 @@ caddy.respond: /info "{{index .Names 0}}"
 respond /info "mycontainer"
 ```
 
-Sometimes it's not possile to have labels with empty values, like when using some UI to manage docker. If that's the case, you can also use our support for go lang templates to generate empty labels.
+Sometimes it's not possile to have labels with empty values, like when using some UI to manage Docker. If that's the case, you can also use our support for go lang templates to generate empty labels.
 ```
 caddy.directive: {{""}}
 ↓
@@ -316,15 +316,15 @@ The following functions are available for use inside templates:
 
 ### upstreams
 
-Returns all addresses for the current docker resource separated by whitespace.
+Returns all addresses for the current Docker resource separated by whitespace.
 
 For services, that would be the service DNS name when **proxy-service-tasks** is **false**, or all running tasks IPs when **proxy-service-tasks** is **true**.
 
 For containers, that would be the container IPs.
 
-Only containers/services that are connected to caddy ingress networks are used.
+Only containers/services that are connected to Caddy ingress networks are used.
 
-:warning: Caddy docker proxy does a best effort to automatically detect what are the ingress networks. But that logic fails on some scenarios: [#207](https://github.com/lucaslorentz/caddy-docker-proxy/issues/207). To have a more resilient solution, you can manually configure caddy ingress network using CLI option `ingress-networks` or environment variable `CADDY_INGRESS_NETWORKS`.
+:warning: caddy docker proxy does a best effort to automatically detect what are the ingress networks. But that logic fails on some scenarios: [#207](https://github.com/lucaslorentz/caddy-docker-proxy/issues/207). To have a more resilient solution, you can manually configure Caddy ingress network using CLI option `ingress-networks` or environment variable `CADDY_INGRESS_NETWORKS`.
 
 Usage: `upstreams [http|https] [port]`  
 
@@ -403,9 +403,9 @@ caddy.reverse_proxy: {{upstreams}}
 
 ## Docker configs
 
-> Note: This is for Docker Swarm only. Alternativly, use `CADDY_DOCKER_CADDYFILE_PATH` or `-caddyfile-path`
+> Note: This is for Docker Swarm only. Alternatively, use `CADDY_DOCKER_CADDYFILE_PATH` or `-caddyfile-path`
 
-You can also add raw text to your caddyfile using docker configs. Just add caddy label prefix to your configs and the whole config content will be inserted at the beginning of the generated caddyfile, outside any server blocks.
+You can also add raw text to your Caddyfile using Docker configs. Just add Caddy label prefix to your configs and the whole config content will be inserted at the beginning of the generated Caddyfile, outside any server blocks.
 
 [Here is an example](examples/standalone.yaml#L4)
 
@@ -441,21 +441,21 @@ Each caddy docker proxy instance can be executed in one of the following modes.
 
 ### Server
 
-Acts as a proxy to your docker resources. The server starts without any configuration, and will not serve anything until it is configured by a "controller".
+Acts as a proxy to your Docker resources. The server starts without any configuration, and will not serve anything until it is configured by a "controller".
 
 In order to make a server discoverable and configurable by controllers, you need to mark it with label `caddy_controlled_server` and define the controller network via CLI option `controller-network` or environment variable `CADDY_CONTROLLER_NETWORK`.
 
-Server instances doesn't need access to docker host socket and you can run it in manager or worker nodes.
+Server instances doesn't need access to Docker host socket and you can run it in manager or worker nodes.
 
 [Configuration example](examples/distributed.yaml#L5)
 
 ### Controller
 
-Controller monitors your docker cluster, generates Caddy configuration and pushes to all servers it finds in your docker cluster.
+Controller monitors your Docker cluster, generates Caddy configuration and pushes to all servers it finds in your Docker cluster.
 
-When Controller instances are connected to more than one network, it is also necessary to define the controller network via CLI option `controller-network` or environment variable `CADDY_CONTROLLER_NETWORK`.
+When controller instances are connected to more than one network, it is also necessary to define the controller network via CLI option `controller-network` or environment variable `CADDY_CONTROLLER_NETWORK`.
 
-Controller instances requires access to docker host socket.
+Controller instances require access to Docker host socket.
 
 A single controller instance can configure all server instances in your cluster.
 
@@ -476,18 +476,18 @@ Run `caddy help docker-proxy` to see all available flags.
 ```
 Usage of docker-proxy:
   -caddyfile-path string
-        Path to a base Caddyfile that will be extended with docker sites
+        Path to a base Caddyfile that will be extended with Docker sites
   -controller-network string
-        Network allowed to configure caddy server in CIDR notation. Ex: 10.200.200.0/24
+        Network allowed to configure Caddy server in CIDR notation. Ex: 10.200.200.0/24
   -ingress-networks string
-        Comma separated name of ingress networks connecting caddy servers to containers.
+        Comma separated name of ingress networks connecting Caddy servers to containers.
         When not defined, networks attached to controller container are considered ingress networks
   -label-prefix string
         Prefix for Docker labels (default "caddy")
   -mode
         Which mode this instance should run: standalone | controller | server
   -polling-interval duration
-        Interval caddy should manually check docker for a new caddyfile (default 30s)
+        Interval Caddy should manually check Docker for a new Caddyfile (default 30s)
   -process-caddyfile
         Process Caddyfile before loading it, removing invalid servers (default true)
   -proxy-service-tasks
@@ -507,7 +507,7 @@ CADDY_DOCKER_PROCESS_CADDYFILE=<bool>
 CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
 ```
 
-Check **examples** folder to see how to set them on a docker compose file.
+Check **examples** folder to see how to set them on a Docker Compose file.
 
 ## Docker images
 Docker images are available at Docker hub:
@@ -520,15 +520,15 @@ That way you lock to a specific build version that works well for you.
 But you can also use partial version numbers like 0.1. That means you will receive the most recent 0.1.x image. You will automatically receive updates without breaking changes.
 
 ### Chosing between default or alpine images
-Our default images are very small and safe because they only contain caddy executable.
-But they're also quite hard to throubleshoot because they don't have shell or any other Linux utilities like curl or dig.
+Our default images are very small and safe because they only contain Caddy executable.
+But they're also quite hard to troubleshoot because they don't have shell or any other Linux utilities like curl or dig.
 
-The alpine images variant are based on Linux Alpine image, a very small Linux distribution with shell and basic utilities tools. Use `-alpine` images if you want to trade security and small size for better throubleshooting experience.
+The alpine images variant are based on the Linux Alpine image, a very small Linux distribution with shell and basic utilities tools. Use `-alpine` images if you want to trade security and small size for a better troubleshooting experience.
 
 ### CI images
 Images with the `ci` tag suffix means they were automatically generated by automated builds.
 CI images reflect the current state of master branch and their stability is not guaranteed.
-You may use CI images if you want to help testing the latest features before they're officialy released.
+You may use CI images if you want to help testing the latest features before they're officially released.
 
 ### ARM architecture images
 Currently we provide linux x86_64 images by default.
@@ -540,15 +540,15 @@ We recently introduced experimental windows containers images with the tag suffi
 
 Be aware that this needs to be tested further.
 
-This is an example of how to mount the windows docker pipe using CLI:
+This is an example of how to mount the windows Docker pipe using CLI:
 ```shell
 $ docker run --rm -it -v //./pipe/docker_engine://./pipe/docker_engine lucaslorentz/caddy-docker-proxy:ci-nanoserver-1803
 ```
 
 ### Custom images
-If you need additional Caddy plugins, or need to use a specific version of Caddy, then you may use the `builder` variant of the [official Caddy docker image](https://hub.docker.com/_/caddy) to make your own `Dockerfile`.
+If you need additional Caddy plugins, or need to use a specific version of Caddy, then you may use the `builder` variant of the [official Caddy Docker image](https://hub.docker.com/_/caddy) to make your own `Dockerfile`.
 
-The main difference from the instructions on the official image, is that you must override `CMD` to have the container run using the `caddy docker-proxy` command provided by this plugin.
+The main difference from the instructions on the official image is that you must override `CMD` to have the container run using the `caddy docker-proxy` command provided by this plugin.
 
 ```Dockerfile
 ARG CADDY_VERSION=2.4.0
@@ -566,27 +566,27 @@ CMD ["caddy", "docker-proxy"]
 ```
 
 ## Connecting to Docker Host
-The default connection to docker host varies per platform:
+The default connection to Docker host varies per platform:
 * At Unix: `unix:///var/run/docker.sock`
 * At Windows: `npipe:////./pipe/docker_engine`
 
-You can modify docker connection using the following environment variables:
+You can modify Docker connection using the following environment variables:
 
-* **DOCKER_HOST**: to set the url to the docker server.
+* **DOCKER_HOST**: to set the URL to the Docker server.
 * **DOCKER_API_VERSION**: to set the version of the API to reach, leave empty for latest.
-* **DOCKER_CERT_PATH**: to load the tls certificates from.
-* **DOCKER_TLS_VERIFY**: to enable or disable TLS verification, off by default.
+* **DOCKER_CERT_PATH**: to load the TLS certificates from.
+* **DOCKER_TLS_VERIFY**: to enable or disable TLS verification; off by default.
 
 ## Volumes
-On a production docker swarm cluster, it's **very important** to store Caddy folder on a persistent storage. Otherwise Caddy will re-issue certificates every time it is restarted, exceeding let's encrypt quota.
+On a production Docker swarm cluster, it's **very important** to store Caddy folder on persistent storage. Otherwise Caddy will re-issue certificates every time it is restarted, exceeding Let's Encrypt's quota.
 
-To do that, map a persistent docker volume to `/data` folder.
+To do that, map a persistent Docker volume to `/data` folder.
 
-For resilient production deployments, use multiple caddy replicas and map `/data` folder to a volume that supports multiple mounts, like Network File Sharing docker volumes plugins.
+For resilient production deployments, use multiple Caddy replicas and map `/data` folder to a volume that supports multiple mounts, like Network File Sharing Docker volumes plugins.
 
-Multiple Caddy instances automatically orchestrates certificate issuing between themselves when sharing `/data` folder.
+Multiple Caddy instances automatically orchestrate certificate issuing between themselves when sharing `/data` folder.
 
-[Here is an example](examples/efs-volume.yaml) of compose file with replicas and persistent volume using  Rexray EFS Plugin for AWS.
+[Here is an example](examples/efs-volume.yaml) of a compose file with replicas and persistent volume using  Rexray EFS Plugin for AWS.
 
 ## Trying it
 
@@ -599,9 +599,9 @@ Deploy the compose file to swarm cluster:
 $ docker stack deploy -c examples/standalone.yaml caddy-docker-demo
 ```
 
-Wait a bit for services startup...
+Wait a bit for services to startup...
 
-Now you can access each services/container using different urls
+Now you can access each service/container using different URLs
 ```
 $ curl -k --resolve whoami0.example.com:443:127.0.0.1 https://whoami0.example.com
 $ curl -k --resolve whoami1.example.com:443:127.0.0.1 https://whoami1.example.com
@@ -633,6 +633,6 @@ $ docker rm -f caddy whoami0 whoami1
 
 ## Building it
 
-You can build caddy using [xcaddy](https://github.com/caddyserver/xcaddy) or [caddy docker builder](https://hub.docker.com/_/caddy).
+You can build Caddy using [xcaddy](https://github.com/caddyserver/xcaddy) or [caddy docker builder](https://hub.docker.com/_/caddy).
 
 Use module name **github.com/lucaslorentz/caddy-docker-proxy/plugin/v2** to add this plugin to your build.
