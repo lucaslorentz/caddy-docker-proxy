@@ -60,7 +60,6 @@ func (dockerLoader *DockerLoader) Start() error {
 		log := logger()
 
 		dockerClients := []docker.Client{}
-		skipEvents := []bool{}
 		for i, dockerSocket := range dockerLoader.options.DockerSockets {
 			// cf https://github.com/docker/go-docker/blob/master/client.go
 			// setenv to use NewEnvClient
@@ -97,7 +96,6 @@ func (dockerLoader *DockerLoader) Start() error {
 			wrappedClient := docker.WrapClient(dockerClient)
 
 			dockerClients = append(dockerClients, wrappedClient)
-			skipEvents = append(skipEvents, true)
 		}
 
 		// by default it will used the env docker
@@ -119,11 +117,10 @@ func (dockerLoader *DockerLoader) Start() error {
 			wrappedClient := docker.WrapClient(dockerClient)
 
 			dockerClients = append(dockerClients, wrappedClient)
-			skipEvents = append(skipEvents, true)
 		}
 
 		dockerLoader.dockerClients = dockerClients
-		dockerLoader.skipEvents = skipEvents
+		dockerLoader.skipEvents = make([]bool, len(dockerLoader.dockerClients))
 
 		dockerLoader.generator = generator.CreateGenerator(
 			dockerClients,
