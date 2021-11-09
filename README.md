@@ -482,6 +482,13 @@ Usage of docker-proxy:
   -ingress-networks string
         Comma separated name of ingress networks connecting Caddy servers to containers.
         When not defined, networks attached to controller container are considered ingress networks
+  -docker-sockets
+        Comma separated docker sockets
+        When not defined, DOCKER_HOST or default docker socket when not defined
+  -docker-certs-path
+        Comma separated cert path, you could use empty value when no cert path for the concern index docker socket like cert_path0,,cert_path2
+  -docker-apis-version
+        Comma separated apis version, you could use empty value when no api version for the concern index docker socket like cert_path0,,cert_path2
   -label-prefix string
         Prefix for Docker labels (default "caddy")
   -mode
@@ -500,6 +507,9 @@ Those flags can also be set via environment variables:
 CADDY_DOCKER_CADDYFILE_PATH=<string>
 CADDY_CONTROLLER_NETWORK=<string>
 CADDY_INGRESS_NETWORKS=<string>
+CADDY_DOCKER_SOCKETS=<string>
+CADDY_DOCKER_CERTS_PATH=<string>
+CADDY_DOCKER_APIS_VERSION=<string>
 CADDY_DOCKER_LABEL_PREFIX=<string>
 CADDY_DOCKER_MODE=<string>
 CADDY_DOCKER_POLLING_INTERVAL=<duration>

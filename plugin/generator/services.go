@@ -54,21 +54,24 @@ func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logger *
 	taskListFilter.Add("service", service.ID)
 	taskListFilter.Add("desired-state", "running")
 
-	tasks, err := g.dockerClient.TaskList(context.Background(), types.TaskListOptions{Filters: taskListFilter})
-	if err != nil {
-		return []string{}, err
-	}
-
 	hasRunningTasks := false
 	tasksIps := []string{}
-	for _, task := range tasks {
-		if task.Status.State == swarm.TaskStateRunning {
-			hasRunningTasks = true
-			for _, networkAttachment := range task.NetworksAttachments {
-				if !ingress || g.ingressNetworks[networkAttachment.Network.ID] {
-					for _, address := range networkAttachment.Addresses {
-						ipAddress, _, _ := net.ParseCIDR(address)
-						tasksIps = append(tasksIps, ipAddress.String())
+
+	for _, dockerClient := range g.dockerClients {
+		tasks, err := dockerClient.TaskList(context.Background(), types.TaskListOptions{Filters: taskListFilter})
+		if err != nil {
+			return []string{}, err
+		}
+
+		for _, task := range tasks {
+			if task.Status.State == swarm.TaskStateRunning {
+				hasRunningTasks = true
+				for _, networkAttachment := range task.NetworksAttachments {
+					if !ingress || g.ingressNetworks[networkAttachment.Network.ID] {
+						for _, address := range networkAttachment.Addresses {
+							ipAddress, _, _ := net.ParseCIDR(address)
+							tasksIps = append(tasksIps, ipAddress.String())
+						}
 					}
 				}
 			}

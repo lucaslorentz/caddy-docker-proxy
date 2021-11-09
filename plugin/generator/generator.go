@@ -27,22 +27,23 @@ const swarmAvailabilityCacheInterval = 1 * time.Minute
 type CaddyfileGenerator struct {
 	options              *config.Options
 	labelRegex           *regexp.Regexp
-	dockerClient         docker.Client
+	dockerClients        []docker.Client
 	dockerUtils          docker.Utils
 	ingressNetworks      map[string]bool
-	swarmIsAvailable     bool
+	swarmIsAvailable     []bool
 	swarmIsAvailableTime time.Time
 }
 
 // CreateGenerator creates a new generator
-func CreateGenerator(dockerClient docker.Client, dockerUtils docker.Utils, options *config.Options) *CaddyfileGenerator {
+func CreateGenerator(dockerClients []docker.Client, dockerUtils docker.Utils, options *config.Options) *CaddyfileGenerator {
 	var labelRegexString = fmt.Sprintf("^%s(_\\d+)?(\\.|$)", options.LabelPrefix)
 
 	return &CaddyfileGenerator{
-		options:      options,
-		labelRegex:   regexp.MustCompile(labelRegexString),
-		dockerClient: dockerClient,
-		dockerUtils:  dockerUtils,
+		options:      		options,
+		labelRegex:       	regexp.MustCompile(labelRegexString),
+		dockerClients: 		dockerClients,
+		swarmIsAvailable: 	make([]bool, len(dockerClients)),
+		dockerUtils:  		dockerUtils,
 	}
 }
 
@@ -84,72 +85,43 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		logger.Info("Skipping default Caddyfile because no path is set")
 	}
 
-	// Add Caddyfile from swarm configs
-	if g.swarmIsAvailable {
-		configs, err := g.dockerClient.ConfigList(context.Background(), types.ConfigListOptions{})
-		if err == nil {
-			for _, config := range configs {
-				if _, hasLabel := config.Spec.Labels[g.options.LabelPrefix]; hasLabel {
-					fullConfig, _, err := g.dockerClient.ConfigInspectWithRaw(context.Background(), config.ID)
-					if err != nil {
-						logger.Error("Failed to inspect Swarm Config", zap.String("config", config.Spec.Name), zap.Error(err))
+	for i, dockerClient := range(g.dockerClients){
 
-					} else {
-						block, err := caddyfile.Unmarshal(fullConfig.Spec.Data)
+		// Add Caddyfile from swarm configs
+		if g.swarmIsAvailable[i] {
+			configs, err := dockerClient.ConfigList(context.Background(), types.ConfigListOptions{})
+			if err == nil {
+				for _, config := range configs {
+					if _, hasLabel := config.Spec.Labels[g.options.LabelPrefix]; hasLabel {
+						fullConfig, _, err := dockerClient.ConfigInspectWithRaw(context.Background(), config.ID)
 						if err != nil {
-							logger.Error("Failed to parse Swarm Config caddyfile format", zap.String("config", config.Spec.Name), zap.Error(err))
+							logger.Error("Failed to inspect Swarm Config", zap.String("config", config.Spec.Name), zap.Error(err))
+	
 						} else {
-							caddyfileBlock.Merge(block)
+							block, err := caddyfile.Unmarshal(fullConfig.Spec.Data)
+							if err != nil {
+								logger.Error("Failed to parse Swarm Config caddyfile format", zap.String("config", config.Spec.Name), zap.Error(err))
+							} else {
+								caddyfileBlock.Merge(block)
+							}
 						}
 					}
 				}
+			} else {
+				logger.Error("Failed to get Swarm configs", zap.Error(err))
 			}
 		} else {
-			logger.Error("Failed to get Swarm configs", zap.Error(err))
+			logger.Info("Skipping swarm config caddyfiles because swarm is not available")
 		}
-	} else {
-		logger.Info("Skipping swarm config caddyfiles because swarm is not available")
-	}
-
-	// Add containers
-	containers, err := g.dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
-	if err == nil {
-		for _, container := range containers {
-			if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {
-				ips, err := g.getContainerIPAddresses(&container, logger, false)
-				if err != nil {
-					logger.Error("Failed to get Container IPs", zap.String("container", container.ID), zap.Error(err))
-				} else {
-					for _, ip := range ips {
-						if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
-							controlledServers = append(controlledServers, ip)
-						}
-					}
-				}
-			}
-
-			containerCaddyfile, err := g.getContainerCaddyfile(&container, logger)
-			if err == nil {
-				caddyfileBlock.Merge(containerCaddyfile)
-			} else {
-				logger.Error("Failed to get Container Caddyfile", zap.String("container", container.ID), zap.Error(err))
-			}
-		}
-	} else {
-		logger.Error("Failed to get ContainerList", zap.Error(err))
-	}
-
-	// Add services
-	if g.swarmIsAvailable {
-		services, err := g.dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
+	
+		// Add containers
+		containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
 		if err == nil {
-			for _, service := range services {
-				logger.Debug("Swarm service", zap.String("service", service.Spec.Name))
-
-				if _, isControlledServer := service.Spec.Labels[g.options.ControlledServersLabel]; isControlledServer {
-					ips, err := g.getServiceTasksIps(&service, logger, false)
+			for _, container := range containers {
+				if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {
+					ips, err := g.getContainerIPAddresses(&container, logger, false)
 					if err != nil {
-						logger.Error("Failed to  get Swarm service IPs", zap.String("service", service.Spec.Name), zap.Error(err))
+						logger.Error("Failed to get Container IPs", zap.String("container", container.ID), zap.Error(err))
 					} else {
 						for _, ip := range ips {
 							if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
@@ -158,20 +130,51 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 						}
 					}
 				}
-
-				// caddy. labels based config
-				serviceCaddyfile, err := g.getServiceCaddyfile(&service, logger)
+				containerCaddyfile, err := g.getContainerCaddyfile(&container, logger)
 				if err == nil {
-					caddyfileBlock.Merge(serviceCaddyfile)
+					caddyfileBlock.Merge(containerCaddyfile)
 				} else {
-					logger.Error("Failed to get Swarm service caddyfile", zap.String("service", service.Spec.Name), zap.Error(err))
+					logger.Error("Failed to get Container Caddyfile", zap.String("container", container.ID), zap.Error(err))
 				}
 			}
 		} else {
-			logger.Error("Failed to get Swarm services", zap.Error(err))
+			logger.Error("Failed to get ContainerList", zap.Error(err))
 		}
-	} else {
-		logger.Info("Skipping swarm services because swarm is not available")
+	
+		// Add services
+		if g.swarmIsAvailable[i] {
+			services, err := dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
+			if err == nil {
+				for _, service := range services {
+					logger.Debug("Swarm service", zap.String("service", service.Spec.Name))
+	
+					if _, isControlledServer := service.Spec.Labels[g.options.ControlledServersLabel]; isControlledServer {
+						ips, err := g.getServiceTasksIps(&service, logger, false)
+						if err != nil {
+							logger.Error("Failed to  get Swarm service IPs", zap.String("service", service.Spec.Name), zap.Error(err))
+						} else {
+							for _, ip := range ips {
+								if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
+									controlledServers = append(controlledServers, ip)
+								}
+							}
+						}
+					}
+	
+					// caddy. labels based config
+					serviceCaddyfile, err := g.getServiceCaddyfile(&service, logger)
+					if err == nil {
+						caddyfileBlock.Merge(serviceCaddyfile)
+					} else {
+						logger.Error("Failed to get Swarm service caddyfile", zap.String("service", service.Spec.Name), zap.Error(err))
+					}
+				}
+			} else {
+				logger.Error("Failed to get Swarm services", zap.Error(err))
+			}
+		} else {
+			logger.Info("Skipping swarm services because swarm is not available")
+		}	
 	}
 
 	// Write global blocks first
@@ -209,57 +212,62 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 }
 
 func (g *CaddyfileGenerator) checkSwarmAvailability(logger *zap.Logger, isFirstCheck bool) {
-	info, err := g.dockerClient.Info(context.Background())
-	if err == nil {
-		newSwarmIsAvailable := info.Swarm.LocalNodeState == swarm.LocalNodeStateActive
-		if isFirstCheck || newSwarmIsAvailable != g.swarmIsAvailable {
-			logger.Info("Swarm is available", zap.Bool("new", newSwarmIsAvailable))
+
+	for i, dockerClient := range(g.dockerClients){
+		info, err := dockerClient.Info(context.Background())
+		if err == nil {
+			newSwarmIsAvailable := info.Swarm.LocalNodeState == swarm.LocalNodeStateActive
+			if isFirstCheck || newSwarmIsAvailable != g.swarmIsAvailable[i] {
+				logger.Info("Swarm is available", zap.Bool("new", newSwarmIsAvailable))
+			}
+			g.swarmIsAvailable[i] = newSwarmIsAvailable
+		} else {
+			logger.Error("Swarm availability check failed", zap.Error(err))
+			g.swarmIsAvailable[i] = false
 		}
-		g.swarmIsAvailable = newSwarmIsAvailable
-	} else {
-		logger.Error("Swarm availability check failed", zap.Error(err))
-		g.swarmIsAvailable = false
 	}
 }
 
 func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]bool, error) {
 	ingressNetworks := map[string]bool{}
 
-	if len(g.options.IngressNetworks) > 0 {
-		networks, err := g.dockerClient.NetworkList(context.Background(), types.NetworkListOptions{})
-		if err != nil {
-			return nil, err
-		}
-		for _, dockerNetwork := range networks {
-			if dockerNetwork.Ingress {
-				continue
-			}
-			for _, ingressNetwork := range g.options.IngressNetworks {
-				if dockerNetwork.Name == ingressNetwork {
-					ingressNetworks[dockerNetwork.ID] = true
-				}
-			}
-		}
-	} else {
-		containerID, err := g.dockerUtils.GetCurrentContainerID()
-		if err != nil {
-			return nil, err
-		}
-		logger.Info("Caddy ContainerID", zap.String("ID", containerID))
-		container, err := g.dockerClient.ContainerInspect(context.Background(), containerID)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, network := range container.NetworkSettings.Networks {
-			networkInfo, err := g.dockerClient.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
+	for _, dockerClient := range(g.dockerClients){
+		if len(g.options.IngressNetworks) > 0 {
+			networks, err := dockerClient.NetworkList(context.Background(), types.NetworkListOptions{})
 			if err != nil {
 				return nil, err
 			}
-			if networkInfo.Ingress {
-				continue
+			for _, dockerNetwork := range networks {
+				if dockerNetwork.Ingress {
+					continue
+				}
+				for _, ingressNetwork := range g.options.IngressNetworks {
+					if dockerNetwork.Name == ingressNetwork {
+						ingressNetworks[dockerNetwork.ID] = true
+					}
+				}
 			}
-			ingressNetworks[network.NetworkID] = true
+		} else {
+			containerID, err := g.dockerUtils.GetCurrentContainerID()
+			if err != nil {
+				return nil, err
+			}
+			logger.Info("Caddy ContainerID", zap.String("ID", containerID))
+			container, err := dockerClient.ContainerInspect(context.Background(), containerID)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, network := range container.NetworkSettings.Networks {
+				networkInfo, err := dockerClient.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
+				if err != nil {
+					return nil, err
+				}
+				if networkInfo.Ingress {
+					continue
+				}
+				ingressNetworks[network.NetworkID] = true
+			}
 		}
 	}
 
