@@ -586,7 +586,6 @@ For resilient production deployments, use multiple caddy replicas and map `/data
 
 Multiple Caddy instances automatically orchestrates certificate issuing between themselves when sharing `/data` folder.
 
-[Here is an example](examples/efs-volume.yaml) of compose file with replicas and persistent volume using  Rexray EFS Plugin for AWS.
 
 ## Trying it
 
