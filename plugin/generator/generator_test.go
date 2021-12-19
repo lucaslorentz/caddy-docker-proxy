@@ -11,8 +11,8 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/swarm"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/config"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/v2/docker"
+	"github.com/lucaslorentz/caddy-docker-proxy/plugin/config"
+	"github.com/lucaslorentz/caddy-docker-proxy/plugin/docker"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -143,7 +143,7 @@ func testGeneration(
 		customizeOptions(options)
 	}
 
-	generator := CreateGenerator(dockerClient, dockerUtils, options)
+	generator := CreateGenerator([]docker.Client{dockerClient}, dockerUtils, options)
 
 	var logsBuffer bytes.Buffer
 	encoderConfig := zap.NewDevelopmentEncoderConfig()

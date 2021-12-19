@@ -8,6 +8,9 @@ import (
 // Options are the options for generator
 type Options struct {
 	CaddyfilePath          string
+	DockerSockets          []string
+	DockerCertsPath 	   []string
+	DockerAPIsVersion 	   []string
 	LabelPrefix            string
 	ControlledServersLabel string
 	ProxyServiceTasks      bool
