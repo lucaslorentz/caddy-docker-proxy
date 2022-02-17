@@ -27,7 +27,6 @@ const ingressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[network-i
 const otherIngressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[other-network-id:true]"}` + newLine
 const swarmIsAvailableLog = `INFO	Swarm is available	{"new": true}` + newLine
 const swarmIsDisabledLog = `INFO	Swarm is available	{"new": false}` + newLine
-const skipCaddyfileLog = "INFO	Skipping default Caddyfile because no path is set" + newLine
 const commonLogs = containerIdLog + ingressNetworksMapLog + swarmIsAvailableLog
 
 func init() {
@@ -89,7 +88,7 @@ func TestMergeConfigContent(t *testing.T) {
 		"	reverse_proxy 127.0.0.1 172.17.0.2\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -121,7 +120,7 @@ func TestIgnoreLabelsWithoutCaddyPrefix(t *testing.T) {
 
 	const expectedCaddyfile = "# Empty caddyfile"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }

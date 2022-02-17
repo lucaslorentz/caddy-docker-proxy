@@ -58,7 +58,7 @@ func TestServices_TemplateData(t *testing.T) {
 		"	}\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -91,7 +91,7 @@ func TestServices_DifferentNetwork(t *testing.T) {
 		"	reverse_proxy service\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog +
+	const expectedLogs = commonLogs +
 		`WARN	Service is not in same network as caddy	{"service": "service", "serviceId": "SERVICE-ID"}` + newLine
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
@@ -131,7 +131,7 @@ func TestServices_ManualIngressNetwork(t *testing.T) {
 		"	reverse_proxy service\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog + skipCaddyfileLog
+	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.IngressNetworks = []string{"other-network-name"}
@@ -169,8 +169,7 @@ func TestServices_SwarmDisabled(t *testing.T) {
 
 	const expectedCaddyfile = "# Empty caddyfile"
 
-	const expectedLogs = containerIdLog + ingressNetworksMapLog + swarmIsDisabledLog + skipCaddyfileLog +
-		"INFO	Skipping swarm config caddyfiles because swarm is not available\n" +
+	const expectedLogs = containerIdLog + ingressNetworksMapLog + swarmIsDisabledLog +
 		"INFO	Skipping swarm services because swarm is not available\n"
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
@@ -204,7 +203,7 @@ func TestServiceTasks_Empty(t *testing.T) {
 		"	reverse_proxy\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog +
+	const expectedLogs = commonLogs +
 		`WARN	Service has no tasks in running state	{"service": "service", "serviceId": "SERVICEID"}` + newLine
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
@@ -268,7 +267,7 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 		"	reverse_proxy\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog +
+	const expectedLogs = commonLogs +
 		`WARN	Service has no tasks in running state	{"service": "service", "serviceId": "SERVICEID"}` + newLine
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
@@ -319,7 +318,7 @@ func TestServiceTasks_DifferentNetwork(t *testing.T) {
 		"	reverse_proxy\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog +
+	const expectedLogs = commonLogs +
 		`WARN	Service is not in same network as caddy	{"service": "service", "serviceId": "SERVICEID"}` + newLine
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
@@ -376,7 +375,7 @@ func TestServiceTasks_ManualIngressNetwork(t *testing.T) {
 		"	reverse_proxy 10.0.0.1:5000\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog + skipCaddyfileLog
+	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
@@ -440,7 +439,7 @@ func TestServiceTasks_Running(t *testing.T) {
 		"	reverse_proxy 10.0.0.1:5000 10.0.0.2:5000\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs + skipCaddyfileLog
+	const expectedLogs = commonLogs
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
