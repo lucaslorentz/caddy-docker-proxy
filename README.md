@@ -484,7 +484,7 @@ Usage of docker-proxy:
         When not defined, networks attached to controller container are considered ingress networks
   -docker-sockets
         Comma separated docker sockets
-        When not defined, DOCKER_HOST or default docker socket when not defined
+        When not defined, DOCKER_HOST (or default docker socket if DOCKER_HOST not defined)
   -docker-certs-path
         Comma separated cert path, you could use empty value when no cert path for the concern index docker socket like cert_path0,,cert_path2
   -docker-apis-version

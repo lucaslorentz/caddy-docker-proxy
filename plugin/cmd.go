@@ -168,8 +168,10 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 
 	if dockerSocketsEnv := os.Getenv("CADDY_DOCKER_SOCKETS"); dockerSocketsEnv != "" {
 		options.DockerSockets = strings.Split(dockerSocketsEnv, ",")
-	} else {
+	} else if dockerSocketsFlag != "" {
 		options.DockerSockets = strings.Split(dockerSocketsFlag, ",")
+	} else {
+		options.DockerSockets = nil
 	}
 
 	if dockerCertsPathEnv := os.Getenv("CADDY_DOCKER_CERTS_PATH"); dockerCertsPathEnv != "" {
