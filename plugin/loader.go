@@ -101,6 +101,7 @@ func (dockerLoader *DockerLoader) Start() error {
 		// by default it will used the env docker
 		if len(dockerClients) == 0 {
 			dockerClient, err := client.NewEnvClient()
+			dockerLoader.options.DockerSockets = append(dockerLoader.options.DockerSockets, os.Getenv("DOCKER_HOST"))
 			if err != nil {
 				log.Error("Docker connection failed", zap.Error(err))
 				return err
