@@ -8,7 +8,7 @@ docker run --privileged --rm tonistiigi/binfmt --install all
 find artifacts/binaries -type f -exec chmod +x {} \;
 
 PLATFORMS="linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64"
-OUTPUT=local
+OUTPUT="type=local"
 TAGS=
 TAGS_ALPINE=
 
