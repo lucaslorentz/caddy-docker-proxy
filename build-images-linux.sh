@@ -7,7 +7,7 @@ docker run --privileged --rm tonistiigi/binfmt --install all
 
 find artifacts/binaries -type f -exec chmod +x {} \;
 
-PLATFORMS=linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
+PLATFORMS="linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64"
 OUTPUT=local
 TAGS=
 TAGS_ALPINE=
@@ -17,7 +17,7 @@ if [[ "${BUILD_SOURCEBRANCH}" == "refs/heads/master" ]]; then
 
     docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
 
-    OUTPUT=registry
+    OUTPUT="type=registry"
     TAGS="-t lucaslorentz/caddy-docker-proxy:ci"
     TAGS_ALPINE="-t lucaslorentz/caddy-docker-proxy:ci-alpine"
 fi
@@ -30,7 +30,7 @@ if [[ "${RELEASE_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
     PATCH_VERSION=$(echo $RELEASE_VERSION | cut -c2-)
     MINOR_VERSION=$(echo $PATCH_VERSION | cut -d. -f-2)
 
-    OUTPUT=registry
+    OUTPUT="type=registry"
     TAGS="-t lucaslorentz/caddy-docker-proxy:latest \
         -t lucaslorentz/caddy-docker-proxy:${PATCH_VERSION} \
         -t lucaslorentz/caddy-docker-proxy:${MINOR_VERSION}"
