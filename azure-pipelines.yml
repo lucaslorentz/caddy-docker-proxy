@@ -42,6 +42,8 @@ jobs:
   - bash: |
       ./build-images-linux.sh
     displayName: 'Build images'
+    env:
+      DOCKER_PASSWORD: '$(DOCKER_PASSWORD)'
 
 - job: Build_Images_Windows
   dependsOn: Build_Binaries
@@ -57,3 +59,5 @@ jobs:
   - bash: |
       ./build-images-windows.sh
     displayName: 'Build images'
+    env:
+      DOCKER_PASSWORD: '$(DOCKER_PASSWORD)'
