@@ -28,7 +28,9 @@ services:
       - CADDY_CONTROLLER_NETWORK=10.200.200.0/24
       - CADDY_INGRESS_NETWORKS=ingress_0,ingress_1
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - source: "${DOCKER_SOCKET_PATH}"
+        target: "${DOCKER_SOCKET_PATH}"
+        type: ${DOCKER_SOCKET_TYPE}
 
   # Proxy to service
   whoami0:

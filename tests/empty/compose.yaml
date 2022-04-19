@@ -10,7 +10,9 @@ services:
     networks:
       - caddy
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - source: "${DOCKER_SOCKET_PATH}"
+        target: "${DOCKER_SOCKET_PATH}"
+        type: ${DOCKER_SOCKET_TYPE}
 
 networks:
   caddy:
