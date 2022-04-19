@@ -1,4 +1,6 @@
-FROM mcr.microsoft.com/windows/nanoserver:1809
+ARG NANOSERVER_VERSION
+
+FROM mcr.microsoft.com/windows/nanoserver:${NANOSERVER_VERSION}
 LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
 
 EXPOSE 80 443 2019

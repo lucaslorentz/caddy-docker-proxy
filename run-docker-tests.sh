@@ -13,6 +13,6 @@ then
     cp $ARTIFACTS/binaries/linux/amd64/caddy ./artifacts/binaries/linux/amd64/caddy
 fi
 
-docker build -q -t caddy-docker-proxy:local -f Dockerfile-alpine .
+docker build -q --build-arg TARGETPLATFORM=linux/amd64 -t caddy-docker-proxy:local -f Dockerfile-alpine .
 
 (cd tests && . run.sh)
