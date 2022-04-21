@@ -1,3 +1,9 @@
+trigger:
+  branches:
+    include:
+      - '*'
+      - refs/tags/*
+
 jobs:
 - job: Build_Binaries
   pool:

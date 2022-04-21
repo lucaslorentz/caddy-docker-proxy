@@ -22,10 +22,10 @@ if [[ "${BUILD_SOURCEBRANCH}" == "refs/heads/master" ]]; then
     docker push lucaslorentz/caddy-docker-proxy:ci-nanoserver-ltsc2022
 fi
 
-if [[ "${RELEASE_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
-    echo "Releasing version ${RELEASE_VERSION}..."
+if [[ "${BUILD_SOURCEBRANCH}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+    echo "Releasing version ${BUILD_SOURCEBRANCHNAME}..."
 
-    PATCH_VERSION=$(echo $RELEASE_VERSION | cut -c2-)
+    PATCH_VERSION=$(echo $BUILD_SOURCEBRANCHNAME | cut -c2-)
     MINOR_VERSION=$(echo $PATCH_VERSION | cut -d. -f-2)
 
     docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
