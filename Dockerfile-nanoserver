@@ -1,13 +1,20 @@
+ARG SERVERCORE_VERSION
 ARG NANOSERVER_VERSION
 
+FROM mcr.microsoft.com/windows/servercore:${SERVERCORE_VERSION} as core
+
+# Image starts here
 FROM mcr.microsoft.com/windows/nanoserver:${NANOSERVER_VERSION}
+ARG TARGETPLATFORM
 LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
 
 EXPOSE 80 443 2019
 ENV XDG_CONFIG_HOME c:/config
 ENV XDG_DATA_HOME c:/data
 
-COPY artifacts/binaries/windows/amd64/caddy.exe "C:\\caddy.exe"
+COPY --from=core /windows/system32/netapi32.dll /windows/system32/netapi32.dll
+
+COPY artifacts/binaries/${TARGETPLATFORM}/caddy.exe "C:\\caddy.exe"
 
 ENTRYPOINT ["C:\\caddy.exe"]
 

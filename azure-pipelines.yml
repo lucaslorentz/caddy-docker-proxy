@@ -17,18 +17,13 @@ jobs:
       ARTIFACTS: '$(Build.ArtifactStagingDirectory)'
     displayName: Build
 
-  - bash: . run-docker-tests.sh
-    env:
-      ARTIFACTS: '$(Build.ArtifactStagingDirectory)'
-    displayName: Run docker tests
-
   - task: PublishBuildArtifacts@1
     inputs:
       artifactName: binaries
       pathtoPublish: '$(Build.ArtifactStagingDirectory)/binaries'
     displayName: 'Publish Artifact'
 
-- job: Build_Images_Linux
+- job: Linux
   dependsOn: Build_Binaries
   pool:
     vmImage: 'Ubuntu 18.04'
@@ -39,13 +34,16 @@ jobs:
       downloadPath: artifacts
       artifactName: binaries
 
+  - bash: . run-docker-tests-linux.sh
+    displayName: Run docker tests
+
   - bash: |
       ./build-images-linux.sh
-    displayName: 'Build images'
+    displayName: 'Build docker images'
     env:
       DOCKER_PASSWORD: '$(DOCKER_PASSWORD)'
 
-- job: Build_Images_Windows
+- job: Windows
   dependsOn: Build_Binaries
   pool:
     vmImage: 'windows-2022'
@@ -56,8 +54,11 @@ jobs:
       downloadPath: artifacts
       artifactName: binaries
 
+  # - bash: . run-docker-tests-windows.sh
+  #   displayName: Run docker tests
+
   - bash: |
       ./build-images-windows.sh
-    displayName: 'Build images'
+    displayName: 'Build docker images'
     env:
       DOCKER_PASSWORD: '$(DOCKER_PASSWORD)'

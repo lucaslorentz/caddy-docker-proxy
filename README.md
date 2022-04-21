@@ -546,13 +546,13 @@ Currently we provide linux x86_64 images by default.
 You can also find images for other architectures like `arm32v6` images that can be used on Raspberry Pi.
 
 ### Windows images
-We recently introduced experimental windows containers images with the tag suffix `nanoserver-1803`.
+We recently introduced experimental windows containers images with the tag suffix `nanoserver-ltsc2022`.
 
 Be aware that this needs to be tested further.
 
 This is an example of how to mount the windows Docker pipe using CLI:
 ```shell
-$ docker run --rm -it -v //./pipe/docker_engine://./pipe/docker_engine lucaslorentz/caddy-docker-proxy:ci-nanoserver-1803
+$ docker run --rm -it -v //./pipe/docker_engine://./pipe/docker_engine lucaslorentz/caddy-docker-proxy:ci-nanoserver-ltsc2022
 ```
 
 ### Custom images

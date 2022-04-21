@@ -15,10 +15,14 @@ services:
     networks:
       - caddy
     environment:
-      - CADDY_DOCKER_CADDYFILE_PATH=/test/Caddyfile
+      - CADDY_DOCKER_CADDYFILE_PATH=/config/Caddyfile
     volumes:
-      - ./Caddyfile:/test/Caddyfile
-      - /var/run/docker.sock:/var/run/docker.sock
+      - source: ./config
+        target: /config
+        type: bind
+      - source: "${DOCKER_SOCKET_PATH}"
+        target: "${DOCKER_SOCKET_PATH}"
+        type: ${DOCKER_SOCKET_TYPE}  
     deploy:
       labels:
         caddy.email: "test@example.com"
