@@ -23,11 +23,13 @@ if [[ "${BUILD_SOURCEBRANCH}" == "refs/heads/master" ]]; then
 fi
 
 if [[ "${BUILD_SOURCEBRANCH}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
-    echo "Releasing version ${BUILD_SOURCEBRANCHNAME}..."
+    RELEASE_VERSION=$(echo $BUILD_SOURCEBRANCH | cut -c11-)
+
+    echo "Releasing version ${RELEASE_VERSION}..."
 
     docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
 
-    PATCH_VERSION=$(echo $BUILD_SOURCEBRANCHNAME | cut -c2-)
+    PATCH_VERSION=$(echo $RELEASE_VERSION | cut -c2-)
     MINOR_VERSION=$(echo $PATCH_VERSION | cut -d. -f-2)
 
     OUTPUT="type=registry"
