@@ -169,8 +169,7 @@ func TestServices_SwarmDisabled(t *testing.T) {
 
 	const expectedCaddyfile = "# Empty caddyfile"
 
-	const expectedLogs = containerIdLog + ingressNetworksMapLog + swarmIsDisabledLog +
-		"INFO	Skipping swarm services because swarm is not available\n"
+	const expectedLogs = containerIdLog + ingressNetworksMapLog + swarmIsDisabledLog
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }

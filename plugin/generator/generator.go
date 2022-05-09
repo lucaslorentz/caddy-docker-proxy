@@ -173,7 +173,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 				logger.Error("Failed to get Swarm services", zap.Error(err))
 			}
 		} else {
-			logger.Info("Skipping swarm services because swarm is not available")
+			logger.Debug("Skipping swarm services because swarm is not available")
 		}	
 	}
 
