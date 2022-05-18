@@ -22,12 +22,12 @@ CGO_ENABLED=0 GOARCH=amd64 GOOS=linux \
 CGO_ENABLED=0 GOARCH=arm GOARM=6 GOOS=linux \
     xcaddy build \
     --output ${ARTIFACTS}/binaries/linux/arm/v6/caddy \
-    --with github.com/lucaslorentz/caddy-docker-proxy/plugin/v2=$PWD/plugin
+    --with github.com/lucaslorentz/caddy-docker-proxy/plugin=$PWD/plugin
 
 CGO_ENABLED=0 GOARCH=arm GOARM=7 GOOS=linux \
     xcaddy build \
     --output ${ARTIFACTS}/binaries/linux/arm/v7/caddy \
-    --with github.com/lucaslorentz/caddy-docker-proxy/plugin/v2=$PWD/plugin
+    --with github.com/lucaslorentz/caddy-docker-proxy/plugin=$PWD/plugin
 
 CGO_ENABLED=0 GOARCH=arm64 GOOS=linux \
     xcaddy build \
