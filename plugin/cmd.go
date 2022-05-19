@@ -10,8 +10,8 @@ import (
 
 	"github.com/caddyserver/caddy/v2"
 	caddycmd "github.com/caddyserver/caddy/v2/cmd"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/config"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/generator"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/config"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/generator"
 
 	"go.uber.org/zap"
 )
@@ -31,13 +31,13 @@ func init() {
 				"Which mode this instance should run: standalone | controller | server")
 
 			fs.String("docker-sockets", "",
-			"Docker sockets comma separate")
+				"Docker sockets comma separate")
 
 			fs.String("docker-certs-path", "",
 				"Docker socket certs path comma separate")
 
 			fs.String("docker-apis-version", "",
-			"Docker socket apis version comma separate")
+				"Docker socket apis version comma separate")
 
 			fs.String("controller-network", "",
 				"Network allowed to configure caddy server in CIDR notation. Ex: 10.200.200.0/24")

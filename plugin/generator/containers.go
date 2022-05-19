@@ -2,7 +2,7 @@ package generator
 
 import (
 	"github.com/docker/docker/api/types"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/caddyfile"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/caddyfile"
 	"go.uber.org/zap"
 )
 
