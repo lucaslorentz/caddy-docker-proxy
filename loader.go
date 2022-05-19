@@ -1,4 +1,4 @@
-package plugin
+package caddydockerproxy
 
 import (
 	"bytes"
@@ -17,9 +17,10 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/config"
-	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/docker"
-	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/generator"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/generator"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/utils"
 
 	"go.uber.org/zap"
 )
@@ -35,16 +36,16 @@ type DockerLoader struct {
 	lastCaddyfile   []byte
 	lastJSONConfig  []byte
 	lastVersion     int64
-	serversVersions *StringInt64CMap
-	serversUpdating *StringBoolCMap
+	serversVersions *utils.StringInt64CMap
+	serversUpdating *utils.StringBoolCMap
 }
 
 // CreateDockerLoader creates a docker loader
 func CreateDockerLoader(options *config.Options) *DockerLoader {
 	return &DockerLoader{
 		options:         options,
-		serversVersions: newStringInt64CMap(),
-		serversUpdating: newStringBoolCMap(),
+		serversVersions: utils.NewStringInt64CMap(),
+		serversUpdating: utils.NewStringBoolCMap(),
 	}
 }
 

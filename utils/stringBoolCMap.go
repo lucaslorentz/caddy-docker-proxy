@@ -1,4 +1,4 @@
-package plugin
+package utils
 
 import (
 	"sync"
@@ -10,7 +10,7 @@ type StringBoolCMap struct {
 	internal map[string]bool
 }
 
-func newStringBoolCMap() *StringBoolCMap {
+func NewStringBoolCMap() *StringBoolCMap {
 	return &StringBoolCMap{
 		mutex:    sync.RWMutex{},
 		internal: map[string]bool{},

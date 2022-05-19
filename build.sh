@@ -5,10 +5,8 @@ set -e
 echo ==PARAMETERS==
 echo ARTIFACTS: "${ARTIFACTS:=./artifacts}"
 
-cd plugin
 go vet ./...
 go test -race ./...
-cd ../
 
 go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 

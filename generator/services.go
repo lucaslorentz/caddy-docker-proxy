@@ -7,7 +7,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
-	"github.com/lucaslorentz/caddy-docker-proxy/v2/plugin/caddyfile"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
 
 	"go.uber.org/zap"
 )
