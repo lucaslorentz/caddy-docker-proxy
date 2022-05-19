@@ -22,7 +22,7 @@ if [[ "${BUILD_SOURCEBRANCH}" == "refs/heads/master" ]]; then
     TAGS_ALPINE="-t lucaslorentz/caddy-docker-proxy:ci-alpine"
 fi
 
-if [[ "${BUILD_SOURCEBRANCH}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+if [[ "${BUILD_SOURCEBRANCH}" =~ ^refs/tags/plugin/v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
     RELEASE_VERSION=$(echo $BUILD_SOURCEBRANCH | cut -c11-)
 
     echo "Releasing version ${RELEASE_VERSION}..."
