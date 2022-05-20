@@ -1,4 +1,4 @@
-package plugin
+package utils
 
 import (
 	"sync"
@@ -10,7 +10,7 @@ type StringInt64CMap struct {
 	internal map[string]int64
 }
 
-func newStringInt64CMap() *StringInt64CMap {
+func NewStringInt64CMap() *StringInt64CMap {
 	return &StringInt64CMap{
 		mutex:    sync.RWMutex{},
 		internal: map[string]int64{},

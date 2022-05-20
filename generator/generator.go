@@ -11,9 +11,9 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/swarm"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/caddyfile"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/config"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/docker"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
 
 	"go.uber.org/zap"
 )
@@ -39,11 +39,11 @@ func CreateGenerator(dockerClients []docker.Client, dockerUtils docker.Utils, op
 	var labelRegexString = fmt.Sprintf("^%s(_\\d+)?(\\.|$)", options.LabelPrefix)
 
 	return &CaddyfileGenerator{
-		options:      		options,
-		labelRegex:       	regexp.MustCompile(labelRegexString),
-		dockerClients: 		dockerClients,
-		swarmIsAvailable: 	make([]bool, len(dockerClients)),
-		dockerUtils:  		dockerUtils,
+		options:          options,
+		labelRegex:       regexp.MustCompile(labelRegexString),
+		dockerClients:    dockerClients,
+		swarmIsAvailable: make([]bool, len(dockerClients)),
+		dockerUtils:      dockerUtils,
 	}
 }
 
@@ -85,7 +85,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		logger.Debug("Skipping default Caddyfile because no path is set")
 	}
 
-	for i, dockerClient := range(g.dockerClients){
+	for i, dockerClient := range g.dockerClients {
 
 		// Add Caddyfile from swarm configs
 		if g.swarmIsAvailable[i] {
@@ -96,7 +96,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 						fullConfig, _, err := dockerClient.ConfigInspectWithRaw(context.Background(), config.ID)
 						if err != nil {
 							logger.Error("Failed to inspect Swarm Config", zap.String("config", config.Spec.Name), zap.Error(err))
-	
+
 						} else {
 							block, err := caddyfile.Unmarshal(fullConfig.Spec.Data)
 							if err != nil {
@@ -113,7 +113,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		} else {
 			logger.Debug("Skipping swarm config caddyfiles because swarm is not available")
 		}
-	
+
 		// Add containers
 		containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
 		if err == nil {
@@ -140,14 +140,14 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		} else {
 			logger.Error("Failed to get ContainerList", zap.Error(err))
 		}
-	
+
 		// Add services
 		if g.swarmIsAvailable[i] {
 			services, err := dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
 			if err == nil {
 				for _, service := range services {
 					logger.Debug("Swarm service", zap.String("service", service.Spec.Name))
-	
+
 					if _, isControlledServer := service.Spec.Labels[g.options.ControlledServersLabel]; isControlledServer {
 						ips, err := g.getServiceTasksIps(&service, logger, false)
 						if err != nil {
@@ -160,7 +160,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 							}
 						}
 					}
-	
+
 					// caddy. labels based config
 					serviceCaddyfile, err := g.getServiceCaddyfile(&service, logger)
 					if err == nil {
@@ -174,7 +174,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 			}
 		} else {
 			logger.Debug("Skipping swarm services because swarm is not available")
-		}	
+		}
 	}
 
 	// Write global blocks first
@@ -213,7 +213,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 
 func (g *CaddyfileGenerator) checkSwarmAvailability(logger *zap.Logger, isFirstCheck bool) {
 
-	for i, dockerClient := range(g.dockerClients){
+	for i, dockerClient := range g.dockerClients {
 		info, err := dockerClient.Info(context.Background())
 		if err == nil {
 			newSwarmIsAvailable := info.Swarm.LocalNodeState == swarm.LocalNodeStateActive
@@ -231,7 +231,7 @@ func (g *CaddyfileGenerator) checkSwarmAvailability(logger *zap.Logger, isFirstC
 func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]bool, error) {
 	ingressNetworks := map[string]bool{}
 
-	for _, dockerClient := range(g.dockerClients){
+	for _, dockerClient := range g.dockerClients {
 		if len(g.options.IngressNetworks) > 0 {
 			networks, err := dockerClient.NetworkList(context.Background(), types.NetworkListOptions{})
 			if err != nil {

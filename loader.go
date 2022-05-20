@@ -1,4 +1,4 @@
-package plugin
+package caddydockerproxy
 
 import (
 	"bytes"
@@ -17,9 +17,10 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/config"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/docker"
-	"github.com/lucaslorentz/caddy-docker-proxy/plugin/generator"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/generator"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/utils"
 
 	"go.uber.org/zap"
 )
@@ -35,16 +36,16 @@ type DockerLoader struct {
 	lastCaddyfile   []byte
 	lastJSONConfig  []byte
 	lastVersion     int64
-	serversVersions *StringInt64CMap
-	serversUpdating *StringBoolCMap
+	serversVersions *utils.StringInt64CMap
+	serversUpdating *utils.StringBoolCMap
 }
 
 // CreateDockerLoader creates a docker loader
 func CreateDockerLoader(options *config.Options) *DockerLoader {
 	return &DockerLoader{
 		options:         options,
-		serversVersions: newStringInt64CMap(),
-		serversUpdating: newStringBoolCMap(),
+		serversVersions: utils.NewStringInt64CMap(),
+		serversUpdating: utils.NewStringBoolCMap(),
 	}
 }
 
@@ -69,19 +70,19 @@ func (dockerLoader *DockerLoader) Start() error {
 
 			if len(dockerLoader.options.DockerCertsPath) >= i+1 && dockerLoader.options.DockerCertsPath[i] != "" {
 				os.Setenv("DOCKER_CERT_PATH", dockerLoader.options.DockerCertsPath[i])
-			}else{
+			} else {
 				os.Unsetenv("DOCKER_CERT_PATH")
 			}
 
 			if len(dockerLoader.options.DockerAPIsVersion) >= i+1 && dockerLoader.options.DockerAPIsVersion[i] != "" {
 				os.Setenv("DOCKER_API_VERSION", dockerLoader.options.DockerAPIsVersion[i])
-			}else{
+			} else {
 				os.Unsetenv("DOCKER_API_VERSION")
 			}
 
 			dockerClient, err := client.NewEnvClient()
 			if err != nil {
-				log.Error("Docker connection failed to docker specify socket", zap.Error(err), zap.String("DockerSocket",dockerSocket))
+				log.Error("Docker connection failed to docker specify socket", zap.Error(err), zap.String("DockerSocket", dockerSocket))
 				return err
 			}
 
@@ -90,7 +91,7 @@ func (dockerLoader *DockerLoader) Start() error {
 				log.Error("Docker ping failed on specify socket", zap.Error(err), zap.String("DockerSocket", dockerSocket))
 				return err
 			}
-			
+
 			dockerClient.NegotiateAPIVersionPing(dockerPing)
 
 			wrappedClient := docker.WrapClient(dockerClient)
@@ -172,51 +173,51 @@ func (dockerLoader *DockerLoader) listenEvents() {
 
 	for i, dockerClient := range dockerLoader.dockerClients {
 		context, cancel := context.WithCancel(context.Background())
-		
+
 		eventsChan, errorChan := dockerClient.Events(context, types.EventsOptions{
 			Filters: args,
 		})
 
 		log := logger()
-		log.Info("Connecting to docker events", zap.String("DockerSocket",dockerLoader.options.DockerSockets[i]))
+		log.Info("Connecting to docker events", zap.String("DockerSocket", dockerLoader.options.DockerSockets[i]))
 
-		ListenEvents:
-			for {
-				select {
-				case event := <-eventsChan:
-					if dockerLoader.skipEvents[i] {
-						continue
-					}
-
-					update := (event.Type == "container" && event.Action == "create") ||
-						(event.Type == "container" && event.Action == "start") ||
-						(event.Type == "container" && event.Action == "stop") ||
-						(event.Type == "container" && event.Action == "die") ||
-						(event.Type == "container" && event.Action == "destroy") ||
-						(event.Type == "service" && event.Action == "create") ||
-						(event.Type == "service" && event.Action == "update") ||
-						(event.Type == "service" && event.Action == "remove") ||
-						(event.Type == "config" && event.Action == "create") ||
-						(event.Type == "config" && event.Action == "remove")
-
-					if update {
-						dockerLoader.skipEvents[i] = true
-						dockerLoader.timer.Reset(100 * time.Millisecond)
-					}
-				case err := <-errorChan:
-					cancel()
-					if err != nil {
-						log.Error("Docker events error", zap.Error(err))
-					}
-					break ListenEvents
+	ListenEvents:
+		for {
+			select {
+			case event := <-eventsChan:
+				if dockerLoader.skipEvents[i] {
+					continue
 				}
+
+				update := (event.Type == "container" && event.Action == "create") ||
+					(event.Type == "container" && event.Action == "start") ||
+					(event.Type == "container" && event.Action == "stop") ||
+					(event.Type == "container" && event.Action == "die") ||
+					(event.Type == "container" && event.Action == "destroy") ||
+					(event.Type == "service" && event.Action == "create") ||
+					(event.Type == "service" && event.Action == "update") ||
+					(event.Type == "service" && event.Action == "remove") ||
+					(event.Type == "config" && event.Action == "create") ||
+					(event.Type == "config" && event.Action == "remove")
+
+				if update {
+					dockerLoader.skipEvents[i] = true
+					dockerLoader.timer.Reset(100 * time.Millisecond)
+				}
+			case err := <-errorChan:
+				cancel()
+				if err != nil {
+					log.Error("Docker events error", zap.Error(err))
+				}
+				break ListenEvents
 			}
+		}
 	}
 }
 
 func (dockerLoader *DockerLoader) update() bool {
 	dockerLoader.timer.Reset(dockerLoader.options.PollingInterval)
-	for i:= 0; i < len(dockerLoader.skipEvents); i++{
+	for i := 0; i < len(dockerLoader.skipEvents); i++ {
 		dockerLoader.skipEvents[i] = false
 	}
 

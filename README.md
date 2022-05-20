@@ -1,6 +1,12 @@
 # Caddy-Docker-Proxy 
 [![Build Status](https://dev.azure.com/lucaslorentzlara/lucaslorentzlara/_apis/build/status/lucaslorentz.caddy-docker-proxy?branchName=master)](https://dev.azure.com/lucaslorentzlara/lucaslorentzlara/_build/latest?definitionId=1) [![Go Report Card](https://goreportcard.com/badge/github.com/lucaslorentz/caddy-docker-proxy)](https://goreportcard.com/report/github.com/lucaslorentz/caddy-docker-proxy)
 
+## NEW MODULE NAME!
+
+We've renamed our go module, from version 2.7.0 forward you should import caddy-docker-proxy using `github.com/lucaslorentz/caddy-docker-proxy/v2` or a specific version `github.com/lucaslorentz/caddy-docker-proxy/v2@2.7.0`.
+
+The old name `github.com/lucaslorentz/caddy-docker-proxy/plugin` will be a available for backwards compatibility, but it will be frozen at version 2.6.0.
+
 ## Introduction
 This plugin enables Caddy to be used as a reverse proxy for Docker containers via labels.
 
@@ -643,4 +649,4 @@ $ docker rm -f caddy whoami0 whoami1
 
 You can build Caddy using [xcaddy](https://github.com/caddyserver/xcaddy) or [caddy docker builder](https://hub.docker.com/_/caddy).
 
-Use module name **github.com/lucaslorentz/caddy-docker-proxy/plugin** to add this plugin to your build.
+Use module name **github.com/lucaslorentz/caddy-docker-proxy/v2** to add this plugin to your build.
