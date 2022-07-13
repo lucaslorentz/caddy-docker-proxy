@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -24,6 +25,8 @@ import (
 
 	"go.uber.org/zap"
 )
+
+var CaddyfileAutosavePath = filepath.Join(caddy.AppConfigDir(), "Caddyfile.autosave")
 
 // DockerLoader generates caddy files from docker swarm information
 type DockerLoader struct {
@@ -231,6 +234,10 @@ func (dockerLoader *DockerLoader) update() bool {
 
 	if caddyfileChanged {
 		log.Info("New Caddyfile", zap.ByteString("caddyfile", caddyfile))
+
+		if autosaveErr := os.WriteFile(CaddyfileAutosavePath, caddyfile, 0666); autosaveErr != nil {
+			log.Warn("Failed to autosave caddyfile", zap.Error(autosaveErr), zap.String("path", CaddyfileAutosavePath))
+		}
 
 		adapter := caddyconfig.GetAdapter("caddyfile")
 
