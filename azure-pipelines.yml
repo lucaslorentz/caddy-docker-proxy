@@ -7,7 +7,7 @@ trigger:
 jobs:
 - job: Build_Binaries
   pool:
-    vmImage: 'Ubuntu 18.04'
+    vmImage: 'ubuntu-20.04'
 
   steps:
   - task: GoTool@0
@@ -32,7 +32,7 @@ jobs:
 - job: Linux
   dependsOn: Build_Binaries
   pool:
-    vmImage: 'Ubuntu 18.04'
+    vmImage: 'ubuntu-20.04'
   steps:
   - task: DownloadBuildArtifacts@0
     displayName: 'Download Build Artifacts'
