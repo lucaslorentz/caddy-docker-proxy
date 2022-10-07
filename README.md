@@ -521,6 +521,7 @@ CADDY_DOCKER_MODE=<string>
 CADDY_DOCKER_POLLING_INTERVAL=<duration>
 CADDY_DOCKER_PROCESS_CADDYFILE=<bool>
 CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
+DOCKER_NO_SCOPE=<bool, default scope used>
 ```
 
 Check **examples** folder to see how to set them on a Docker Compose file.
