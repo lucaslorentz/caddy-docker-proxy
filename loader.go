@@ -168,7 +168,7 @@ func (dockerLoader *DockerLoader) monitorEvents() {
 
 func (dockerLoader *DockerLoader) listenEvents() {
 	args := filters.NewArgs()
-	if !isTrue.MatchString(os.Getenv("DOCKER_NO_SCOPE")) {
+	if !isTrue.MatchString(os.Getenv("CADDY_DOCKER_NO_SCOPE")) {
 		// This env var is useful for Podman where in some instances the scope can cause some issues.
 		args.Add("scope", "swarm")
 		args.Add("scope", "local")
