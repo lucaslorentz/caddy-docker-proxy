@@ -3,7 +3,7 @@ module github.com/lucaslorentz/caddy-docker-proxy/v2
 go 1.18
 
 require (
-	github.com/caddyserver/caddy/v2 v2.6.1
+	github.com/caddyserver/caddy/v2 v2.6.2
 	github.com/docker/docker v20.10.18+incompatible
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/zap v1.23.0
@@ -21,7 +21,7 @@ require (
 	github.com/antlr/antlr4/runtime/Go/antlr v1.4.10 // indirect
 	github.com/aryann/difflib v0.0.0-20210328193216-ff5ff6dc229b // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/caddyserver/certmagic v0.17.1 // indirect
+	github.com/caddyserver/certmagic v0.17.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -66,14 +66,14 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/pgtype v1.12.0 // indirect
 	github.com/jackc/pgx/v4 v4.17.2 // indirect
-	github.com/klauspost/compress v1.15.10 // indirect
+	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
 	github.com/libdns/libdns v0.2.1 // indirect
-	github.com/lucas-clemente/quic-go v0.29.1 // indirect
+	github.com/lucas-clemente/quic-go v0.29.2 // indirect
 	github.com/manifoldco/promptui v0.9.0 // indirect
 	github.com/marten-seemann/qpack v0.2.1 // indirect
-	github.com/marten-seemann/qtls-go1-18 v0.1.2 // indirect
-	github.com/marten-seemann/qtls-go1-19 v0.1.0 // indirect
+	github.com/marten-seemann/qtls-go1-18 v0.1.3 // indirect
+	github.com/marten-seemann/qtls-go1-19 v0.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
