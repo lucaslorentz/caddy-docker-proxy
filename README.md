@@ -277,11 +277,12 @@ caddy.email: you@example.com
 }
 ```
 
-[Named matchers](https://caddyserver.com/docs/caddyfile/matchers#named-matchers) can be created using `@` inside labels:
+[Named matchers](https://caddyserver.com/docs/caddyfile/matchers#named-matchers) can be created using `@` inside labels. To avoid YAML validation errors (`found character that cannot start any token`), enclose label values between quotes (`"`) whenever they begin with `@` (e.g., `caddy.directive: @match...` is invalid and should be `caddy.directive: "@match..."`):
+
 ```
 caddy: localhost
 caddy.@match.path: /sourcepath /sourcepath/*
-caddy.reverse_proxy: @match localhost:6001
+caddy.reverse_proxy: "@match localhost:6001"
 ↓
 localhost {
 	@match {
@@ -290,6 +291,17 @@ localhost {
 	reverse_proxy @match localhost:6001
 }
 ```
+
+### JSON respond blocks
+
+If you need to [respond](https://caddyserver.com/docs/caddyfile/directives/respond) with a JSON block, escape all the `{`, `}`, `:` and `"` characters with their `\uXXXX` equivalents (`\u007b`, `\u007d`, `\u003a` and `\u0022`):
+
+```
+caddy.respond: "\u007b\u0022key\u003a\u0022value\u0022\u007d"
+↓
+respond `{"key":"value"}`
+```
+
 
 ### Go templates
 
