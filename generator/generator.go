@@ -244,6 +244,7 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 				for _, ingressNetwork := range g.options.IngressNetworks {
 					if dockerNetwork.Name == ingressNetwork {
 						ingressNetworks[dockerNetwork.ID] = true
+						ingressNetworks[dockerNetwork.Name] = true
 					}
 				}
 			}
@@ -266,7 +267,8 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 				if networkInfo.Ingress {
 					continue
 				}
-				ingressNetworks[network.NetworkID] = true
+				ingressNetworks[networkInfo.ID] = true
+				ingressNetworks[networkInfo.Name] = true
 			}
 		}
 	}
