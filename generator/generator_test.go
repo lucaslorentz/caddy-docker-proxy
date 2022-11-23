@@ -20,11 +20,12 @@ import (
 
 var caddyContainerID = "container-id"
 var caddyNetworkID = "network-id"
+var caddyNetworkName = "network-name"
 
 const newLine = "\n"
 const containerIdLog = `INFO	Caddy ContainerID	{"ID": "container-id"}` + newLine
-const ingressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[network-id:true]"}` + newLine
-const otherIngressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[other-network-id:true]"}` + newLine
+const ingressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[network-id:true network-name:true]"}` + newLine
+const otherIngressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[other-network-id:true other-network-name:true]"}` + newLine
 const swarmIsAvailableLog = `INFO	Swarm is available	{"new": true}` + newLine
 const swarmIsDisabledLog = `INFO	Swarm is available	{"new": false}` + newLine
 const commonLogs = containerIdLog + ingressNetworksMapLog + swarmIsAvailableLog
@@ -183,6 +184,8 @@ func createBasicDockerClientMock() *docker.ClientMock {
 		NetworkInspectData: map[string]types.NetworkResource{
 			caddyNetworkID: {
 				Ingress: false,
+				ID:      caddyNetworkID,
+				Name:    caddyNetworkName,
 			},
 		},
 	}
