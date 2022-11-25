@@ -120,17 +120,19 @@ func getAdminListen(options *config.Options) string {
 					if options.ControllerNetwork.Contains(v.IP) {
 						return "tcp/" + v.IP.String() + ":2019"
 					}
-					break
 				case *net.IPNet:
 					if options.ControllerNetwork.Contains(v.IP) {
 						return "tcp/" + v.IP.String() + ":2019"
 					}
-					break
 				}
 			}
 		}
 	}
-	return "tcp/localhost:2019"
+	if options.Mode&config.Controller == config.Controller {
+		return "tcp/localhost:2019"
+	} else {
+		return "tcp/0.0.0.0:2019"
+	}
 }
 
 func createOptions(flags caddycmd.Flags) *config.Options {

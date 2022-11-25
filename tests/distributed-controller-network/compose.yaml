@@ -8,9 +8,11 @@ services:
       - 80:80
       - 443:443
     networks:
+      - caddy_controller
       - caddy
     environment:
       - CADDY_DOCKER_MODE=server
+      - CADDY_CONTROLLER_NETWORK=10.200.200.0/24
     deploy:
       replicas: 3
       labels:
@@ -19,9 +21,11 @@ services:
   caddy_controller:
     image: caddy-docker-proxy:local
     networks:
+      - caddy_controller
       - caddy
     environment:
       - CADDY_DOCKER_MODE=controller
+      - CADDY_CONTROLLER_NETWORK=10.200.200.0/24
     volumes:
       - source: "${DOCKER_SOCKET_PATH}"
         target: "${DOCKER_SOCKET_PATH}"
@@ -50,3 +54,9 @@ networks:
   caddy:
     name: caddy_test
     external: true
+  caddy_controller:
+    driver: overlay
+    ipam:
+      driver: default
+      config:
+        - subnet: "10.200.200.0/24"

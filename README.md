@@ -449,11 +449,15 @@ Each caddy docker proxy instance can be executed in one of the following modes.
 
 Acts as a proxy to your Docker resources. The server starts without any configuration, and will not serve anything until it is configured by a "controller".
 
-In order to make a server discoverable and configurable by controllers, you need to mark it with label `caddy_controlled_server` and define the controller network via CLI option `controller-network` or environment variable `CADDY_CONTROLLER_NETWORK`.
+In order to make a server discoverable and configurable by controllers, you need to mark it with label `caddy_controlled_server`.
 
 Server instances doesn't need access to Docker host socket and you can run it in manager or worker nodes.
 
 [Configuration example](examples/distributed.yaml#L5)
+
+Optionally, you can do a more secure setup by restricting the server to only be configurable from a specific network. To do that you need to set the controller network via CLI option `controller-network` or environment variable `CADDY_CONTROLLER_NETWORK` on both server and controller instances.
+
+[Configuration example](examples/distributed-controller-network.yaml#L5)
 
 ### Controller
 

@@ -8,9 +8,11 @@ services:
       - 80:80
       - 443:443
     networks:
+      - caddy_controller
       - caddy
     environment:
       - CADDY_DOCKER_MODE=server
+      - CADDY_CONTROLLER_NETWORK=10.200.200.0/24
     volumes:
       # this volume is needed to keep the certificates
       # otherwise, new ones will be re-issued upon restart
@@ -23,9 +25,11 @@ services:
   caddy_controller:
     image: lucaslorentz/caddy-docker-proxy:ci-alpine
     networks:
+      - caddy_controller
       - caddy
     environment:
       - CADDY_DOCKER_MODE=controller
+      - CADDY_CONTROLLER_NETWORK=10.200.200.0/24
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -91,6 +95,12 @@ services:
 networks:
   caddy:
     driver: overlay
+  caddy_controller:
+    driver: overlay
+    ipam:
+      driver: default
+      config:
+        - subnet: "10.200.200.0/24"
 
 volumes:
   caddy_data: {}
