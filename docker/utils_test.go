@@ -2,7 +2,42 @@ package docker
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
+
+func TestExtratFromMountInfo(t *testing.T) {
+	read :=
+		`982 811 0:188 / / rw,relatime master:211 - overlay overlay rw,lowerdir=/var/lib/docker/overlay2/l/JITAD3AQIAPDR63API26SHX5CQ:/var/lib/docker/overlay2/l/OD4G2XK3EBQC7UCYC2MKN2VU4N:/var/lib/docker/overlay2/l/XCYRLTZ7FPAFABA6UPAECHCUFM:/var/lib/docker/overlay2/l/2UTXO3KIF3I7EQFKXPOYQO6WGN,upperdir=/var/lib/docker/overlay2/11a7a30cc374c98491c15185334a99f07e2761a9759c2c5b3ba1b4122ec9fbf7/diff,workdir=/var/lib/docker/overlay2/11a7a30cc374c98491c15185334a99f07e2761a9759c2c5b3ba1b4122ec9fbf7/work
+		984 982 0:205 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw
+		986 982 0:207 / /dev rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755
+		988 986 0:209 / /dev/pts rw,nosuid,noexec,relatime - devpts devpts rw,gid=5,mode=620,ptmxmode=666
+		990 982 0:211 / /sys ro,nosuid,nodev,noexec,relatime - sysfs sysfs ro
+		993 990 0:33 / /sys/fs/cgroup ro,nosuid,nodev,noexec,relatime - cgroup2 cgroup rw
+		994 986 0:202 / /dev/mqueue rw,nosuid,nodev,noexec,relatime - mqueue mqueue rw
+		996 986 0:213 / /dev/shm rw,nosuid,nodev,noexec,relatime - tmpfs shm rw,size=65536k
+		999 982 254:1 /docker/containers/d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b/resolv.conf /etc/resolv.conf rw,relatime - ext4 /dev/vda1 rw
+		1001 982 254:1 /docker/containers/d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b/hostname /etc/hostname rw,relatime - ext4 /dev/vda1 rw
+		1002 982 254:1 /docker/containers/d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b/hosts /etc/hosts rw,relatime - ext4 /dev/vda1 rw
+		1003 982 0:23 /host-services/docker.proxy.sock /run/docker.sock rw,nosuid,nodev,noexec,relatime - tmpfs tmpfs rw,size=608152k,mode=755
+		576 984 0:205 /bus /proc/bus ro,nosuid,nodev,noexec,relatime - proc proc rw
+		587 984 0:205 /fs /proc/fs ro,nosuid,nodev,noexec,relatime - proc proc rw
+		588 984 0:205 /irq /proc/irq ro,nosuid,nodev,noexec,relatime - proc proc rw
+		589 984 0:205 /sys /proc/sys ro,nosuid,nodev,noexec,relatime - proc proc rw
+		590 984 0:205 /sysrq-trigger /proc/sysrq-trigger ro,nosuid,nodev,noexec,relatime - proc proc rw
+		591 984 0:207 /null /proc/kcore rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755
+		592 984 0:207 /null /proc/keys rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755
+		593 984 0:207 /null /proc/timer_list rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755
+		594 990 0:216 / /sys/firmware ro,relatime - tmpfs tmpfs ro`
+
+	expected := "d39fa516d8377ecddf9bf8ef33f81cbf58b4d604d85293ced7cdb0c7fc52442b"
+
+	utils := dockerUtils{}
+
+	actual := utils.extractContainerIDFromMountInfo(read)
+
+	assert.Equal(t, expected, actual)
+}
 
 func TestFailExtractBasicDockerId(t *testing.T) {
 	read :=
@@ -10,12 +45,9 @@ func TestFailExtractBasicDockerId(t *testing.T) {
 
 	utils := dockerUtils{}
 
-	actual, err := utils.ExtractContainerID(read)
+	actual := utils.extractContainerIDFromCGroups(read)
 
-	if err == nil {
-		t.Fatalf("Got unexpected container id %v", actual)
-	}
-
+	assert.Empty(t, actual)
 }
 
 func TestExtractBasicDockerId(t *testing.T) {
@@ -30,15 +62,9 @@ func TestExtractBasicDockerId(t *testing.T) {
 
 	utils := dockerUtils{}
 
-	actual, err := utils.ExtractContainerID(read)
+	actual := utils.extractContainerIDFromCGroups(read)
 
-	if err != nil {
-		t.Fatalf("Could not extract container id : %v", err)
-	}
-
-	if actual != expected {
-		t.Fatalf("id mismatch: actual %v, expected %v", actual, expected)
-	}
+	assert.Equal(t, expected, actual)
 }
 
 func TestExtractScopedDockerId(t *testing.T) {
@@ -53,15 +79,9 @@ func TestExtractScopedDockerId(t *testing.T) {
 
 	utils := dockerUtils{}
 
-	actual, err := utils.ExtractContainerID(read)
+	actual := utils.extractContainerIDFromCGroups(read)
 
-	if err != nil {
-		t.Fatalf("Could not extract container id : %v", err)
-	}
-
-	if actual != expected {
-		t.Fatalf("id mismatch: actual %v, expected %v", actual, expected)
-	}
+	assert.Equal(t, expected, actual)
 }
 
 func TestExtractSlashPrefixedDockerId(t *testing.T) {
@@ -76,15 +96,9 @@ func TestExtractSlashPrefixedDockerId(t *testing.T) {
 
 	utils := dockerUtils{}
 
-	actual, err := utils.ExtractContainerID(read)
+	actual := utils.extractContainerIDFromCGroups(read)
 
-	if err != nil {
-		t.Fatalf("Could not extract container id : %v", err)
-	}
-
-	if actual != expected {
-		t.Fatalf("id mismatch: actual %v, expected %v", actual, expected)
-	}
+	assert.Equal(t, expected, actual)
 }
 
 func TestExtractNestedDockerId(t *testing.T) {
@@ -105,15 +119,9 @@ func TestExtractNestedDockerId(t *testing.T) {
 
 	utils := dockerUtils{}
 
-	actual, err := utils.ExtractContainerID(read)
+	actual := utils.extractContainerIDFromCGroups(read)
 
-	if err != nil {
-		t.Fatalf("Could not extract container id : %v", err)
-	}
-
-	if actual != expected {
-		t.Fatalf("id mismatch: actual %v, expected %v", actual, expected)
-	}
+	assert.Equal(t, expected, actual)
 }
 
 func TestExtractAKSDockerId(t *testing.T) {
@@ -136,15 +144,9 @@ func TestExtractAKSDockerId(t *testing.T) {
 
 	utils := dockerUtils{}
 
-	actual, err := utils.ExtractContainerID(read)
+	actual := utils.extractContainerIDFromCGroups(read)
 
-	if err != nil {
-		t.Fatalf("Could not extract container id : %v", err)
-	}
-
-	if actual != expected {
-		t.Fatalf("id mismatch: actual %v, expected %v", actual, expected)
-	}
+	assert.Equal(t, expected, actual)
 }
 
 func TestExtractECSDockerId(t *testing.T) {
@@ -164,15 +166,9 @@ func TestExtractECSDockerId(t *testing.T) {
 
 	utils := dockerUtils{}
 
-	actual, err := utils.ExtractContainerID(read)
+	actual := utils.extractContainerIDFromCGroups(read)
 
-	if err != nil {
-		t.Fatalf("Could not extract container id : %v", err)
-	}
-
-	if actual != expected {
-		t.Fatalf("id mismatch: actual %v, expected %v", actual, expected)
-	}
+	assert.Equal(t, expected, actual)
 }
 
 func TestExtractRootlessDockerId(t *testing.T) {
@@ -195,13 +191,7 @@ func TestExtractRootlessDockerId(t *testing.T) {
 
 	utils := dockerUtils{}
 
-	actual, err := utils.ExtractContainerID(read)
+	actual := utils.extractContainerIDFromCGroups(read)
 
-	if err != nil {
-		t.Fatalf("Could not extract container id : %v", err)
-	}
-
-	if actual != expected {
-		t.Fatalf("id mismatch: actual %v, expected %v", actual, expected)
-	}
+	assert.Equal(t, expected, actual)
 }
