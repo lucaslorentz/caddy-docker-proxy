@@ -28,7 +28,7 @@ services:
         caddy.email: "test@example.com"
 
   service:
-    image: jwilder/whoami
+    image: containous/whoami
     networks:
       - caddy
     deploy:

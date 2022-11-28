@@ -33,49 +33,49 @@ services:
 
   # Proxy to service
   whoami0:
-    image: jwilder/whoami
+    image: containous/whoami
     networks:
       - caddy
     deploy:
       labels:
         caddy: whoami0.example.com
-        caddy.reverse_proxy: "{{upstreams 8000}}"
+        caddy.reverse_proxy: "{{upstreams 80}}"
         caddy.tls: "internal"
 
   # Proxy to service
   whoami1:
-    image: jwilder/whoami
+    image: containous/whoami
     networks:
       - caddy
     deploy:
       labels:
         caddy: whoami1.example.com
-        caddy.reverse_proxy: "{{upstreams 8000}}"
+        caddy.reverse_proxy: "{{upstreams 80}}"
         caddy.tls: "internal"
 
   # Proxy to container
   whoami2:
-    image: jwilder/whoami
+    image: containous/whoami
     networks:
       - caddy
     labels:
       caddy: whoami2.example.com
-      caddy.reverse_proxy: "{{upstreams 8000}}"
+      caddy.reverse_proxy: "{{upstreams 80}}"
       caddy.tls: "internal"
 
   # Proxy to container
   whoami3:
-    image: jwilder/whoami
+    image: containous/whoami
     networks:
       - caddy
     labels:
       caddy: whoami3.example.com
-      caddy.reverse_proxy: "{{upstreams 8000}}"
+      caddy.reverse_proxy: "{{upstreams 80}}"
       caddy.tls: "internal"
 
   # Proxy with matches and route
   echo_0:
-    image: brndnmtthws/nginx-echo-headers
+    image: containous/whoami
     networks:
       - caddy
     deploy:
@@ -85,7 +85,7 @@ services:
         caddy.route: "@match"
         caddy.route.0_uri: "strip_prefix /sourcepath"
         caddy.route.1_rewrite: "* /targetpath{path}"
-        caddy.route.2_reverse_proxy: "{{upstreams 8080}}"
+        caddy.route.2_reverse_proxy: "{{upstreams 80}}"
         caddy.tls: "internal"
 
 networks:
