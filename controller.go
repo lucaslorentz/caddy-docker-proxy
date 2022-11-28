@@ -28,8 +28,8 @@ import (
 
 var CaddyfileAutosavePath = filepath.Join(caddy.AppConfigDir(), "Caddyfile.autosave")
 
-// DockerLoader generates caddy files from docker swarm information
-type DockerLoader struct {
+// CaddyController generates caddy files from docker swarm information and send to caddy servers
+type CaddyController struct {
 	options         *config.Options
 	initialized     bool
 	dockerClients   []docker.Client
@@ -43,9 +43,9 @@ type DockerLoader struct {
 	serversUpdating *utils.StringBoolCMap
 }
 
-// CreateDockerLoader creates a docker loader
-func CreateDockerLoader(options *config.Options) *DockerLoader {
-	return &DockerLoader{
+// CreateCaddyController creates a caddy controller
+func CreateCaddyController(options *config.Options) *CaddyController {
+	return &CaddyController{
 		options:         options,
 		serversVersions: utils.NewStringInt64CMap(),
 		serversUpdating: utils.NewStringBoolCMap(),
@@ -57,33 +57,33 @@ func logger() *zap.Logger {
 		Named("docker-proxy")
 }
 
-// Start docker loader
-func (dockerLoader *DockerLoader) Start() error {
-	if !dockerLoader.initialized {
-		dockerLoader.initialized = true
+// Start controller
+func (controller *CaddyController) Start() error {
+	if !controller.initialized {
+		controller.initialized = true
 		log := logger()
 
 		dockerClients := []docker.Client{}
-		for i, dockerSocket := range dockerLoader.options.DockerSockets {
+		for i, dockerSocket := range controller.options.DockerSockets {
 			// cf https://github.com/docker/go-docker/blob/master/client.go
 			// setenv to use NewEnvClient
 			// or manually
 
 			os.Setenv("DOCKER_HOST", dockerSocket)
 
-			if len(dockerLoader.options.DockerCertsPath) >= i+1 && dockerLoader.options.DockerCertsPath[i] != "" {
-				os.Setenv("DOCKER_CERT_PATH", dockerLoader.options.DockerCertsPath[i])
+			if len(controller.options.DockerCertsPath) >= i+1 && controller.options.DockerCertsPath[i] != "" {
+				os.Setenv("DOCKER_CERT_PATH", controller.options.DockerCertsPath[i])
 			} else {
 				os.Unsetenv("DOCKER_CERT_PATH")
 			}
 
-			if len(dockerLoader.options.DockerAPIsVersion) >= i+1 && dockerLoader.options.DockerAPIsVersion[i] != "" {
-				os.Setenv("DOCKER_API_VERSION", dockerLoader.options.DockerAPIsVersion[i])
+			if len(controller.options.DockerAPIsVersion) >= i+1 && controller.options.DockerAPIsVersion[i] != "" {
+				os.Setenv("DOCKER_API_VERSION", controller.options.DockerAPIsVersion[i])
 			} else {
 				os.Unsetenv("DOCKER_API_VERSION")
 			}
 
-			dockerClient, err := client.NewEnvClient()
+			dockerClient, err := client.NewClientWithOpts(client.FromEnv)
 			if err != nil {
 				log.Error("Docker connection failed to docker specify socket", zap.Error(err), zap.String("DockerSocket", dockerSocket))
 				return err
@@ -104,8 +104,8 @@ func (dockerLoader *DockerLoader) Start() error {
 
 		// by default it will used the env docker
 		if len(dockerClients) == 0 {
-			dockerClient, err := client.NewEnvClient()
-			dockerLoader.options.DockerSockets = append(dockerLoader.options.DockerSockets, os.Getenv("DOCKER_HOST"))
+			dockerClient, err := client.NewClientWithOpts(client.FromEnv)
+			controller.options.DockerSockets = append(controller.options.DockerSockets, os.Getenv("DOCKER_HOST"))
 			if err != nil {
 				log.Error("Docker connection failed", zap.Error(err))
 				return err
@@ -124,49 +124,71 @@ func (dockerLoader *DockerLoader) Start() error {
 			dockerClients = append(dockerClients, wrappedClient)
 		}
 
-		dockerLoader.dockerClients = dockerClients
-		dockerLoader.skipEvents = make([]bool, len(dockerLoader.dockerClients))
+		controller.dockerClients = dockerClients
+		controller.skipEvents = make([]bool, len(controller.dockerClients))
 
-		dockerLoader.generator = generator.CreateGenerator(
+		controller.generator = generator.CreateGenerator(
 			dockerClients,
 			docker.CreateUtils(),
-			dockerLoader.options,
+			controller.options,
 		)
 
-		log.Info(
-			"Start",
-			zap.String("CaddyfilePath", dockerLoader.options.CaddyfilePath),
-			zap.String("LabelPrefix", dockerLoader.options.LabelPrefix),
-			zap.Duration("PollingInterval", dockerLoader.options.PollingInterval),
-			zap.Bool("ProcessCaddyfile", dockerLoader.options.ProcessCaddyfile),
-			zap.Bool("ProxyServiceTasks", dockerLoader.options.ProxyServiceTasks),
-			zap.String("IngressNetworks", fmt.Sprintf("%v", dockerLoader.options.IngressNetworks)),
-			zap.Strings("DockerSockets", dockerLoader.options.DockerSockets),
-			zap.Strings("DockerCertsPath", dockerLoader.options.DockerCertsPath),
-			zap.Strings("DockerAPIsVersion", dockerLoader.options.DockerAPIsVersion),
-		)
+		log.Info("Start", zap.Any("options", controller.options))
 
 		ready := make(chan struct{})
-		dockerLoader.timer = time.AfterFunc(0, func() {
+		controller.timer = time.AfterFunc(0, func() {
 			<-ready
-			dockerLoader.update()
+			controller.update()
 		})
 		close(ready)
 
-		go dockerLoader.monitorEvents()
+		if controller.options.Mode&config.Server == 0 {
+			err := controller.startHttpServer()
+			if err != nil {
+				return err
+			}
+		}
+
+		go controller.monitorEvents()
 	}
 
 	return nil
 }
 
-func (dockerLoader *DockerLoader) monitorEvents() {
+func (controller *CaddyController) startHttpServer() error {
+	http.HandleFunc("/controller-subnets", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		controllerNetworkGroup, err := controller.generator.GetControllerNetworkGroup(logger())
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		var controllerSubnets []string
+		for _, networkInfo := range controllerNetworkGroup.Networks {
+			for _, subnet := range networkInfo.Subnets {
+				controllerSubnets = append(controllerSubnets, subnet.String())
+			}
+		}
+
+		err = json.NewEncoder(w).Encode(controllerSubnets)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+	})
+	return http.ListenAndServe(":80", nil)
+}
+
+func (controller *CaddyController) monitorEvents() {
 	for {
-		dockerLoader.listenEvents()
+		controller.listenEvents()
 		time.Sleep(30 * time.Second)
 	}
 }
 
-func (dockerLoader *DockerLoader) listenEvents() {
+func (controller *CaddyController) listenEvents() {
 	args := filters.NewArgs()
 	if !isTrue.MatchString(os.Getenv("CADDY_DOCKER_NO_SCOPE")) {
 		// This env var is useful for Podman where in some instances the scope can cause some issues.
@@ -177,7 +199,7 @@ func (dockerLoader *DockerLoader) listenEvents() {
 	args.Add("type", "container")
 	args.Add("type", "config")
 
-	for i, dockerClient := range dockerLoader.dockerClients {
+	for i, dockerClient := range controller.dockerClients {
 		context, cancel := context.WithCancel(context.Background())
 
 		eventsChan, errorChan := dockerClient.Events(context, types.EventsOptions{
@@ -185,13 +207,13 @@ func (dockerLoader *DockerLoader) listenEvents() {
 		})
 
 		log := logger()
-		log.Info("Connecting to docker events", zap.String("DockerSocket", dockerLoader.options.DockerSockets[i]))
+		log.Info("Connecting to docker events", zap.String("DockerSocket", controller.options.DockerSockets[i]))
 
 	ListenEvents:
 		for {
 			select {
 			case event := <-eventsChan:
-				if dockerLoader.skipEvents[i] {
+				if controller.skipEvents[i] {
 					continue
 				}
 
@@ -207,8 +229,8 @@ func (dockerLoader *DockerLoader) listenEvents() {
 					(event.Type == "config" && event.Action == "remove")
 
 				if update {
-					dockerLoader.skipEvents[i] = true
-					dockerLoader.timer.Reset(100 * time.Millisecond)
+					controller.skipEvents[i] = true
+					controller.timer.Reset(100 * time.Millisecond)
 				}
 			case err := <-errorChan:
 				cancel()
@@ -221,19 +243,19 @@ func (dockerLoader *DockerLoader) listenEvents() {
 	}
 }
 
-func (dockerLoader *DockerLoader) update() bool {
-	dockerLoader.timer.Reset(dockerLoader.options.PollingInterval)
-	for i := 0; i < len(dockerLoader.skipEvents); i++ {
-		dockerLoader.skipEvents[i] = false
+func (controller *CaddyController) update() bool {
+	controller.timer.Reset(controller.options.PollingInterval)
+	for i := 0; i < len(controller.skipEvents); i++ {
+		controller.skipEvents[i] = false
 	}
 
 	// Don't cache the logger more globally, it can change based on config reloads
 	log := logger()
-	caddyfile, controlledServers := dockerLoader.generator.GenerateCaddyfile(log)
+	caddyfile, controlledServers := controller.generator.GenerateCaddyfile(log)
 
-	caddyfileChanged := !bytes.Equal(dockerLoader.lastCaddyfile, caddyfile)
+	caddyfileChanged := !bytes.Equal(controller.lastCaddyfile, caddyfile)
 
-	dockerLoader.lastCaddyfile = caddyfile
+	controller.lastCaddyfile = caddyfile
 
 	if caddyfileChanged {
 		log.Info("New Caddyfile", zap.ByteString("caddyfile", caddyfile))
@@ -257,36 +279,36 @@ func (dockerLoader *DockerLoader) update() bool {
 
 		log.Info("New Config JSON", zap.ByteString("json", configJSON))
 
-		dockerLoader.lastJSONConfig = configJSON
-		dockerLoader.lastVersion++
+		controller.lastJSONConfig = configJSON
+		controller.lastVersion++
 	}
 
 	var wg sync.WaitGroup
 	for _, server := range controlledServers {
 		wg.Add(1)
-		go dockerLoader.updateServer(&wg, server)
+		go controller.updateServer(&wg, server)
 	}
 	wg.Wait()
 
 	return true
 }
 
-func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string) {
+func (controller *CaddyController) updateServer(wg *sync.WaitGroup, server string) {
 	defer wg.Done()
 
 	// Skip servers that are being updated already
-	if dockerLoader.serversUpdating.Get(server) {
+	if controller.serversUpdating.Get(server) {
 		return
 	}
 
 	// Flag and unflag updating
-	dockerLoader.serversUpdating.Set(server, true)
-	defer dockerLoader.serversUpdating.Delete(server)
+	controller.serversUpdating.Set(server, true)
+	defer controller.serversUpdating.Delete(server)
 
-	version := dockerLoader.lastVersion
+	version := controller.lastVersion
 
 	// Skip servers that already have this version
-	if dockerLoader.serversVersions.Get(server) >= version {
+	if controller.serversVersions.Get(server) >= version {
 		return
 	}
 
@@ -295,7 +317,7 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 
 	url := "http://" + server + ":2019/load"
 
-	postBody, err := addAdminListen(dockerLoader.lastJSONConfig, "tcp/"+server+":2019")
+	postBody, err := addAdminListen(controller.lastJSONConfig, "tcp/"+server+":2019")
 	if err != nil {
 		log.Error("Failed to add admin listen to", zap.String("server", server), zap.Error(err))
 		return
@@ -325,7 +347,7 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 		return
 	}
 
-	dockerLoader.serversVersions.Set(server, version)
+	controller.serversVersions.Set(server, version)
 
 	log.Info("Successfully configured", zap.String("server", server))
 }

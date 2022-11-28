@@ -1,0 +1,52 @@
+version: '3.7'
+
+services:
+
+  caddy_server:
+    image: caddy-docker-proxy:local
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - caddy
+    environment:
+      - CADDY_DOCKER_MODE=server
+    deploy:
+      replicas: 3
+      labels:
+        caddy_controlled_server:
+
+  caddy_controller:
+    image: caddy-docker-proxy:local
+    networks:
+      - caddy
+    environment:
+      - CADDY_DOCKER_MODE=controller
+    volumes:
+      - source: "${DOCKER_SOCKET_PATH}"
+        target: "${DOCKER_SOCKET_PATH}"
+        type: ${DOCKER_SOCKET_TYPE}
+
+  whoami_service:
+    image: containous/whoami
+    networks:
+      - caddy
+    deploy:
+      labels:
+        caddy: whoami_service.example.com
+        caddy.reverse_proxy: "{{upstreams 80}}"
+        caddy.tls: "internal"
+
+  whoami_container:
+    image: containous/whoami
+    networks:
+      - caddy
+    labels:
+      caddy: whoami_container.example.com
+      caddy.reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: "internal"
+
+networks:
+  caddy:
+    name: caddy_test
+    external: true

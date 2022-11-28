@@ -1,6 +1,8 @@
 package generator
 
 import (
+	"net"
+
 	"github.com/docker/docker/api/types"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
 	"go.uber.org/zap"
@@ -10,21 +12,24 @@ func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container, l
 	caddyLabels := g.filterLabels(container.Labels)
 
 	return labelsToCaddyfile(caddyLabels, container, func() ([]string, error) {
-		return g.getContainerIPAddresses(container, logger, true)
+		return g.getContainerIPAddresses(container, logger, g.ingressNetworks)
 	})
 }
 
-func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container, logger *zap.Logger, ingress bool) ([]string, error) {
+func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container, logger *zap.Logger, networkGroup *NetworkGroup) ([]string, error) {
 	ips := []string{}
 
 	for _, network := range container.NetworkSettings.Networks {
-		if !ingress || g.ingressNetworks[network.NetworkID] {
+		if networkGroup == nil ||
+			networkGroup.MatchesID(network.NetworkID) ||
+			networkGroup.MatchesName(network.NetworkID) ||
+			networkGroup.ContainsIP(net.ParseIP(network.IPAddress)) {
 			ips = append(ips, network.IPAddress)
 		}
 	}
 
 	if len(ips) == 0 {
-		logger.Warn("Container is not in same network as caddy", zap.String("container", container.ID), zap.String("container id", container.ID))
+		logger.Warn("Container is not in network group", zap.Strings("container", container.Names), zap.String("containerId", container.ID), zap.Any("networkGroup", networkGroup))
 
 	}
 

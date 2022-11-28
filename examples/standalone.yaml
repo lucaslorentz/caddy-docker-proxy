@@ -97,6 +97,7 @@ services:
 
 networks:
   caddy:
+    name: caddy
     driver: overlay
 
 volumes:
