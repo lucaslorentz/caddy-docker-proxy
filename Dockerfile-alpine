@@ -1,4 +1,4 @@
-FROM alpine:3.15.4 as alpine
+FROM alpine:3.17.0 as alpine
 ARG TARGETPLATFORM
 LABEL maintainer "Lucas Lorentz <lucaslorentzlara@hotmail.com>"
 
