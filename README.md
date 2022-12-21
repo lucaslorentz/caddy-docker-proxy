@@ -3,7 +3,7 @@
 
 ## NEW MODULE NAME!
 
-We've renamed our go module, from version 2.7.0 forward you should import caddy-docker-proxy using `github.com/lucaslorentz/caddy-docker-proxy/v2` or a specific version `github.com/lucaslorentz/caddy-docker-proxy/v2@2.7.0`.
+We've renamed our go module, from version 2.7.0 forward you should import caddy-docker-proxy using `github.com/lucaslorentz/caddy-docker-proxy/v2` or a specific version `github.com/lucaslorentz/caddy-docker-proxy/v2@v2.7.0`.
 
 The old name `github.com/lucaslorentz/caddy-docker-proxy/plugin` will be a available for backwards compatibility, but it will not have the latest version.
 
