@@ -300,7 +300,7 @@ basicauth /secret/* {
 	Bob $2a$14$Zkx19XLiW6VYouLHR5NmfOFU0z2GTNmpkT/5qqR7hx4IjWJPDhjvG
 }
 ```
-Protects all resources in /secret so only Bob can access them with the password "hiccup":
+Protects all resources in /secret so only Bob can access them with the password "hiccup".
 
 ### Go templates
 
