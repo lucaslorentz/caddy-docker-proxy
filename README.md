@@ -291,6 +291,17 @@ localhost {
 }
 ```
 
+[HTTP Basic Authentication](https://caddyserver.com/docs/caddyfile/directives/basicauth) can be created like this:
+```
+caddy.basicauth: /secret/*
+caddy.basicauth.Bob: $2a$14$Zkx19XLiW6VYouLHR5NmfOFU0z2GTNmpkT/5qqR7hx4IjWJPDhjvG
+↓
+basicauth /secret/* {
+	Bob $2a$14$Zkx19XLiW6VYouLHR5NmfOFU0z2GTNmpkT/5qqR7hx4IjWJPDhjvG
+}
+```
+Protects all resources in /secret so only Bob can access them with the password "hiccup":
+
 ### Go templates
 
 [Golang templates](https://golang.org/pkg/text/template/) can be used inside label values to increase flexibility. From templates, you have access to current Docker resource information. But, keep in mind that the structure that describes a Docker container is different from a service.
