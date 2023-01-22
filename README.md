@@ -568,11 +568,11 @@ If you need additional Caddy plugins, or need to use a specific version of Caddy
 The main difference from the instructions on the official image is that you must override `CMD` to have the container run using the `caddy docker-proxy` command provided by this plugin.
 
 ```Dockerfile
-ARG CADDY_VERSION=2.6.1
+ARG CADDY_VERSION=2.6.2
 FROM caddy:${CADDY_VERSION}-builder AS builder
 
 RUN xcaddy build \
-    --with github.com/lucaslorentz/caddy-docker-proxy/v2 \
+    --with github.com/lucaslorentz/caddy-docker-proxy/plugin/v2 \
     --with <additional-plugins>
 
 FROM caddy:${CADDY_VERSION}-alpine
