@@ -3,7 +3,7 @@ module github.com/lucaslorentz/caddy-docker-proxy/v2
 go 1.18
 
 require (
-	github.com/caddyserver/caddy/v2 v2.6.3
+	github.com/caddyserver/caddy/v2 v2.6.4
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
@@ -55,7 +55,6 @@ require (
 	github.com/google/cel-go v0.13.0 // indirect
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.0 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
@@ -135,7 +134,7 @@ require (
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/exp v0.0.0-20230210204819-062eb4c674ab // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/net v0.6.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/term v0.5.0 // indirect
