@@ -96,12 +96,12 @@ func TestContainers_DifferentNetwork(t *testing.T) {
 		"}\n"
 
 	const expectedLogs = commonLogs +
-		`WARN	Container is not in same network as caddy	{"container": "CONTAINER-ID", "container id": "CONTAINER-ID"}` + newLine
+		`WARN	Container is not in network group	{"container": [], "containerId": "CONTAINER-ID", "networkGroup": {"Name":"ingress","Networks":[{"ID":"network-id","Name":"network-name","Subnets":null}]}}` + newLine
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
 
-func TestContainers_ManualIngressNetworks(t *testing.T) {
+func TestContainers_ManualIngressAndControllerNetworks(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.NetworksData = []types.NetworkResource{
 		{
@@ -131,10 +131,11 @@ func TestContainers_ManualIngressNetworks(t *testing.T) {
 		"	reverse_proxy 10.0.0.1\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
+	const expectedLogs = otherIngressNetworksMapLog + otherControllerNetworksMapLog + swarmIsAvailableLog
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.IngressNetworks = []string{"other-network-name"}
+		options.ControllerNetwork = "other-network-name"
 	}, expectedCaddyfile, expectedLogs)
 }
 

@@ -3,7 +3,7 @@ version: '3.7'
 services:
 
   caddy_server:
-    image: caddy-docker-proxy:local
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
     ports:
       - 80:80
       - 443:443
@@ -12,24 +12,26 @@ services:
       - caddy
     environment:
       - CADDY_DOCKER_MODE=server
-      - CADDY_CONTROLLER_NETWORK=10.200.200.0/24
+      - CADDY_CONTROLLER_URL=http://caddy_controller
+    volumes:
+      # this volume is needed to keep the certificates
+      # otherwise, new ones will be re-issued upon restart
+      - caddy_data:/data
     deploy:
       replicas: 3
       labels:
         caddy_controlled_server:
 
   caddy_controller:
-    image: caddy-docker-proxy:local
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
     networks:
       - caddy_controller
       - caddy
     environment:
       - CADDY_DOCKER_MODE=controller
-      - CADDY_CONTROLLER_NETWORK=10.200.200.0/24
+      - CADDY_CONTROLLER_NETWORK=caddy_controller
     volumes:
-      - source: "${DOCKER_SOCKET_PATH}"
-        target: "${DOCKER_SOCKET_PATH}"
-        type: ${DOCKER_SOCKET_TYPE}
+      - /var/run/docker.sock:/var/run/docker.sock
 
   # Proxy to service
   whoami0:
@@ -40,7 +42,9 @@ services:
       labels:
         caddy: whoami0.example.com
         caddy.reverse_proxy: "{{upstreams 80}}"
-        caddy.tls: "internal"
+        # remove the following line when you have verified your setup
+        # Otherwise you risk being rate limited by let's encrypt
+        caddy.tls.ca: https://acme-staging-v02.api.letsencrypt.org/directory
 
   # Proxy to service
   whoami1:
@@ -90,11 +94,11 @@ services:
 
 networks:
   caddy:
-    name: caddy_test
-    external: true
-  caddy_controller:
+    name: caddy
     driver: overlay
-    ipam:
-      driver: default
-      config:
-        - subnet: "10.200.200.0/24"
+  caddy_controller:
+    name: caddy_controller
+    driver: overlay
+
+volumes:
+  caddy_data: {}

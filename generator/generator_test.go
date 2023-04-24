@@ -24,11 +24,13 @@ var caddyNetworkName = "network-name"
 
 const newLine = "\n"
 const containerIdLog = `INFO	Caddy ContainerID	{"ID": "container-id"}` + newLine
-const ingressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[network-id:true network-name:true]"}` + newLine
-const otherIngressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[other-network-id:true other-network-name:true]"}` + newLine
+const ingressNetworksGroupLog = `INFO	Network group created	{"name": "ingress", "networks": [{"ID":"network-id","Name":"network-name","Subnets":null}]}` + newLine
+const controllerNetworksGroupLog = `INFO	Network group created	{"name": "controller", "networks": [{"ID":"network-id","Name":"network-name","Subnets":null}]}` + newLine
+const otherIngressNetworksMapLog = `INFO	Network group created	{"name": "ingress", "networks": [{"ID":"other-network-id","Name":"other-network-name","Subnets":null}]}` + newLine
+const otherControllerNetworksMapLog = `INFO	Network group created	{"name": "controller", "networks": [{"ID":"other-network-id","Name":"other-network-name","Subnets":null}]}` + newLine
 const swarmIsAvailableLog = `INFO	Swarm is available	{"new": true}` + newLine
 const swarmIsDisabledLog = `INFO	Swarm is available	{"new": false}` + newLine
-const commonLogs = containerIdLog + ingressNetworksMapLog + swarmIsAvailableLog
+const commonLogs = containerIdLog + ingressNetworksGroupLog + containerIdLog + controllerNetworksGroupLog + swarmIsAvailableLog
 
 func init() {
 	log.SetOutput(ioutil.Discard)

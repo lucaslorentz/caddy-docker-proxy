@@ -1,0 +1,22 @@
+{
+	email test@example.com
+}
+(caddyfileSnippet) {
+	respond /caddyfile caddyfile 200
+}
+(configSnippet) {
+	respond /config config 200
+}
+caddyfile.local {
+	respond / caddyfile 200
+	tls internal
+}
+config.local {
+	respond / config 200
+	tls internal
+}
+service.local {
+	import caddyfileSnippet
+	import configSnippet
+	tls internal
+}

@@ -1,8 +1,12 @@
 package caddydockerproxy
 
 import (
+	"encoding/json"
 	"flag"
+	"io/ioutil"
 	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -31,35 +35,50 @@ func init() {
 				"Which mode this instance should run: standalone | controller | server")
 
 			fs.String("docker-sockets", "",
-				"Docker sockets comma separate")
+				"Docker sockets comma separate.\n"+
+					"Applicable to modes: controller, standalone")
 
 			fs.String("docker-certs-path", "",
-				"Docker socket certs path comma separate")
+				"Docker socket certs path comma separate.\n"+
+					"Applicable to modes: controller, standalone")
 
 			fs.String("docker-apis-version", "",
-				"Docker socket apis version comma separate")
+				"Docker socket apis version comma separate.\n"+
+					"Applicable to modes: controller, standalone")
 
 			fs.String("controller-network", "",
-				"Network allowed to configure caddy server in CIDR notation. Ex: 10.200.200.0/24")
+				"Controller network name. Ex: caddy_controller.\n"+
+					"When not defined, all networks attached to controller container are considered controller networks\n"+
+					"Applicable to modes: controller, standalone")
+
+			fs.String("controller-url", "",
+				"Controller url, used by servers to fetch controller subnets. Ex: http://caddy-controller\n"+
+					"Applicable to modes: server")
 
 			fs.String("ingress-networks", "",
 				"Comma separated name of ingress networks connecting caddy servers to containers.\n"+
-					"When not defined, networks attached to controller container are considered ingress networks")
+					"When not defined, all networks attached to controller container are considered ingress networks\n"+
+					"Applicable to modes: controller, standalone")
 
 			fs.String("caddyfile-path", "",
-				"Path to a base Caddyfile that will be extended with docker sites")
+				"Path to a base Caddyfile that will be extended with docker sites.\n"+
+					"Applicable to modes: controller, standalone")
 
 			fs.String("label-prefix", generator.DefaultLabelPrefix,
-				"Prefix for Docker labels")
+				"Prefix for Docker labels.\n"+
+					"Applicable to modes: controller, standalone")
 
 			fs.Bool("proxy-service-tasks", true,
-				"Proxy to service tasks instead of service load balancer")
+				"Proxy to service tasks instead of service load balancer.\n"+
+					"Applicable to modes: controller, standalone")
 
 			fs.Bool("process-caddyfile", true,
-				"Process Caddyfile before loading it, removing invalid servers")
+				"Process Caddyfile before loading it, removing invalid servers.\n"+
+					"Applicable to modes: controller, standalone")
 
 			fs.Duration("polling-interval", 30*time.Second,
-				"Interval caddy should manually check docker for a new caddyfile")
+				"Interval caddy should manually check docker for a new caddyfile.\n"+
+					"Applicable to modes: controller, standalone")
 
 			return fs
 		}(),
@@ -75,9 +94,14 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 	if options.Mode&config.Server == config.Server {
 		log.Info("Running caddy proxy server")
 
-		err := caddy.Run(&caddy.Config{
+		bindAddress, err := getAdminListen(options)
+		if err != nil {
+			return 1, err
+		}
+
+		err = caddy.Run(&caddy.Config{
 			Admin: &caddy.AdminConfig{
-				Listen: getAdminListen(options),
+				Listen: bindAddress,
 			},
 		})
 		if err != nil {
@@ -87,8 +111,8 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 
 	if options.Mode&config.Controller == config.Controller {
 		log.Info("Running caddy proxy controller")
-		loader := CreateDockerLoader(options)
-		if err := loader.Start(); err != nil {
+		controller := CreateCaddyController(options)
+		if err := controller.Start(); err != nil {
 			if err := caddy.Stop(); err != nil {
 				return 1, err
 			}
@@ -100,37 +124,72 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 	select {}
 }
 
-func getAdminListen(options *config.Options) string {
-	if options.ControllerNetwork != nil {
-		ifaces, err := net.Interfaces()
-		log := logger()
+func getAdminListen(options *config.Options) (string, error) {
+	if options.Mode&config.Controller == config.Controller {
+		return "tcp/localhost:2019", nil
+	}
 
+	log := logger()
+
+	var controllerNetworks []string
+
+	if options.ControllerNetwork != "" {
+		controllerNetworks = append(controllerNetworks, options.ControllerNetwork)
+	}
+
+	if options.ControllerUrl != nil {
+		url := strings.TrimRight(options.ControllerUrl.String(), "/") + "/controller-subnets"
+		log.Info("Fetching controller networks from url", zap.String("url", url))
+		resp, err := http.Get(url)
 		if err != nil {
-			log.Error("Failed to get network interfaces", zap.Error(err))
+			log.Error("Failed to fetch controller networks from contoller", zap.String("url", url), zap.Error(err))
+			return "", err
 		}
-		for _, i := range ifaces {
-			addrs, err := i.Addrs()
-			if err != nil {
-				log.Error("Failed to get network interface addresses", zap.Error(err))
-				continue
-			}
-			for _, a := range addrs {
-				switch v := a.(type) {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+		json.Unmarshal(body, &controllerNetworks)
+	}
+
+	var ipNets []*net.IPNet
+	for _, controllerNetwork := range controllerNetworks {
+		_, ipNet, err := net.ParseCIDR(controllerNetwork)
+		if err != nil {
+			log.Error("Failed to parse controller network", zap.String("ControllerNetwork", controllerNetwork), zap.Error(err))
+			return "", err
+		}
+		ipNets = append(ipNets, ipNet)
+	}
+
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		log.Error("Failed to get network interfaces", zap.Error(err))
+		return "", err
+	}
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			log.Error("Failed to get network interface addresses", zap.Error(err))
+			return "", err
+		}
+		for _, addr := range addrs {
+			for _, ipNet := range ipNets {
+				switch v := addr.(type) {
 				case *net.IPAddr:
-					if options.ControllerNetwork.Contains(v.IP) {
-						return "tcp/" + v.IP.String() + ":2019"
+					if ipNet.Contains(v.IP) {
+						return "tcp/" + v.IP.String() + ":2019", nil
 					}
-					break
 				case *net.IPNet:
-					if options.ControllerNetwork.Contains(v.IP) {
-						return "tcp/" + v.IP.String() + ":2019"
+					if ipNet.Contains(v.IP) {
+						return "tcp/" + v.IP.String() + ":2019", nil
 					}
-					break
 				}
 			}
 		}
 	}
-	return "tcp/localhost:2019"
+
+	return "tcp/0.0.0.0:2019", nil
 }
 
 func createOptions(flags caddycmd.Flags) *config.Options {
@@ -140,7 +199,8 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	processCaddyfileFlag := flags.Bool("process-caddyfile")
 	pollingIntervalFlag := flags.Duration("polling-interval")
 	modeFlag := flags.String("mode")
-	controllerSubnetFlag := flags.String("controller-network")
+	controllerNetwork := flags.String("controller-network")
+	controllerUrl := flags.String("controller-url")
 	dockerSocketsFlag := flags.String("docker-sockets")
 	dockerCertsPathFlag := flags.String("docker-certs-path")
 	dockerAPIsVersionFlag := flags.String("docker-apis-version")
@@ -186,19 +246,23 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		options.DockerAPIsVersion = strings.Split(dockerAPIsVersionFlag, ",")
 	}
 
-	if controllerIPRangeEnv := os.Getenv("CADDY_CONTROLLER_NETWORK"); controllerIPRangeEnv != "" {
-		_, ipNet, err := net.ParseCIDR(controllerIPRangeEnv)
-		if err != nil {
-			log.Error("Failed to parse CADDY_CONTROLLER_NETWORK", zap.String("CADDY_CONTROLLER_NETWORK", controllerIPRangeEnv), zap.Error(err))
-		} else if ipNet != nil {
-			options.ControllerNetwork = ipNet
+	if controllerNetworkEnv := os.Getenv("CADDY_CONTROLLER_NETWORK"); controllerNetworkEnv != "" {
+		options.ControllerNetwork = controllerNetworkEnv
+	} else {
+		options.ControllerNetwork = controllerNetwork
+	}
+
+	if controllerUrlEnv := os.Getenv("CADDY_CONTROLLER_URL"); controllerUrlEnv != "" {
+		if url, err := url.Parse(controllerUrlEnv); err != nil {
+			log.Error("Failed to parse CADDY_CONTROLLER_URL", zap.String("value", controllerUrlEnv), zap.Error(err))
+		} else {
+			options.ControllerUrl = url
 		}
-	} else if controllerSubnetFlag != "" {
-		_, ipNet, err := net.ParseCIDR(controllerSubnetFlag)
-		if err != nil {
-			log.Error("Failed to parse controller-network", zap.String("controller-network", controllerSubnetFlag), zap.Error(err))
-		} else if ipNet != nil {
-			options.ControllerNetwork = ipNet
+	} else if controllerUrl != "" {
+		if url, err := url.Parse(controllerUrl); err != nil {
+			log.Error("Failed to parse controller-url", zap.String("value", controllerUrl), zap.Error(err))
+		} else {
+			options.ControllerUrl = url
 		}
 	}
 

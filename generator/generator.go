@@ -29,7 +29,8 @@ type CaddyfileGenerator struct {
 	labelRegex           *regexp.Regexp
 	dockerClients        []docker.Client
 	dockerUtils          docker.Utils
-	ingressNetworks      map[string]bool
+	ingressNetworks      *NetworkGroup
+	controllerNetworks   *NetworkGroup
 	swarmIsAvailable     []bool
 	swarmIsAvailableTime time.Time
 }
@@ -52,11 +53,20 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 	var caddyfileBuffer bytes.Buffer
 
 	if g.ingressNetworks == nil {
-		ingressNetworks, err := g.getIngressNetworks(logger)
+		ingressNetworks, err := g.createNetworkGroup(logger, "ingress", g.options.IngressNetworks)
 		if err == nil {
 			g.ingressNetworks = ingressNetworks
 		} else {
 			logger.Error("Failed to get ingress networks", zap.Error(err))
+		}
+	}
+
+	if g.controllerNetworks == nil {
+		controllerNetworks, err := g.createNetworkGroup(logger, "controller", []string{g.options.ControllerNetwork})
+		if err == nil {
+			g.controllerNetworks = controllerNetworks
+		} else {
+			logger.Error("Failed to get controller networks", zap.Error(err))
 		}
 	}
 
@@ -119,17 +129,14 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		if err == nil {
 			for _, container := range containers {
 				if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {
-					ips, err := g.getContainerIPAddresses(&container, logger, false)
+					ips, err := g.getContainerIPAddresses(&container, logger, g.controllerNetworks)
 					if err != nil {
 						logger.Error("Failed to get Container IPs", zap.String("container", container.ID), zap.Error(err))
 					} else {
-						for _, ip := range ips {
-							if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
-								controlledServers = append(controlledServers, ip)
-							}
-						}
+						controlledServers = append(controlledServers, ips...)
 					}
 				}
+
 				containerCaddyfile, err := g.getContainerCaddyfile(&container, logger)
 				if err == nil {
 					caddyfileBlock.Merge(containerCaddyfile)
@@ -149,19 +156,14 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 					logger.Debug("Swarm service", zap.String("service", service.Spec.Name))
 
 					if _, isControlledServer := service.Spec.Labels[g.options.ControlledServersLabel]; isControlledServer {
-						ips, err := g.getServiceTasksIps(&service, logger, false)
+						ips, err := g.getServiceTasksIps(&service, logger, g.controllerNetworks)
 						if err != nil {
 							logger.Error("Failed to  get Swarm service IPs", zap.String("service", service.Spec.Name), zap.Error(err))
 						} else {
-							for _, ip := range ips {
-								if g.options.ControllerNetwork == nil || g.options.ControllerNetwork.Contains(net.ParseIP(ip)) {
-									controlledServers = append(controlledServers, ip)
-								}
-							}
+							controlledServers = append(controlledServers, ips...)
 						}
 					}
 
-					// caddy. labels based config
 					serviceCaddyfile, err := g.getServiceCaddyfile(&service, logger)
 					if err == nil {
 						caddyfileBlock.Merge(serviceCaddyfile)
@@ -211,8 +213,12 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 	return caddyfileContent, controlledServers
 }
 
-func (g *CaddyfileGenerator) checkSwarmAvailability(logger *zap.Logger, isFirstCheck bool) {
+// GetControllerNetworkGroup returns the controller network group
+func (g *CaddyfileGenerator) GetControllerNetworkGroup(logger *zap.Logger) (*NetworkGroup, error) {
+	return g.controllerNetworks, nil
+}
 
+func (g *CaddyfileGenerator) checkSwarmAvailability(logger *zap.Logger, isFirstCheck bool) {
 	for i, dockerClient := range g.dockerClients {
 		info, err := dockerClient.Info(context.Background())
 		if err == nil {
@@ -228,8 +234,10 @@ func (g *CaddyfileGenerator) checkSwarmAvailability(logger *zap.Logger, isFirstC
 	}
 }
 
-func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]bool, error) {
-	ingressNetworks := map[string]bool{}
+func (g *CaddyfileGenerator) createNetworkGroup(logger *zap.Logger, groupName string, input []string) (*NetworkGroup, error) {
+	networkGroup := NetworkGroup{
+		Name: groupName,
+	}
 
 	for _, dockerClient := range g.dockerClients {
 		if len(g.options.IngressNetworks) > 0 {
@@ -241,10 +249,30 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 				if dockerNetwork.Ingress {
 					continue
 				}
+				foundNetwork := false
 				for _, ingressNetwork := range g.options.IngressNetworks {
 					if dockerNetwork.Name == ingressNetwork {
-						ingressNetworks[dockerNetwork.ID] = true
-						ingressNetworks[dockerNetwork.Name] = true
+						foundNetwork = true
+						networkInfo := NetworkInfo{
+							ID:   dockerNetwork.ID,
+							Name: dockerNetwork.Name,
+						}
+						for _, ipamConfig := range dockerNetwork.IPAM.Config {
+							if _, ipNet, err := net.ParseCIDR(ipamConfig.Subnet); err == nil && ipNet != nil {
+								networkInfo.Subnets = append(networkInfo.Subnets, *ipNet)
+							}
+						}
+						networkGroup.Networks = append(networkGroup.Networks, &networkInfo)
+					}
+				}
+				if !foundNetwork {
+					if _, ipNet, err := net.ParseCIDR(g.options.ControllerNetwork); err == nil && ipNet != nil {
+						networkInfo := NetworkInfo{
+							Subnets: []net.IPNet{*ipNet},
+						}
+						networkGroup.Networks = append(networkGroup.Networks, &networkInfo)
+					} else {
+						logger.Warn("Controller network not found", zap.Any("network", g.ingressNetworks))
 					}
 				}
 			}
@@ -260,22 +288,30 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 			}
 
 			for _, network := range container.NetworkSettings.Networks {
-				networkInfo, err := dockerClient.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
+				dockerNetwork, err := dockerClient.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
 				if err != nil {
 					return nil, err
 				}
-				if networkInfo.Ingress {
+				if dockerNetwork.Ingress {
 					continue
 				}
-				ingressNetworks[networkInfo.ID] = true
-				ingressNetworks[networkInfo.Name] = true
+				networkInfo := NetworkInfo{
+					ID:   dockerNetwork.ID,
+					Name: dockerNetwork.Name,
+				}
+				for _, ipamConfig := range dockerNetwork.IPAM.Config {
+					if _, ipNet, err := net.ParseCIDR(ipamConfig.Subnet); err == nil && ipNet != nil {
+						networkInfo.Subnets = append(networkInfo.Subnets, *ipNet)
+					}
+				}
+				networkGroup.Networks = append(networkGroup.Networks, &networkInfo)
 			}
 		}
 	}
 
-	logger.Info("IngressNetworksMap", zap.String("ingres", fmt.Sprintf("%v", ingressNetworks)))
+	logger.Info("Network group created", zap.String("name", networkGroup.Name), zap.Any("networks", networkGroup.Networks))
 
-	return ingressNetworks, nil
+	return &networkGroup, nil
 }
 
 func (g *CaddyfileGenerator) filterLabels(labels map[string]string) map[string]string {

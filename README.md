@@ -449,11 +449,15 @@ Each caddy docker proxy instance can be executed in one of the following modes.
 
 Acts as a proxy to your Docker resources. The server starts without any configuration, and will not serve anything until it is configured by a "controller".
 
-In order to make a server discoverable and configurable by controllers, you need to mark it with label `caddy_controlled_server` and define the controller network via CLI option `controller-network` or environment variable `CADDY_CONTROLLER_NETWORK`.
+In order to make a server discoverable and configurable by controllers, you need to mark it with label `caddy_controlled_server`.
 
 Server instances doesn't need access to Docker host socket and you can run it in manager or worker nodes.
 
-[Configuration example](examples/distributed.yaml#L5)
+[Configuration example](examples/distributed-single-network.yaml#L5)
+
+When using a separate controller network, you must also configure the controller url via CLI option `controller-url` or environment variable `CADDY_CONTROLLER_URL`, that allows caddy server to fetch the controller networks configured in the controller.
+
+[Configuration example](examples/distributed-controller-network.yaml#L5)
 
 ### Controller
 
@@ -482,29 +486,42 @@ Run `caddy help docker-proxy` to see all available flags.
 ```
 Usage of docker-proxy:
   --caddyfile-path string
-        Path to a base Caddyfile that will be extended with Docker sites
+        Path to a base Caddyfile that will be extended with Docker sites. 
+        Applicable to modes: controller, standalone
   --controller-network string
-        Network allowed to configure Caddy server in CIDR notation. Ex: 10.200.200.0/24
+        Controller network name. Ex: caddy_controller.
+        Applicable to modes: controller
+  --controller-url string
+        Controller url, used by servers to fetch controller subnets. Ex: http://caddy-controller
+        Applicable to modes: server
   --ingress-networks string
         Comma separated name of ingress networks connecting Caddy servers to containers.
         When not defined, networks attached to controller container are considered ingress networks
+        Applicable to modes: controller, standalone
   --docker-sockets
         Comma separated docker sockets
         When not defined, DOCKER_HOST (or default docker socket if DOCKER_HOST not defined)
+        Applicable to modes: controller, standalone
   --docker-certs-path
         Comma separated cert path, you could use empty value when no cert path for the concern index docker socket like cert_path0,,cert_path2
+        Applicable to modes: controller, standalone
   --docker-apis-version
         Comma separated apis version, you could use empty value when no api version for the concern index docker socket like cert_path0,,cert_path2
+        Applicable to modes: controller, standalone
   --label-prefix string
         Prefix for Docker labels (default "caddy")
+        Applicable to modes: controller, standalone
   --mode
         Which mode this instance should run: standalone | controller | server
   --polling-interval duration
         Interval Caddy should manually check Docker for a new Caddyfile (default 30s)
+        Applicable to modes: controller, standalone
   --process-caddyfile
         Process Caddyfile before loading it, removing invalid servers (default true)
+        Applicable to modes: controller, standalone
   --proxy-service-tasks
         Proxy to service tasks instead of service load balancer (default true)
+        Applicable to modes: controller, standalone
 ```
 
 Those flags can also be set via environment variables:

@@ -92,12 +92,12 @@ func TestServices_DifferentNetwork(t *testing.T) {
 		"}\n"
 
 	const expectedLogs = commonLogs +
-		`WARN	Service is not in same network as caddy	{"service": "service", "serviceId": "SERVICE-ID"}` + newLine
+		`WARN	Service is not in network group	{"service": "service", "serviceId": "SERVICE-ID", "networkGroup": {"Name":"ingress","Networks":[{"ID":"network-id","Name":"network-name","Subnets":null}]}}` + newLine
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
 
-func TestServices_ManualIngressNetwork(t *testing.T) {
+func TestServices_ManualIngressAndControllerNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.NetworksData = []types.NetworkResource{
 		{
@@ -131,10 +131,11 @@ func TestServices_ManualIngressNetwork(t *testing.T) {
 		"	reverse_proxy service\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
+	const expectedLogs = otherIngressNetworksMapLog + otherControllerNetworksMapLog + swarmIsAvailableLog
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.IngressNetworks = []string{"other-network-name"}
+		options.ControllerNetwork = "other-network-name"
 	}, expectedCaddyfile, expectedLogs)
 }
 
@@ -169,7 +170,7 @@ func TestServices_SwarmDisabled(t *testing.T) {
 
 	const expectedCaddyfile = "# Empty caddyfile"
 
-	const expectedLogs = containerIdLog + ingressNetworksMapLog + swarmIsDisabledLog
+	const expectedLogs = containerIdLog + ingressNetworksGroupLog + containerIdLog + controllerNetworksGroupLog + swarmIsDisabledLog
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -318,14 +319,14 @@ func TestServiceTasks_DifferentNetwork(t *testing.T) {
 		"}\n"
 
 	const expectedLogs = commonLogs +
-		`WARN	Service is not in same network as caddy	{"service": "service", "serviceId": "SERVICEID"}` + newLine
+		`WARN	Service is not in network group	{"service": "service", "serviceId": "SERVICEID", "networkGroup": {"Name":"ingress","Networks":[{"ID":"network-id","Name":"network-name","Subnets":null}]}}` + newLine
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
 	}, expectedCaddyfile, expectedLogs)
 }
 
-func TestServiceTasks_ManualIngressNetwork(t *testing.T) {
+func TestServiceTasks_ManualIngressAndContorllerNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
 		{
@@ -374,11 +375,12 @@ func TestServiceTasks_ManualIngressNetwork(t *testing.T) {
 		"	reverse_proxy 10.0.0.1:5000\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
+	const expectedLogs = otherIngressNetworksMapLog + otherControllerNetworksMapLog + swarmIsAvailableLog
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
 		options.IngressNetworks = []string{"other-network-name"}
+		options.ControllerNetwork = "other-network-name"
 	}, expectedCaddyfile, expectedLogs)
 }
 
