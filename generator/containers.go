@@ -17,8 +17,18 @@ func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container, l
 func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container, logger *zap.Logger, ingress bool) ([]string, error) {
 	ips := []string{}
 
-	for _, network := range container.NetworkSettings.Networks {
-		if !ingress || g.ingressNetworks[network.NetworkID] {
+	ingressNetworkFromLabel, overrideNetwork := container.Labels[IngressNetworkLabel]
+
+	for networkName, network := range container.NetworkSettings.Networks {
+		include := false
+
+		if overrideNetwork {
+			include = networkName == ingressNetworkFromLabel
+		} else {
+			include = !ingress || g.ingressNetworks[network.NetworkID]
+		}
+
+		if include {
 			ips = append(ips, network.IPAddress)
 		}
 	}
