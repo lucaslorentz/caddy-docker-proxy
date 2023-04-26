@@ -145,6 +145,10 @@ func TestServices_OverrideIngressNetwork(t *testing.T) {
 			ID:   "other-network-id",
 			Name: "other-network-name",
 		},
+		{
+			ID:   "another-network-id",
+			Name: "another-network-name",
+		},
 	}
 	dockerClient.ServicesData = []swarm.Service{
 		{
@@ -153,7 +157,7 @@ func TestServices_OverrideIngressNetwork(t *testing.T) {
 				Annotations: swarm.Annotations{
 					Name: "service",
 					Labels: map[string]string{
-						"caddy_ingress_network":      "other-network",
+						"caddy_ingress_network":      "another-network",
 						fmtLabel("%s"):               "service.testdomain.com",
 						fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
 					},
@@ -175,7 +179,9 @@ func TestServices_OverrideIngressNetwork(t *testing.T) {
 
 	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
 
-	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.IngressNetworks = []string{"other-network-name"}
+	}, expectedCaddyfile, expectedLogs)
 }
 
 func TestServices_SwarmDisabled(t *testing.T) {
