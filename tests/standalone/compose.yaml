@@ -56,6 +56,18 @@ services:
       caddy.reverse_proxy: "{{upstreams 80}}"
       caddy.tls: "internal"
 
+  # Proxy to container
+  whoami4:
+    image: containous/whoami
+    networks:
+      - internal
+      - caddy
+    labels:
+      caddy: whoami4.example.com
+      caddy.reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: "internal"
+      caddy_ingress_network: caddy_test
+
   # Proxy with matches and route
   echo_0:
     image: containous/whoami
@@ -75,3 +87,6 @@ networks:
   caddy:
     name: caddy_test
     external: true
+  internal:
+    name: internal
+    internal: true
