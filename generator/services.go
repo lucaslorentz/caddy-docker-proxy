@@ -66,7 +66,7 @@ func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logger *
 		for _, task := range tasks {
 			if task.Status.State == swarm.TaskStateRunning {
 				hasRunningTasks = true
-				ingressNetworkFromLabel, overrideNetwork := task.Labels[IngressNetworkLabel]
+				ingressNetworkFromLabel, overrideNetwork := service.Spec.Labels[IngressNetworkLabel]
 
 				for _, networkAttachment := range task.NetworksAttachments {
 					include := false
