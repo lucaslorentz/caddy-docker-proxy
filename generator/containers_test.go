@@ -138,6 +138,52 @@ func TestContainers_ManualIngressNetworks(t *testing.T) {
 	}, expectedCaddyfile, expectedLogs)
 }
 
+func TestContainers_OverrideIngressNetworks(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.NetworksData = []types.NetworkResource{
+		{
+			ID:   "other-network-id",
+			Name: "other-network-name",
+		},
+		{
+			ID:   "another-network-id",
+			Name: "another-network-name",
+		},
+	}
+	dockerClient.ContainersData = []types.Container{
+		{
+			ID: "CONTAINER-ID",
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"other-network": {
+						IPAddress: "10.0.0.1",
+						NetworkID: "other-network-id",
+					},
+					"another-network": {
+						IPAddress: "10.0.0.2",
+						NetworkID: "other-network-id",
+					},
+				},
+			},
+			Labels: map[string]string{
+				"caddy_ingress_network":      "another-network",
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
+			},
+		},
+	}
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy 10.0.0.2\n" +
+		"}\n"
+
+	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
+
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.IngressNetworks = []string{"other-network-name"}
+	}, expectedCaddyfile, expectedLogs)
+}
+
 func TestContainers_Replicas(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{

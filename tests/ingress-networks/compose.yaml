@@ -11,6 +11,7 @@ services:
       - controller
       - ingress_0
       - ingress_1
+      - ingress_2
     environment:
       - CADDY_DOCKER_MODE=server
       - CADDY_CONTROLLER_NETWORK=10.200.200.0/24
@@ -54,11 +55,29 @@ services:
         caddy.reverse_proxy: "{{upstreams 80}}"
         caddy.tls: "internal"
 
+  # Proxy to service
+  whoami2:
+    image: containous/whoami
+    networks:
+      - internal
+      - ingress_2
+    deploy:
+      labels:
+        caddy: whoami2.example.com
+        caddy.reverse_proxy: "{{upstreams 80}}"
+        caddy.tls: "internal"
+        caddy_ingress_network: ingress_2
+
 networks:
   ingress_0:
     name: ingress_0
   ingress_1:
     name: ingress_1
+  ingress_2:
+    name: ingress_2
+  internal:
+    name: internal
+    internal: true
   controller:
     driver: overlay
     ipam:

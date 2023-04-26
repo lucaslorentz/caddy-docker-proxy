@@ -21,6 +21,8 @@ import (
 // DefaultLabelPrefix for caddy labels in docker
 const DefaultLabelPrefix = "caddy"
 
+const IngressNetworkLabel = "caddy_ingress_network"
+
 const swarmAvailabilityCacheInterval = 1 * time.Minute
 
 // CaddyfileGenerator generates caddyfile from docker configuration
