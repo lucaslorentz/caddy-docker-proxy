@@ -138,52 +138,6 @@ func TestServices_ManualIngressNetwork(t *testing.T) {
 	}, expectedCaddyfile, expectedLogs)
 }
 
-func TestServices_OverrideIngressNetwork(t *testing.T) {
-	dockerClient := createBasicDockerClientMock()
-	dockerClient.NetworksData = []types.NetworkResource{
-		{
-			ID:   "other-network-id",
-			Name: "other-network-name",
-		},
-		{
-			ID:   "another-network-id",
-			Name: "another-network-name",
-		},
-	}
-	dockerClient.ServicesData = []swarm.Service{
-		{
-			ID: "SERVICE-ID",
-			Spec: swarm.ServiceSpec{
-				Annotations: swarm.Annotations{
-					Name: "service",
-					Labels: map[string]string{
-						"caddy_ingress_network":      "another-network",
-						fmtLabel("%s"):               "service.testdomain.com",
-						fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
-					},
-				},
-			},
-			Endpoint: swarm.Endpoint{
-				VirtualIPs: []swarm.EndpointVirtualIP{
-					{
-						NetworkID: "other-network-id",
-					},
-				},
-			},
-		},
-	}
-
-	const expectedCaddyfile = "service.testdomain.com {\n" +
-		"	reverse_proxy service\n" +
-		"}\n"
-
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
-
-	testGeneration(t, dockerClient, func(options *config.Options) {
-		options.IngressNetworks = []string{"other-network-name"}
-	}, expectedCaddyfile, expectedLogs)
-}
-
 func TestServices_SwarmDisabled(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
@@ -418,6 +372,84 @@ func TestServiceTasks_ManualIngressNetwork(t *testing.T) {
 
 	const expectedCaddyfile = "service.testdomain.com {\n" +
 		"	reverse_proxy 10.0.0.1:5000\n" +
+		"}\n"
+
+	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
+
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.ProxyServiceTasks = true
+		options.IngressNetworks = []string{"other-network-name"}
+	}, expectedCaddyfile, expectedLogs)
+}
+
+func TestServiceTasks_OverrideIngressNetwork(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		{
+			ID: "SERVICEID",
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						"caddy_ingress_network":      "another-network",
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams 5000}}",
+					},
+				},
+			},
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					{
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+		},
+	}
+	dockerClient.NetworksData = []types.NetworkResource{
+		{
+			ID:   "other-network-id",
+			Name: "other-network-name",
+		},
+		{
+			ID:   "another-network-id",
+			Name: "another-network-name",
+		},
+	}
+	dockerClient.TasksData = []swarm.Task{
+		{
+			ServiceID: "SERVICEID",
+			NetworksAttachments: []swarm.NetworkAttachment{
+				{
+					Network: swarm.Network{
+						ID: "other-network-id",
+						Spec: swarm.NetworkSpec{
+							Annotations: swarm.Annotations{
+								Name: "other-network",
+							},
+						},
+					},
+					Addresses: []string{"10.0.0.1/24"},
+				},
+				{
+					Network: swarm.Network{
+						ID: "another-network-id",
+						Spec: swarm.NetworkSpec{
+							Annotations: swarm.Annotations{
+								Name: "another-network",
+							},
+						},
+					},
+					Addresses: []string{"10.0.0.2/24"},
+				},
+			},
+			DesiredState: swarm.TaskStateRunning,
+			Status:       swarm.TaskStatus{State: swarm.TaskStateRunning},
+		},
+	}
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy 10.0.0.2:5000\n" +
 		"}\n"
 
 	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog

@@ -20,12 +20,12 @@ func (g *CaddyfileGenerator) getServiceCaddyfile(service *swarm.Service, logger 
 	})
 }
 
-func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service, logger *zap.Logger, ingress bool) ([]string, error) {
+func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service, logger *zap.Logger, onlyIngressIps bool) ([]string, error) {
 	if g.options.ProxyServiceTasks {
-		return g.getServiceTasksIps(service, logger, ingress)
+		return g.getServiceTasksIps(service, logger, onlyIngressIps)
 	}
 
-	_, err := g.getServiceVirtualIps(service, logger, ingress)
+	_, err := g.getServiceVirtualIps(service, logger, onlyIngressIps)
 	if err != nil {
 		return nil, err
 	}
@@ -33,11 +33,11 @@ func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service, logg
 	return []string{service.Spec.Name}, nil
 }
 
-func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service, logger *zap.Logger, ingress bool) ([]string, error) {
+func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service, logger *zap.Logger, onlyIngressIps bool) ([]string, error) {
 	virtualIps := []string{}
 
 	for _, virtualIP := range service.Endpoint.VirtualIPs {
-		if !ingress || g.ingressNetworks[virtualIP.NetworkID] {
+		if !onlyIngressIps || g.ingressNetworks[virtualIP.NetworkID] {
 			virtualIps = append(virtualIps, virtualIP.Addr)
 		}
 	}
@@ -49,7 +49,7 @@ func (g *CaddyfileGenerator) getServiceVirtualIps(service *swarm.Service, logger
 	return virtualIps, nil
 }
 
-func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logger *zap.Logger, ingress bool) ([]string, error) {
+func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logger *zap.Logger, onlyIngressIps bool) ([]string, error) {
 	taskListFilter := filters.NewArgs()
 	taskListFilter.Add("service", service.ID)
 	taskListFilter.Add("desired-state", "running")
@@ -71,10 +71,12 @@ func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logger *
 				for _, networkAttachment := range task.NetworksAttachments {
 					include := false
 
-					if overrideNetwork {
+					if !onlyIngressIps {
+						include = true
+					} else if overrideNetwork {
 						include = networkAttachment.Network.Spec.Name == ingressNetworkFromLabel
 					} else {
-						include = !ingress || g.ingressNetworks[networkAttachment.Network.ID]
+						include = g.ingressNetworks[networkAttachment.Network.ID]
 					}
 
 					if include {
