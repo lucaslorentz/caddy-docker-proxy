@@ -138,6 +138,46 @@ func TestServices_ManualIngressNetwork(t *testing.T) {
 	}, expectedCaddyfile, expectedLogs)
 }
 
+func TestServices_OverrideIngressNetwork(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.NetworksData = []types.NetworkResource{
+		{
+			ID:   "other-network-id",
+			Name: "other-network-name",
+		},
+	}
+	dockerClient.ServicesData = []swarm.Service{
+		{
+			ID: "SERVICE-ID",
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						"caddy_ingress_network":      "other-network",
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
+					},
+				},
+			},
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					{
+						NetworkID: "other-network-id",
+					},
+				},
+			},
+		},
+	}
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy service\n" +
+		"}\n"
+
+	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
+
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
+}
+
 func TestServices_SwarmDisabled(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{
