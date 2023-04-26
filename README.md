@@ -330,7 +330,7 @@ For containers, that would be the container IPs.
 
 Only containers/services that are connected to Caddy ingress networks are used.
 
-:warning: caddy docker proxy does a best effort to automatically detect what are the ingress networks. But that logic fails on some scenarios: [#207](https://github.com/lucaslorentz/caddy-docker-proxy/issues/207). To have a more resilient solution, you can manually configure Caddy ingress network using CLI option `ingress-networks` or environment variable `CADDY_INGRESS_NETWORKS`.
+:warning: caddy docker proxy does a best effort to automatically detect what are the ingress networks. But that logic fails on some scenarios: [#207](https://github.com/lucaslorentz/caddy-docker-proxy/issues/207). To have a more resilient solution, you can manually configure Caddy ingress network using CLI option `ingress-networks`, environment variable `CADDY_INGRESS_NETWORKS` or label `caddy_ingress_network`.
 
 Usage: `upstreams [http|https] [port]`  
 
