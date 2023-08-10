@@ -3,3 +3,4 @@ vendor
 debug.test
 local
 .DS_Store
+buildenv_*

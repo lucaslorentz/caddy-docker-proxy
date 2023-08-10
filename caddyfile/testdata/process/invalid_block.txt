@@ -50,7 +50,7 @@ service3.example.com {
 	</html>` 200
 }
 ----------
-[ERROR]  Removing invalid block: parsing caddyfile tokens for 'reverse_proxy': Caddyfile:9 - Error during parsing: unrecognized subdirective invalid
+[ERROR]  Removing invalid block: parsing caddyfile tokens for 'reverse_proxy': Caddyfile:9 - Error during parsing: unrecognized subdirective invalid, import chain: ['']
 service1.example.com {
 	reverse_proxy service1:5000 {
 		invalid
