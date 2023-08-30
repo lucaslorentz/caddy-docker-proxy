@@ -1,7 +1,7 @@
 package caddyfile
 
 import (
-	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -14,7 +14,7 @@ func TestMerge(t *testing.T) {
 	const folder = "./testdata/merge"
 
 	// load the list of test files from the dir
-	files, err := ioutil.ReadDir(folder)
+	files, err := os.ReadDir(folder)
 	if err != nil {
 		t.Errorf("failed to read process dir: %s", err)
 	}
@@ -31,7 +31,7 @@ func TestMerge(t *testing.T) {
 		filename := f.Name()
 
 		t.Run(filename, func(t *testing.T) {
-			data, err := ioutil.ReadFile(folder + "/" + filename)
+			data, err := os.ReadFile(folder + "/" + filename)
 			if err != nil {
 				t.Errorf("failed to read %s dir: %s", filename, err)
 			}

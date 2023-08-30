@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"testing"
 
@@ -31,7 +31,7 @@ const swarmIsDisabledLog = `INFO	Swarm is available	{"new": false}` + newLine
 const commonLogs = containerIdLog + ingressNetworksMapLog + swarmIsAvailableLog
 
 func init() {
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 }
 
 func fmtLabel(s string) string {
