@@ -1,7 +1,7 @@
 package caddyfile
 
 import (
-	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -13,7 +13,7 @@ import (
 
 func TestProcessCaddyfile(t *testing.T) {
 	// load the list of test files from the dir
-	files, err := ioutil.ReadDir("./testdata/process")
+	files, err := os.ReadDir("./testdata/process")
 	if err != nil {
 		t.Errorf("failed to read process dir: %s", err)
 	}
@@ -30,7 +30,7 @@ func TestProcessCaddyfile(t *testing.T) {
 		filename := f.Name()
 
 		t.Run(filename, func(t *testing.T) {
-			data, err := ioutil.ReadFile("./testdata/process/" + filename)
+			data, err := os.ReadFile("./testdata/process/" + filename)
 			if err != nil {
 				t.Errorf("failed to read %s dir: %s", filename, err)
 			}

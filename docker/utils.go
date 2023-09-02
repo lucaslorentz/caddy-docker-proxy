@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"io/ioutil"
 	"os"
 	"regexp"
 	"runtime"
@@ -38,7 +37,7 @@ func (wrapper *dockerUtils) GetCurrentContainerID() (string, error) {
 }
 
 func (wrapper *dockerUtils) getCurrentContainerIDFromMountInfo() (string, error) {
-	bytes, err := ioutil.ReadFile("/proc/self/mountinfo")
+	bytes, err := os.ReadFile("/proc/self/mountinfo")
 	if err != nil {
 		return "", err
 	}
@@ -47,7 +46,7 @@ func (wrapper *dockerUtils) getCurrentContainerIDFromMountInfo() (string, error)
 }
 
 func (wrapper *dockerUtils) getCurrentContainerIDFromCGroup() (string, error) {
-	bytes, err := ioutil.ReadFile("/proc/self/cgroup")
+	bytes, err := os.ReadFile("/proc/self/cgroup")
 	if err != nil {
 		return "", err
 	}

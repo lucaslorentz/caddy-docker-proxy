@@ -2,7 +2,7 @@ package caddyfile
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -13,7 +13,7 @@ import (
 
 func TestLabelsToCaddyfile(t *testing.T) {
 	// load the list of test files from the dir
-	files, err := ioutil.ReadDir("./testdata/labels")
+	files, err := os.ReadDir("./testdata/labels")
 	if err != nil {
 		t.Errorf("failed to read labels dir: %s", err)
 	}
@@ -30,7 +30,7 @@ func TestLabelsToCaddyfile(t *testing.T) {
 		filename := f.Name()
 
 		t.Run(filename, func(t *testing.T) {
-			data, err := ioutil.ReadFile("./testdata/labels/" + filename)
+			data, err := os.ReadFile("./testdata/labels/" + filename)
 			if err != nil {
 				t.Errorf("failed to read %s dir: %s", filename, err)
 			}
