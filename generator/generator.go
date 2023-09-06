@@ -117,7 +117,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		}
 
 		// Add containers
-		containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
+		containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{All: g.options.ScanStoppedContainers})
 		if err == nil {
 			for _, container := range containers {
 				if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {

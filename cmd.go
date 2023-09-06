@@ -58,6 +58,9 @@ func init() {
 			fs.Bool("process-caddyfile", true,
 				"Process Caddyfile before loading it, removing invalid servers")
 
+			fs.Bool("scan-stopped-containers", true,
+				"Scan stopped containers and use its labels for caddyfile generation")
+
 			fs.Duration("polling-interval", 30*time.Second,
 				"Interval caddy should manually check docker for a new caddyfile")
 
@@ -138,6 +141,7 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	labelPrefixFlag := flags.String("label-prefix")
 	proxyServiceTasksFlag := flags.Bool("proxy-service-tasks")
 	processCaddyfileFlag := flags.Bool("process-caddyfile")
+	scanStoppedContainersFlag := flags.Bool("scan-stopped-containers")
 	pollingIntervalFlag := flags.Duration("polling-interval")
 	modeFlag := flags.String("mode")
 	controllerSubnetFlag := flags.String("controller-network")
@@ -231,6 +235,12 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		options.ProcessCaddyfile = isTrue.MatchString(processCaddyfileEnv)
 	} else {
 		options.ProcessCaddyfile = processCaddyfileFlag
+	}
+
+	if scanStoppedContainersEnv := os.Getenv("CADDY_DOCKER_SCAN_STOPPED_CONTAINERS"); scanStoppedContainersEnv != "" {
+		options.ScanStoppedContainers = isTrue.MatchString(scanStoppedContainersEnv)
+	} else {
+		options.ScanStoppedContainers = scanStoppedContainersFlag
 	}
 
 	if pollingIntervalEnv := os.Getenv("CADDY_DOCKER_POLLING_INTERVAL"); pollingIntervalEnv != "" {

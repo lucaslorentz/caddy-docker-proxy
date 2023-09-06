@@ -9,12 +9,13 @@ import (
 type Options struct {
 	CaddyfilePath          string
 	DockerSockets          []string
-	DockerCertsPath 	   []string
-	DockerAPIsVersion 	   []string
+	DockerCertsPath        []string
+	DockerAPIsVersion      []string
 	LabelPrefix            string
 	ControlledServersLabel string
 	ProxyServiceTasks      bool
 	ProcessCaddyfile       bool
+	ScanStoppedContainers  bool
 	PollingInterval        time.Duration
 	Mode                   Mode
 	Secret                 string
