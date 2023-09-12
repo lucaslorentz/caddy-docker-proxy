@@ -64,6 +64,9 @@ func init() {
 			fs.Duration("polling-interval", 30*time.Second,
 				"Interval caddy should manually check docker for a new caddyfile")
 
+			fs.Duration("event-throttle-interval", 100*time.Millisecond,
+				"Interval to throttle caddyfile updates triggered by docker events")
+
 			return fs
 		}(),
 	})
@@ -143,6 +146,7 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	processCaddyfileFlag := flags.Bool("process-caddyfile")
 	scanStoppedContainersFlag := flags.Bool("scan-stopped-containers")
 	pollingIntervalFlag := flags.Duration("polling-interval")
+	eventThrottleIntervalFlag := flags.Duration("event-throttle-interval")
 	modeFlag := flags.String("mode")
 	controllerSubnetFlag := flags.String("controller-network")
 	dockerSocketsFlag := flags.String("docker-sockets")
@@ -252,6 +256,17 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		}
 	} else {
 		options.PollingInterval = pollingIntervalFlag
+	}
+
+	if eventThrottleIntervalEnv := os.Getenv("CADDY_DOCKER_EVENT_THROTTLE_INTERVAL"); eventThrottleIntervalEnv != "" {
+		if p, err := time.ParseDuration(eventThrottleIntervalEnv); err != nil {
+			log.Error("Failed to parse CADDY_DOCKER_EVENT_THROTTLE_INTERVAL", zap.String("CADDY_DOCKER_EVENT_THROTTLE_INTERVAL", eventThrottleIntervalEnv), zap.Error(err))
+			options.EventThrottleInterval = pollingIntervalFlag
+		} else {
+			options.EventThrottleInterval = p
+		}
+	} else {
+		options.EventThrottleInterval = eventThrottleIntervalFlag
 	}
 
 	return options

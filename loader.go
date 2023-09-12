@@ -209,7 +209,7 @@ func (dockerLoader *DockerLoader) listenEvents() {
 
 				if update {
 					dockerLoader.skipEvents[i] = true
-					dockerLoader.timer.Reset(100 * time.Millisecond)
+					dockerLoader.timer.Reset(dockerLoader.options.EventThrottleInterval)
 				}
 			case err := <-errorChan:
 				cancel()

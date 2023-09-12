@@ -17,6 +17,7 @@ type Options struct {
 	ProcessCaddyfile       bool
 	ScanStoppedContainers  bool
 	PollingInterval        time.Duration
+	EventThrottleInterval  time.Duration
 	Mode                   Mode
 	Secret                 string
 	ControllerNetwork      *net.IPNet
