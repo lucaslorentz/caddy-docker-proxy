@@ -1,3 +1,4 @@
+// Copyright (c) 2023 The Caddy Author (https://github.com/caddyserver/caddy)
 package envfile
 
 import (

@@ -1,5 +1,7 @@
 // envfile provides a capability of maing environment variables
 // from a file accessible within the application.
+//
+// Copyright (c) 2023 The Caddy Authors (https://github.com/caddyserver/caddy)
 
 package envfile
 
