@@ -1,0 +1,31 @@
+version: '3.7'
+
+services:
+  caddy:
+    image: caddy-docker-proxy:local
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - caddy
+    environment:
+      - CADDY_DOCKER_CADDYFILE_PATH=/etc/caddy/Caddyfile
+    command: ["docker-proxy", "--envfile", "/etc/caddy/env"]
+    volumes:
+      - source: "./Caddyfile"
+        target: '/etc/caddy/Caddyfile'
+        type: bind
+      - source: "./Envfile"
+        target: "/etc/caddy/env"
+        type: bind
+      - source: "${DOCKER_SOCKET_PATH}"
+        target: "${DOCKER_SOCKET_PATH}"
+        type: ${DOCKER_SOCKET_TYPE}
+
+networks:
+  caddy:
+    name: caddy_test
+    external: true
+  internal:
+    name: internal
+    internal: true
