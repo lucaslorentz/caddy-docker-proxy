@@ -50,7 +50,7 @@ func init() {
 				"Path to a base Caddyfile that will be extended with docker sites")
 
 			fs.String("envfile", "",
-				"Environment file with environment variables")
+				"Environment file with environment variables in the KEY=VALUE format")
 
 			fs.String("label-prefix", generator.DefaultLabelPrefix,
 				"Prefix for Docker labels")
