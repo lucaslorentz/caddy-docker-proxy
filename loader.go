@@ -18,9 +18,9 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/joho/godotenv"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
-	"github.com/lucaslorentz/caddy-docker-proxy/v2/envfile"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/generator"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/utils"
 
@@ -68,10 +68,11 @@ func (dockerLoader *DockerLoader) Start() error {
 	log := logger()
 
 	if envFile := dockerLoader.options.EnvFile; envFile != "" {
-		if err := envfile.LoadFrom(dockerLoader.options.EnvFile); err != nil {
+		if err := godotenv.Load(dockerLoader.options.EnvFile); err != nil {
 			log.Error("Load variables from environment file failed", zap.Error(err), zap.String("envFile", dockerLoader.options.EnvFile))
 			return err
 		}
+		log.Info("environment file=%s loaded", zap.String("envFile", dockerLoader.options.EnvFile))
 	}
 
 	dockerClients := []docker.Client{}
