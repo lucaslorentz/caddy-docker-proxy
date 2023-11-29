@@ -483,6 +483,8 @@ Run `caddy help docker-proxy` to see all available flags.
 Usage of docker-proxy:
   --caddyfile-path string
         Path to a base Caddyfile that will be extended with Docker sites
+  --envfile
+        Path to an environment file with environment variables in the KEY=VALUE format to load into the Caddy process
   --controller-network string
         Network allowed to configure Caddy server in CIDR notation. Ex: 10.200.200.0/24
   --ingress-networks string
@@ -515,6 +517,7 @@ Those flags can also be set via environment variables:
 
 ```
 CADDY_DOCKER_CADDYFILE_PATH=<string>
+CADDY_DOCKER_ENVFILE=<string>
 CADDY_CONTROLLER_NETWORK=<string>
 CADDY_INGRESS_NETWORKS=<string>
 CADDY_DOCKER_SOCKETS=<string>

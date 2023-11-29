@@ -18,6 +18,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/joho/godotenv"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/generator"
@@ -59,103 +60,114 @@ func logger() *zap.Logger {
 
 // Start docker loader
 func (dockerLoader *DockerLoader) Start() error {
-	if !dockerLoader.initialized {
-		dockerLoader.initialized = true
-		log := logger()
-
-		dockerClients := []docker.Client{}
-		for i, dockerSocket := range dockerLoader.options.DockerSockets {
-			// cf https://github.com/docker/go-docker/blob/master/client.go
-			// setenv to use NewEnvClient
-			// or manually
-
-			os.Setenv("DOCKER_HOST", dockerSocket)
-
-			if len(dockerLoader.options.DockerCertsPath) >= i+1 && dockerLoader.options.DockerCertsPath[i] != "" {
-				os.Setenv("DOCKER_CERT_PATH", dockerLoader.options.DockerCertsPath[i])
-			} else {
-				os.Unsetenv("DOCKER_CERT_PATH")
-			}
-
-			if len(dockerLoader.options.DockerAPIsVersion) >= i+1 && dockerLoader.options.DockerAPIsVersion[i] != "" {
-				os.Setenv("DOCKER_API_VERSION", dockerLoader.options.DockerAPIsVersion[i])
-			} else {
-				os.Unsetenv("DOCKER_API_VERSION")
-			}
-
-			dockerClient, err := client.NewEnvClient()
-			if err != nil {
-				log.Error("Docker connection failed to docker specify socket", zap.Error(err), zap.String("DockerSocket", dockerSocket))
-				return err
-			}
-
-			dockerPing, err := dockerClient.Ping(context.Background())
-			if err != nil {
-				log.Error("Docker ping failed on specify socket", zap.Error(err), zap.String("DockerSocket", dockerSocket))
-				return err
-			}
-
-			dockerClient.NegotiateAPIVersionPing(dockerPing)
-
-			wrappedClient := docker.WrapClient(dockerClient)
-
-			dockerClients = append(dockerClients, wrappedClient)
-		}
-
-		// by default it will used the env docker
-		if len(dockerClients) == 0 {
-			dockerClient, err := client.NewEnvClient()
-			dockerLoader.options.DockerSockets = append(dockerLoader.options.DockerSockets, os.Getenv("DOCKER_HOST"))
-			if err != nil {
-				log.Error("Docker connection failed", zap.Error(err))
-				return err
-			}
-
-			dockerPing, err := dockerClient.Ping(context.Background())
-			if err != nil {
-				log.Error("Docker ping failed", zap.Error(err))
-				return err
-			}
-
-			dockerClient.NegotiateAPIVersionPing(dockerPing)
-
-			wrappedClient := docker.WrapClient(dockerClient)
-
-			dockerClients = append(dockerClients, wrappedClient)
-		}
-
-		dockerLoader.dockerClients = dockerClients
-		dockerLoader.skipEvents = make([]bool, len(dockerLoader.dockerClients))
-
-		dockerLoader.generator = generator.CreateGenerator(
-			dockerClients,
-			docker.CreateUtils(),
-			dockerLoader.options,
-		)
-
-		log.Info(
-			"Start",
-			zap.String("CaddyfilePath", dockerLoader.options.CaddyfilePath),
-			zap.String("LabelPrefix", dockerLoader.options.LabelPrefix),
-			zap.Duration("PollingInterval", dockerLoader.options.PollingInterval),
-			zap.Bool("ProxyServiceTasks", dockerLoader.options.ProxyServiceTasks),
-			zap.Bool("ProcessCaddyfile", dockerLoader.options.ProcessCaddyfile),
-			zap.Bool("ScanStoppedContainers", dockerLoader.options.ScanStoppedContainers),
-			zap.String("IngressNetworks", fmt.Sprintf("%v", dockerLoader.options.IngressNetworks)),
-			zap.Strings("DockerSockets", dockerLoader.options.DockerSockets),
-			zap.Strings("DockerCertsPath", dockerLoader.options.DockerCertsPath),
-			zap.Strings("DockerAPIsVersion", dockerLoader.options.DockerAPIsVersion),
-		)
-
-		ready := make(chan struct{})
-		dockerLoader.timer = time.AfterFunc(0, func() {
-			<-ready
-			dockerLoader.update()
-		})
-		close(ready)
-
-		go dockerLoader.monitorEvents()
+	if dockerLoader.initialized {
+		return nil
 	}
+
+	dockerLoader.initialized = true
+	log := logger()
+
+	if envFile := dockerLoader.options.EnvFile; envFile != "" {
+		if err := godotenv.Load(dockerLoader.options.EnvFile); err != nil {
+			log.Error("Load variables from environment file failed", zap.Error(err), zap.String("envFile", dockerLoader.options.EnvFile))
+			return err
+		}
+		log.Info("environment file loaded", zap.String("envFile", dockerLoader.options.EnvFile))
+	}
+
+	dockerClients := []docker.Client{}
+	for i, dockerSocket := range dockerLoader.options.DockerSockets {
+		// cf https://github.com/docker/go-docker/blob/master/client.go
+		// setenv to use NewEnvClient
+		// or manually
+
+		os.Setenv("DOCKER_HOST", dockerSocket)
+
+		if len(dockerLoader.options.DockerCertsPath) >= i+1 && dockerLoader.options.DockerCertsPath[i] != "" {
+			os.Setenv("DOCKER_CERT_PATH", dockerLoader.options.DockerCertsPath[i])
+		} else {
+			os.Unsetenv("DOCKER_CERT_PATH")
+		}
+
+		if len(dockerLoader.options.DockerAPIsVersion) >= i+1 && dockerLoader.options.DockerAPIsVersion[i] != "" {
+			os.Setenv("DOCKER_API_VERSION", dockerLoader.options.DockerAPIsVersion[i])
+		} else {
+			os.Unsetenv("DOCKER_API_VERSION")
+		}
+
+		dockerClient, err := client.NewEnvClient()
+		if err != nil {
+			log.Error("Docker connection failed to docker specify socket", zap.Error(err), zap.String("DockerSocket", dockerSocket))
+			return err
+		}
+
+		dockerPing, err := dockerClient.Ping(context.Background())
+		if err != nil {
+			log.Error("Docker ping failed on specify socket", zap.Error(err), zap.String("DockerSocket", dockerSocket))
+			return err
+		}
+
+		dockerClient.NegotiateAPIVersionPing(dockerPing)
+
+		wrappedClient := docker.WrapClient(dockerClient)
+
+		dockerClients = append(dockerClients, wrappedClient)
+	}
+
+	// by default it will used the env docker
+	if len(dockerClients) == 0 {
+		dockerClient, err := client.NewEnvClient()
+		dockerLoader.options.DockerSockets = append(dockerLoader.options.DockerSockets, os.Getenv("DOCKER_HOST"))
+		if err != nil {
+			log.Error("Docker connection failed", zap.Error(err))
+			return err
+		}
+
+		dockerPing, err := dockerClient.Ping(context.Background())
+		if err != nil {
+			log.Error("Docker ping failed", zap.Error(err))
+			return err
+		}
+
+		dockerClient.NegotiateAPIVersionPing(dockerPing)
+
+		wrappedClient := docker.WrapClient(dockerClient)
+
+		dockerClients = append(dockerClients, wrappedClient)
+	}
+
+	dockerLoader.dockerClients = dockerClients
+	dockerLoader.skipEvents = make([]bool, len(dockerLoader.dockerClients))
+
+	dockerLoader.generator = generator.CreateGenerator(
+		dockerClients,
+		docker.CreateUtils(),
+		dockerLoader.options,
+	)
+
+	log.Info(
+		"Start",
+		zap.String("CaddyfilePath", dockerLoader.options.CaddyfilePath),
+		zap.String("EnvFile", dockerLoader.options.EnvFile),
+		zap.String("LabelPrefix", dockerLoader.options.LabelPrefix),
+		zap.Duration("PollingInterval", dockerLoader.options.PollingInterval),
+		zap.Bool("ProxyServiceTasks", dockerLoader.options.ProxyServiceTasks),
+		zap.Bool("ProcessCaddyfile", dockerLoader.options.ProcessCaddyfile),
+		zap.Bool("ScanStoppedContainers", dockerLoader.options.ScanStoppedContainers),
+		zap.String("IngressNetworks", fmt.Sprintf("%v", dockerLoader.options.IngressNetworks)),
+		zap.Strings("DockerSockets", dockerLoader.options.DockerSockets),
+		zap.Strings("DockerCertsPath", dockerLoader.options.DockerCertsPath),
+		zap.Strings("DockerAPIsVersion", dockerLoader.options.DockerAPIsVersion),
+	)
+
+	ready := make(chan struct{})
+	dockerLoader.timer = time.AfterFunc(0, func() {
+		<-ready
+		dockerLoader.update()
+	})
+	close(ready)
+
+	go dockerLoader.monitorEvents()
 
 	return nil
 }

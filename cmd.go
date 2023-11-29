@@ -49,6 +49,9 @@ func init() {
 			fs.String("caddyfile-path", "",
 				"Path to a base Caddyfile that will be extended with docker sites")
 
+			fs.String("envfile", "",
+				"Environment file with environment variables in the KEY=VALUE format")
+
 			fs.String("label-prefix", generator.DefaultLabelPrefix,
 				"Prefix for Docker labels")
 
@@ -141,6 +144,7 @@ func getAdminListen(options *config.Options) string {
 
 func createOptions(flags caddycmd.Flags) *config.Options {
 	caddyfilePath := flags.String("caddyfile-path")
+	envFile := flags.String("envfile")
 	labelPrefixFlag := flags.String("label-prefix")
 	proxyServiceTasksFlag := flags.Bool("proxy-service-tasks")
 	processCaddyfileFlag := flags.Bool("process-caddyfile")
@@ -220,6 +224,12 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		options.CaddyfilePath = caddyfilePathEnv
 	} else {
 		options.CaddyfilePath = caddyfilePath
+	}
+
+	if envFileEnv := os.Getenv("CADDY_DOCKER_ENVFILE"); envFileEnv != "" {
+		options.EnvFile = envFileEnv
+	} else {
+		options.EnvFile = envFile
 	}
 
 	if labelPrefixEnv := os.Getenv("CADDY_DOCKER_LABEL_PREFIX"); labelPrefixEnv != "" {
