@@ -72,7 +72,7 @@ func (dockerLoader *DockerLoader) Start() error {
 			log.Error("Load variables from environment file failed", zap.Error(err), zap.String("envFile", dockerLoader.options.EnvFile))
 			return err
 		}
-		log.Info("environment file=%s loaded", zap.String("envFile", dockerLoader.options.EnvFile))
+		log.Info("environment file loaded", zap.String("envFile", dockerLoader.options.EnvFile))
 	}
 
 	dockerClients := []docker.Client{}
