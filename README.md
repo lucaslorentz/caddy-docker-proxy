@@ -27,7 +27,7 @@ Every time a Docker object changes, the plugin updates the Caddyfile and trigger
     + [Go templates](#go-templates)
   * [Template functions](#template-functions)
     + [upstreams](#upstreams)
-  * [Reverse proxy examples](#reverse-proxy-examples)
+  * [Examples](#examples)
   * [Docker configs](#docker-configs)
   * [Proxying services vs containers](#proxying-services-vs-containers)
     + [Services](#services)
@@ -363,7 +363,7 @@ caddy.reverse_proxy: "{{upstreams}}"
 reverse_proxy "192.168.0.1 192.168.0.2"
 ```
 
-## Reverse proxy examples
+## Examples
 Proxying all requests to a domain to the container
 ```yml
 caddy: example.com
@@ -406,6 +406,8 @@ Proxying multiple domains, with certificates for each
 caddy: example.com, example.org, www.example.com, www.example.org
 caddy.reverse_proxy: {{upstreams}}
 ```
+
+**More community-maintained examples are available in the [Wiki](https://github.com/lucaslorentz/caddy-docker-proxy/wiki).**
 
 ## Docker configs
 
