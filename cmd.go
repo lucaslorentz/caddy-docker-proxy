@@ -61,7 +61,7 @@ func init() {
 			fs.Bool("process-caddyfile", true,
 				"Process Caddyfile before loading it, removing invalid servers")
 
-			fs.Bool("scan-stopped-containers", true,
+			fs.Bool("scan-stopped-containers", false,
 				"Scan stopped containers and use its labels for caddyfile generation")
 
 			fs.Duration("polling-interval", 30*time.Second,
