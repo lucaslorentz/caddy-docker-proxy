@@ -22,22 +22,27 @@ func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container,
 	for networkName, network := range container.NetworkSettings.Networks {
 		include := false
 
-		if !onlyIngressIps  {
+		if !onlyIngressIps {
 			include = true
 		} else if overrideNetwork {
 			include = networkName == ingressNetworkFromLabel
 		} else {
-			include = g.ingressNetworks[network.NetworkID]
+			include = g.ingressNetworks[network.NetworkID] || g.ingressNetworks[networkName]
 		}
 
 		if include {
-			ips = append(ips, network.IPAddress)
+			var ipAddress string
+			if networkName == "host" && network.IPAddress == "" {
+				ipAddress = "127.0.0.1"
+			} else {
+				ipAddress = network.IPAddress
+			}
+			ips = append(ips, ipAddress)
 		}
 	}
 
 	if len(ips) == 0 {
 		logger.Warn("Container is not in same network as caddy", zap.String("container", container.ID), zap.String("container id", container.ID))
-
 	}
 
 	return ips, nil

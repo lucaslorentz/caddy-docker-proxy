@@ -138,6 +138,67 @@ func TestServices_ManualIngressNetwork(t *testing.T) {
 	}, expectedCaddyfile, expectedLogs)
 }
 
+func TestServices_UseLoopbackIPForHostNetwork(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.NetworksData = []types.NetworkResource{
+		{
+			ID:   "host-id",
+			Name: "host",
+		},
+	}
+	dockerClient.ServicesData = []swarm.Service{
+		{
+			ID: "SERVICEID",
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
+					},
+				},
+			},
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					{
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+		},
+	}
+	dockerClient.TasksData = []swarm.Task{
+		{
+			ServiceID: "SERVICEID",
+			NetworksAttachments: []swarm.NetworkAttachment{
+				{
+					Network: swarm.Network{
+						ID: "host-id",
+						Spec: swarm.NetworkSpec{
+							Annotations: swarm.Annotations{
+								Name: "host",
+							},
+						},
+					},
+				},
+			},
+			DesiredState: swarm.TaskStateRunning,
+			Status:       swarm.TaskStatus{State: swarm.TaskStateRunning},
+		},
+	}
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy 127.0.0.1\n" +
+		"}\n"
+
+	const expectedLogs = hostIngressNetworkMapLog + swarmIsAvailableLog
+
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.IngressNetworks = []string{"host"}
+		options.ProxyServiceTasks = true
+	}, expectedCaddyfile, expectedLogs)
+}
+
 func TestServices_SwarmDisabled(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ServicesData = []swarm.Service{

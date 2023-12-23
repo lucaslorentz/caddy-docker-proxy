@@ -184,6 +184,42 @@ func TestContainers_OverrideIngressNetworks(t *testing.T) {
 	}, expectedCaddyfile, expectedLogs)
 }
 
+func TestContainers_UseLoopbackIPForHostNetwork(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.NetworksData = []types.NetworkResource{
+		{
+			ID:   "host-id",
+			Name: "host",
+		},
+	}
+	dockerClient.ContainersData = []types.Container{
+		{
+			NetworkSettings: &types.SummaryNetworkSettings{
+				Networks: map[string]*network.EndpointSettings{
+					"host": {
+						IPAddress: "",
+						NetworkID: "host-id",
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
+			},
+		},
+	}
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy 127.0.0.1\n" +
+		"}\n"
+
+	const expectedLogs = hostIngressNetworkMapLog + swarmIsAvailableLog
+
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.IngressNetworks = []string{"host"}
+	}, expectedCaddyfile, expectedLogs)
+}
+
 func TestContainers_Replicas(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
