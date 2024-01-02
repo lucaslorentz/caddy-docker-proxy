@@ -90,7 +90,7 @@ $ docker-compose up -d
 version: '3.7'
 services:
   whoami:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - caddy
     labels:
