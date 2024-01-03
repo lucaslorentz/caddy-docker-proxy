@@ -16,7 +16,7 @@ services:
 
   # Proxy to service
   whoami0:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - caddy
     deploy:
@@ -27,7 +27,7 @@ services:
 
   # Proxy to service
   whoami1:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - caddy
     deploy:
@@ -38,7 +38,7 @@ services:
 
   # Proxy to container
   whoami2:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - caddy
     labels:
@@ -48,7 +48,7 @@ services:
 
   # Proxy to container
   whoami3:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - caddy
     labels:
@@ -58,7 +58,7 @@ services:
 
   # Proxy to container
   whoami4:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - internal
       - caddy
@@ -70,7 +70,7 @@ services:
 
   # Proxy with matches and route
   echo_0:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - caddy
     deploy:

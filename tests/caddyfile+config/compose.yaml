@@ -28,7 +28,7 @@ services:
         caddy.email: "test@example.com"
 
   service:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - caddy
     deploy:

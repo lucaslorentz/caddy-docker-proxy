@@ -90,7 +90,7 @@ $ docker-compose up -d
 version: '3.7'
 services:
   whoami:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - caddy
     labels:
@@ -646,9 +646,9 @@ $ docker stack rm caddy-docker-demo
 ```
 $ docker run --name caddy -d -p 443:443 -v /var/run/docker.sock:/var/run/docker.sock lucaslorentz/caddy-docker-proxy:ci-alpine
 
-$ docker run --name whoami0 -d -l caddy=whoami0.example.com -l "caddy.reverse_proxy={{upstreams 80}}" -l caddy.tls=internal containous/whoami
+$ docker run --name whoami0 -d -l caddy=whoami0.example.com -l "caddy.reverse_proxy={{upstreams 80}}" -l caddy.tls=internal traefik/whoami
 
-$ docker run --name whoami1 -d -l caddy=whoami1.example.com -l "caddy.reverse_proxy={{upstreams 80}}" -l caddy.tls=internal containous/whoami
+$ docker run --name whoami1 -d -l caddy=whoami1.example.com -l "caddy.reverse_proxy={{upstreams 80}}" -l caddy.tls=internal traefik/whoami
 
 $ curl -k --resolve whoami0.example.com:443:127.0.0.1 https://whoami0.example.com
 $ curl -k --resolve whoami1.example.com:443:127.0.0.1 https://whoami1.example.com
