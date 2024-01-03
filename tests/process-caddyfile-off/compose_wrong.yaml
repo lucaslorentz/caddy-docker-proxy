@@ -18,7 +18,7 @@ services:
 
   # Proxy to service
   whoami0:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - caddy
     deploy:
@@ -29,7 +29,7 @@ services:
 
   # Proxy to service
   whoami1:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - caddy
     deploy:

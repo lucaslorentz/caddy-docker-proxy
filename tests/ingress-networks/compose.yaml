@@ -35,7 +35,7 @@ services:
 
   # Proxy to service
   whoami0:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - ingress_0
     deploy:
@@ -46,7 +46,7 @@ services:
 
   # Proxy to service
   whoami1:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - ingress_1
     deploy:
@@ -57,7 +57,7 @@ services:
 
   # Proxy to service
   whoami2:
-    image: containous/whoami
+    image: traefik/whoami
     networks:
       - internal
       - ingress_2
