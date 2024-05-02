@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -38,7 +39,7 @@ type CaddyfileGenerator struct {
 
 // CreateGenerator creates a new generator
 func CreateGenerator(dockerClients []docker.Client, dockerUtils docker.Utils, options *config.Options) *CaddyfileGenerator {
-	var labelRegexString = fmt.Sprintf("^%s(_\\d+)?(\\.|$)", options.LabelPrefix)
+	var labelRegexString = fmt.Sprintf("^%s(_\\d+)?(\\.|$)", regexp.QuoteMeta(options.LabelPrefix))
 
 	return &CaddyfileGenerator{
 		options:          options,
@@ -284,6 +285,8 @@ func (g *CaddyfileGenerator) filterLabels(labels map[string]string) map[string]s
 	filteredLabels := map[string]string{}
 	for label, value := range labels {
 		if g.labelRegex.MatchString(label) {
+			// Canonicalize label prefix to "caddy", to prevent any meta characters in the prefix from causing problem in block parsing
+			label = strings.Replace(label, g.options.LabelPrefix, "caddy", 1)
 			filteredLabels[label] = value
 		}
 	}
