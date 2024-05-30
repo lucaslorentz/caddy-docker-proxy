@@ -12,7 +12,7 @@ jobs:
   steps:
   - task: GoTool@0
     inputs:
-      version: '1.20'
+      version: '1.22.3'
       GOPATH: '$(Agent.BuildDirectory)/go'
       GOBIN: '$(GOPATH)/bin'
 
