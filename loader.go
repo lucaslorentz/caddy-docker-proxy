@@ -154,6 +154,7 @@ func (dockerLoader *DockerLoader) Start() error {
 		zap.Bool("ProxyServiceTasks", dockerLoader.options.ProxyServiceTasks),
 		zap.Bool("ProcessCaddyfile", dockerLoader.options.ProcessCaddyfile),
 		zap.Bool("ScanStoppedContainers", dockerLoader.options.ScanStoppedContainers),
+		zap.String("LocalDomain", dockerLoader.options.LocalDomain),
 		zap.String("IngressNetworks", fmt.Sprintf("%v", dockerLoader.options.IngressNetworks)),
 		zap.Strings("DockerSockets", dockerLoader.options.DockerSockets),
 		zap.Strings("DockerCertsPath", dockerLoader.options.DockerCertsPath),

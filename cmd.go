@@ -153,6 +153,7 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	eventThrottleIntervalFlag := flags.Duration("event-throttle-interval")
 	modeFlag := flags.String("mode")
 	controllerSubnetFlag := flags.String("controller-network")
+	localDomainFlag := flags.String("local-domain")
 	dockerSocketsFlag := flags.String("docker-sockets")
 	dockerCertsPathFlag := flags.String("docker-certs-path")
 	dockerAPIsVersionFlag := flags.String("docker-apis-version")
