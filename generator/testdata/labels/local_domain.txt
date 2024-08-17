@@ -1,0 +1,6 @@
+caddy               = {{domain "app"}}
+caddy.reverse_proxy = {{upstreams}}
+----------
+app app.localdomain {
+	reverse_proxy target
+}

@@ -2,6 +2,7 @@ package generator
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	"github.com/docker/docker/api/types"
@@ -15,9 +16,19 @@ import (
 func (g *CaddyfileGenerator) getServiceCaddyfile(service *swarm.Service, logger *zap.Logger) (*caddyfile.Container, error) {
 	caddyLabels := g.filterLabels(service.Spec.Labels)
 
-	return labelsToCaddyfile(caddyLabels, service, func() ([]string, error) {
-		return g.getServiceProxyTargets(service, logger, true)
-	})
+	return labelsToCaddyfile(
+		caddyLabels,
+		service,
+		func() ([]string, error) {
+			return g.getServiceProxyTargets(service, logger, true)
+		},
+		func() (string, error) {
+			if g.options.LocalDomain == "" {
+				logger.Warn("local domain not defined in config")
+				return "", errors.New("Local domain not set")
+			}
+			return g.options.LocalDomain, nil
+		})
 }
 
 func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service, logger *zap.Logger, onlyIngressIps bool) ([]string, error) {

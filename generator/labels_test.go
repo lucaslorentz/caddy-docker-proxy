@@ -48,6 +48,8 @@ func TestLabelsToCaddyfile(t *testing.T) {
 		// convert the labels to a Caddyfile
 		caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
 			return []string{"target"}, nil
+		}, func() (string, error) {
+			return "localdomain", nil
 		})
 
 		// if the result is nil then we expect an empty Caddyfile

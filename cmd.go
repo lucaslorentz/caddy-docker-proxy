@@ -258,6 +258,12 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		options.ScanStoppedContainers = scanStoppedContainersFlag
 	}
 
+	if localDomainEnv := os.Getenv("CADDY_DOCKER_LOCAL_DOMAIN"); localDomainEnv != "" {
+		options.LocalDomain = localDomainEnv
+	} else {
+		options.LocalDomain = localDomainFlag
+	}
+
 	if pollingIntervalEnv := os.Getenv("CADDY_DOCKER_POLLING_INTERVAL"); pollingIntervalEnv != "" {
 		if p, err := time.ParseDuration(pollingIntervalEnv); err != nil {
 			log.Error("Failed to parse CADDY_DOCKER_POLLING_INTERVAL", zap.String("CADDY_DOCKER_POLLING_INTERVAL", pollingIntervalEnv), zap.Error(err))

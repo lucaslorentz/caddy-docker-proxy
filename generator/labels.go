@@ -9,9 +9,20 @@ import (
 )
 
 type targetsProvider func() ([]string, error)
+type localDomainProvider func() (string, error)
 
-func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTargets targetsProvider) (*caddyfile.Container, error) {
+func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTargets targetsProvider, getLocalDomain localDomainProvider) (*caddyfile.Container, error) {
 	funcMap := template.FuncMap{
+		"domain": func(options ...interface{}) (string, error) {
+			localDomain, err := getLocalDomain()
+			transformed := []string{}
+			for _, param := range options {
+				if host, isHost := param.(string); isHost {
+					transformed = append(transformed, host, host+"."+localDomain)
+				}
+			}
+			return strings.Join(transformed, " "), err
+		},
 		"upstreams": func(options ...interface{}) (string, error) {
 			targets, err := getTargets()
 			transformed := []string{}
