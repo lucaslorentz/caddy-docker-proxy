@@ -46,11 +46,13 @@ func TestLabelsToCaddyfile(t *testing.T) {
 		expectedCaddyfile = winNewlines.ReplaceAllString(expectedCaddyfile, "\n")
 
 		// convert the labels to a Caddyfile
-		caddyfileBlock, err := labelsToCaddyfile(labels, nil, func() ([]string, error) {
-			return []string{"target"}, nil
-		}, func() (string, error) {
-			return "localdomain", nil
-		})
+		caddyfileBlock, err := labelsToCaddyfile(labels, nil,
+			func() (string, error) {
+				return "localdomain", nil
+			},
+			func() ([]string, error) {
+				return []string{"target"}, nil
+			})
 
 		// if the result is nil then we expect an empty Caddyfile
 		// or an error message prefixed with "err: "

@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"text/template"
@@ -9,20 +10,10 @@ import (
 )
 
 type targetsProvider func() ([]string, error)
-type localDomainProvider func() (string, error)
+type domainProvider func() (string, error)
 
-func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTargets targetsProvider, getLocalDomain localDomainProvider) (*caddyfile.Container, error) {
+func labelsToCaddyfile(labels map[string]string, templateData interface{}, getDomain domainProvider, getTargets targetsProvider) (*caddyfile.Container, error) {
 	funcMap := template.FuncMap{
-		"domain": func(options ...interface{}) (string, error) {
-			localDomain, err := getLocalDomain()
-			transformed := []string{}
-			for _, param := range options {
-				if host, isHost := param.(string); isHost {
-					transformed = append(transformed, host, host+"."+localDomain)
-				}
-			}
-			return strings.Join(transformed, " "), err
-		},
 		"upstreams": func(options ...interface{}) (string, error) {
 			targets, err := getTargets()
 			transformed := []string{}
@@ -46,6 +37,13 @@ func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTa
 		},
 		"h2c": func() string {
 			return "h2c"
+		},
+		"addDomain": func(host string) (string, error) {
+			localDomain, err := getDomain()
+			if err == nil {
+				host = fmt.Sprintf("%[1]s %[1]s.%[2]s", host, localDomain)
+			}
+			return host, err
 		},
 	}
 

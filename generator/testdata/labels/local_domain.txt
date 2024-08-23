@@ -1,4 +1,4 @@
-caddy               = {{domain "app"}}
+caddy               = {{addDomain "app"}}
 caddy.reverse_proxy = {{upstreams}}
 ----------
 app app.localdomain {

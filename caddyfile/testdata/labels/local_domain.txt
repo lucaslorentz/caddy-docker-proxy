@@ -1,6 +1,0 @@
-caddy               = {{ host app}}
-caddy.reverse_proxy = {{""}}
-----------
-app, app.localdomain {
-	reverse_proxy
-}

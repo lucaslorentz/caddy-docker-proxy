@@ -3,6 +3,7 @@ package generator
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -288,4 +289,12 @@ func (g *CaddyfileGenerator) filterLabels(labels map[string]string) map[string]s
 		}
 	}
 	return filteredLabels
+}
+
+func (g *CaddyfileGenerator) getLocalDomain() (string, error) {
+	localDomain := g.options.LocalDomain
+	if localDomain == "" {
+		return "", errors.New("env variable LOCAL_DOMAIN is empty")
+	}
+	return localDomain, nil
 }
