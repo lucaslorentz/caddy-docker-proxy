@@ -2,7 +2,7 @@ module github.com/lucaslorentz/caddy-docker-proxy/v2
 
 go 1.21.0
 
-toolchain go1.22.3
+toolchain go1.22.8
 
 require (
 	github.com/caddyserver/caddy/v2 v2.8.4
