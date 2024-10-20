@@ -12,7 +12,7 @@ OUTPUT="type=local,dest=local"
 TAGS=
 TAGS_ALPINE=
 
-if [[ "${BUILD_SOURCEBRANCH}" == "refs/heads/master" ]]; then
+if [[ "${GITHUB_REF}" == "refs/heads/master" ]]; then
     echo "Building and pushing CI images"
 
     docker login -u lucaslorentz -p "$DOCKER_PASSWORD"
@@ -22,8 +22,8 @@ if [[ "${BUILD_SOURCEBRANCH}" == "refs/heads/master" ]]; then
     TAGS_ALPINE="-t lucaslorentz/caddy-docker-proxy:ci-alpine"
 fi
 
-if [[ "${BUILD_SOURCEBRANCH}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
-    RELEASE_VERSION=$(echo $BUILD_SOURCEBRANCH | cut -c11-)
+if [[ "${GITHUB_REF}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+    RELEASE_VERSION=$(echo $GITHUB_REF | cut -c11-)
 
     echo "Releasing version ${RELEASE_VERSION}..."
 
