@@ -1,0 +1,87 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - '*'
+
+jobs:
+  build_binaries:
+    name: Build Binaries
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.22.8
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          export PATH="$GOBIN:$PATH"
+          . build.sh
+        env:
+          ARTIFACTS: ${{ runner.temp }}/artifacts
+        shell: bash
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries
+          path: ${{ runner.temp }}/artifacts/binaries
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-20.04
+    needs: build_binaries
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: binaries
+          path: artifacts/binaries
+
+      - name: Run Docker Tests
+        run: . run-docker-tests-linux.sh
+        shell: bash
+
+      - name: Build Docker Images
+        run: ./build-images-linux.sh
+        env:
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        shell: bash
+
+  windows:
+    name: Windows
+    runs-on: windows-2022
+    needs: build_binaries
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: binaries
+          path: artifacts/binaries
+
+      # Uncomment this step if needed once windows docker tests are implemented
+      # - name: Run Docker Tests (Windows)
+      #   run: .\run-docker-tests-windows.sh
+      #   shell: bash
+
+      - name: Build Docker Images
+        run: ./build-images-windows.sh
+        env:
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        shell: bash
