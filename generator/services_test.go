@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/docker/docker/api/types/system"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
 )
 
@@ -161,7 +162,7 @@ func TestServices_SwarmDisabled(t *testing.T) {
 			},
 		},
 	}
-	dockerClient.InfoData = types.Info{
+	dockerClient.InfoData = system.Info{
 		Swarm: swarm.Info{
 			LocalNodeState: swarm.LocalNodeStateInactive,
 		},

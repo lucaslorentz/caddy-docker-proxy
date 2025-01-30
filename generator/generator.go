@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
@@ -117,7 +118,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		}
 
 		// Add containers
-		containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{All: g.options.ScanStoppedContainers})
+		containers, err := dockerClient.ContainerList(context.Background(), container.ListOptions{All: g.options.ScanStoppedContainers})
 		if err == nil {
 			for _, container := range containers {
 				if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {

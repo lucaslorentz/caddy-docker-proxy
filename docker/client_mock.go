@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/docker/docker/api/types/system"
 )
 
 // ClientMock allows easily mocking of docker client data
@@ -15,7 +17,7 @@ type ClientMock struct {
 	ConfigsData          []swarm.Config
 	TasksData            []swarm.Task
 	NetworksData         []types.NetworkResource
-	InfoData             types.Info
+	InfoData             system.Info
 	ContainerInspectData map[string]types.ContainerJSON
 	NetworkInspectData   map[string]types.NetworkResource
 	EventsChannel        chan events.Message
@@ -23,7 +25,7 @@ type ClientMock struct {
 }
 
 // ContainerList list all containers
-func (mock *ClientMock) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
+func (mock *ClientMock) ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
 	return mock.ContainersData, nil
 }
 
@@ -58,7 +60,7 @@ func (mock *ClientMock) NetworkList(ctx context.Context, options types.NetworkLi
 }
 
 // Info retrieves information about docker host
-func (mock *ClientMock) Info(ctx context.Context) (types.Info, error) {
+func (mock *ClientMock) Info(ctx context.Context) (system.Info, error) {
 	return mock.InfoData, nil
 }
 

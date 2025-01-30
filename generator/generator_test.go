@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/docker/docker/api/types/system"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
 	"github.com/stretchr/testify/assert"
@@ -165,7 +166,7 @@ func createBasicDockerClientMock() *docker.ClientMock {
 		ConfigsData:    []swarm.Config{},
 		TasksData:      []swarm.Task{},
 		NetworksData:   []types.NetworkResource{},
-		InfoData: types.Info{
+		InfoData: system.Info{
 			Swarm: swarm.Info{
 				LocalNodeState: swarm.LocalNodeStateActive,
 			},
