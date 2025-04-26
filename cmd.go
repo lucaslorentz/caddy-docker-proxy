@@ -27,7 +27,7 @@ func init() {
 		Flags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("docker-proxy", flag.ExitOnError)
 
-			fs.Bool("mode", false,
+			fs.String("mode", "standalone",
 				"Which mode this instance should run: standalone | controller | server")
 
 			fs.String("docker-sockets", "",
@@ -169,7 +169,6 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	switch mode {
 	case "controller":
 		options.Mode = config.Controller
-		break
 	case "server":
 		options.Mode = config.Server
 	default:
