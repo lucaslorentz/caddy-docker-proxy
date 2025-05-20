@@ -419,7 +419,7 @@ To proxy swarm services, labels should be defined at service level. In a docker-
 ```yml
 services:
   foo:
-    deploy:
+    deploy: # <-- labels should be _inside_ `deploy`
       labels:
         caddy: service.example.com
         caddy.reverse_proxy: {{upstreams}}
