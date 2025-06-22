@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
@@ -236,7 +237,7 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 
 	for _, dockerClient := range g.dockerClients {
 		if len(g.options.IngressNetworks) > 0 {
-			networks, err := dockerClient.NetworkList(context.Background(), types.NetworkListOptions{})
+			networks, err := dockerClient.NetworkList(context.Background(), network.ListOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -262,8 +263,8 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 				return nil, err
 			}
 
-			for _, network := range container.NetworkSettings.Networks {
-				networkInfo, err := dockerClient.NetworkInspect(context.Background(), network.NetworkID, types.NetworkInspectOptions{})
+			for _, networkEndpoint := range container.NetworkSettings.Networks {
+				networkInfo, err := dockerClient.NetworkInspect(context.Background(), networkEndpoint.NetworkID, network.InspectOptions{})
 				if err != nil {
 					return nil, err
 				}

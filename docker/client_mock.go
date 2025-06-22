@@ -6,6 +6,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/api/types/system"
 )
@@ -16,10 +17,10 @@ type ClientMock struct {
 	ServicesData         []swarm.Service
 	ConfigsData          []swarm.Config
 	TasksData            []swarm.Task
-	NetworksData         []types.NetworkResource
+	NetworksData         []network.Summary
 	InfoData             system.Info
 	ContainerInspectData map[string]types.ContainerJSON
-	NetworkInspectData   map[string]types.NetworkResource
+	NetworkInspectData   map[string]network.Inspect
 	EventsChannel        chan events.Message
 	ErrorsChannel        chan error
 }
@@ -55,7 +56,7 @@ func (mock *ClientMock) ConfigList(ctx context.Context, options types.ConfigList
 }
 
 // NetworkList list all networks
-func (mock *ClientMock) NetworkList(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error) {
+func (mock *ClientMock) NetworkList(ctx context.Context, options network.ListOptions) ([]network.Summary, error) {
 	return mock.NetworksData, nil
 }
 
@@ -70,7 +71,7 @@ func (mock *ClientMock) ContainerInspect(ctx context.Context, containerID string
 }
 
 // NetworkInspect returns information about a specific network
-func (mock *ClientMock) NetworkInspect(ctx context.Context, networkID string, options types.NetworkInspectOptions) (types.NetworkResource, error) {
+func (mock *ClientMock) NetworkInspect(ctx context.Context, networkID string, options network.InspectOptions) (network.Inspect, error) {
 	return mock.NetworkInspectData[networkID], nil
 }
 
@@ -85,6 +86,6 @@ func (mock *ClientMock) ConfigInspectWithRaw(ctx context.Context, id string) (sw
 }
 
 // Events listen for events in docker
-func (mock *ClientMock) Events(ctx context.Context, options types.EventsOptions) (<-chan events.Message, <-chan error) {
+func (mock *ClientMock) Events(ctx context.Context, options events.ListOptions) (<-chan events.Message, <-chan error) {
 	return mock.EventsChannel, mock.ErrorsChannel
 }

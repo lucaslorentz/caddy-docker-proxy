@@ -165,7 +165,7 @@ func createBasicDockerClientMock() *docker.ClientMock {
 		ServicesData:   []swarm.Service{},
 		ConfigsData:    []swarm.Config{},
 		TasksData:      []swarm.Task{},
-		NetworksData:   []types.NetworkResource{},
+		NetworksData:   []network.Summary{},
 		InfoData: system.Info{
 			Swarm: swarm.Info{
 				LocalNodeState: swarm.LocalNodeStateActive,
@@ -182,7 +182,7 @@ func createBasicDockerClientMock() *docker.ClientMock {
 				},
 			},
 		},
-		NetworkInspectData: map[string]types.NetworkResource{
+		NetworkInspectData: map[string]network.Summary{
 			caddyNetworkID: {
 				Ingress: false,
 				ID:      caddyNetworkID,

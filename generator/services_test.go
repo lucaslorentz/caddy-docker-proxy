@@ -3,7 +3,7 @@ package generator
 import (
 	"testing"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/api/types/system"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
@@ -100,7 +100,7 @@ func TestServices_DifferentNetwork(t *testing.T) {
 
 func TestServices_ManualIngressNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
-	dockerClient.NetworksData = []types.NetworkResource{
+	dockerClient.NetworksData = []network.Summary{
 		{
 			ID:   "other-network-id",
 			Name: "other-network-name",
@@ -349,7 +349,7 @@ func TestServiceTasks_ManualIngressNetwork(t *testing.T) {
 			},
 		},
 	}
-	dockerClient.NetworksData = []types.NetworkResource{
+	dockerClient.NetworksData = []network.Summary{
 		{
 			ID:   "other-network-id",
 			Name: "other-network-name",
@@ -407,7 +407,7 @@ func TestServiceTasks_OverrideIngressNetwork(t *testing.T) {
 			},
 		},
 	}
-	dockerClient.NetworksData = []types.NetworkResource{
+	dockerClient.NetworksData = []network.Summary{
 		{
 			ID:   "other-network-id",
 			Name: "other-network-name",
