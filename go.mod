@@ -6,7 +6,7 @@ toolchain go1.24.4
 
 require (
 	github.com/caddyserver/caddy/v2 v2.10.0
-	github.com/docker/docker v28.3.2+incompatible
+	github.com/docker/docker v28.3.3+incompatible
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/zap v1.27.0
