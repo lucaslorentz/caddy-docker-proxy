@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"sort"
 
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
 )
@@ -14,6 +15,7 @@ func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTa
 	funcMap := template.FuncMap{
 		"upstreams": func(options ...interface{}) (string, error) {
 			targets, err := getTargets()
+			sort.Strings(targets)
 			transformed := []string{}
 			for _, target := range targets {
 				for _, param := range options {
@@ -25,6 +27,7 @@ func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTa
 				}
 				transformed = append(transformed, target)
 			}
+			sort.Strings(transformed)
 			return strings.Join(transformed, " "), err
 		},
 		"http": func() string {
