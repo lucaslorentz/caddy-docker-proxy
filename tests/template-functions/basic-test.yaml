@@ -1,0 +1,27 @@
+version: '3.7'
+
+services:
+  caddy:
+    image: caddy-docker-proxy:local
+    ports:
+      - 9080:80
+      - 9443:443
+    networks:
+      - caddy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # Basic test container
+  whoami:
+    image: traefik/whoami
+    networks:
+      - caddy
+    labels:
+      caddy: whoami.example.com
+      caddy.reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: internal
+
+networks:
+  caddy:
+    name: caddy_test
+    external: true

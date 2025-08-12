@@ -1,0 +1,3 @@
+FROM caddy:2-alpine
+COPY artifacts/binaries/linux/amd64/caddy /usr/bin/caddy
+CMD ["caddy", "docker-proxy"]

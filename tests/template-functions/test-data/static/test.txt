@@ -1,0 +1,2 @@
+Volume Test File
+This text file demonstrates volume mount access through template functions.

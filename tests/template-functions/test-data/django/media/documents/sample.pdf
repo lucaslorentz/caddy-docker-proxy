@@ -1,0 +1,3 @@
+%PDF-1.4 Mock PDF Content
+This is a mock PDF file for testing Django media file serving.
+In a real scenario, this would be a binary PDF file uploaded by users.

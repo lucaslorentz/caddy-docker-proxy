@@ -1,0 +1,56 @@
+version: '3.7'
+
+services:
+  caddy:
+    image: caddy-docker-proxy:local
+    ports:
+      - 9080:80
+      - 9443:443
+    networks:
+      - caddy
+    environment:
+      - DOMAIN_NAME=myapp.local
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount test static files directly into Caddy
+      - ./test-data/static:/srv/static:ro
+    labels:
+      # Global configuration to use Let's Encrypt staging
+      caddy_global: |
+        {
+          acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+        }
+
+  # Test Environment Variable Functions
+  env-test:
+    image: traefik/whoami
+    networks:
+      - caddy
+    environment:
+      - APP_NAME=testapp
+      - APP_VERSION=1.0
+      - DEBUG=true
+    labels:
+      caddy: env.example.com
+      # These will fail gracefully if not implemented yet
+      caddy.route.0_path: "/config"
+      caddy.route.0_respond: "200 APP_NAME={{env \"APP_NAME\"}} VERSION={{env \"APP_VERSION\"}} DEBUG={{env \"DEBUG\"}}"
+      caddy.route.1_reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: internal
+
+  # Test Container Name Function  
+  metadata-test:
+    image: traefik/whoami
+    networks:
+      - caddy
+    labels:
+      caddy: metadata.example.com
+      caddy.route.0_path: "/info"
+      caddy.route.0_respond: "200 Container={{containerName}} Image={{imageName}}"
+      caddy.route.1_reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: internal
+
+networks:
+  caddy:
+    name: caddy_test
+    external: true

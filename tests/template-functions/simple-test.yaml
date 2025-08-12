@@ -1,0 +1,63 @@
+version: '3.8'
+
+networks:
+  caddy:
+
+services:
+  caddy:
+    image: caddy-docker-proxy:local
+    ports:
+      - "9080:80"
+      - "9443:443"
+    networks:
+      - caddy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - caddy_data:/data
+      - ./test-data:/srv:ro
+    environment:
+      - CADDY_DOCKER_MODE=standalone
+      - CADDY_DOCKER_POLLING_INTERVAL=5s
+    restart: unless-stopped
+    labels:
+      # Global configuration to use Let's Encrypt staging
+      caddy_global: |
+        {
+          acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+        }
+
+  # Simple test: Container name function
+  test-container-name:
+    image: traefik/whoami
+    networks:
+      - caddy
+    environment:
+      - APP_NAME=testapp
+      - APP_VERSION=1.0
+    labels:
+      caddy: container-name.example.com
+      caddy.respond: "Container Name: {{containerName}}"
+      caddy.tls: internal
+
+  # Simple test: Network functions
+  test-network:
+    image: traefik/whoami
+    networks:
+      - caddy
+    labels:
+      caddy: network.example.com
+      caddy.respond: "IP: {{primaryIP}} Networks: {{networks}}"
+      caddy.tls: internal
+
+  # Simple test: Basic reverse proxy (should always work)
+  test-basic:
+    image: traefik/whoami
+    networks:
+      - caddy
+    labels:
+      caddy: basic.example.com
+      caddy.reverse_proxy: "{{upstreams}}"
+      caddy.tls: internal
+
+volumes:
+  caddy_data:

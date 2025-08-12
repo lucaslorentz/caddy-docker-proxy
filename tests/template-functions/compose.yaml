@@ -1,0 +1,412 @@
+version: '3.7'
+
+services:
+  caddy:
+    image: caddy-docker-proxy:local
+    ports:
+      - 9080:80
+      - 9443:443
+    networks:
+      - caddy
+      - backend
+      - management
+    environment:
+      - DOMAIN_NAME=myapp.local
+      - AUTH_BACKEND_URL=http://django-combined:8000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount Django volumes directly into Caddy for serving
+      - django-static:/srv/django-static:ro
+      - django-media:/srv/django-media:ro
+      - ./test-data/django/static:/srv/django-static:ro
+      - ./test-data/django/media:/srv/django-media:ro
+    labels:
+      # Global configuration to use Let's Encrypt staging
+      caddy_global: |
+        {
+          acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+        }
+      # Django Static Files - Served directly by Caddy main container
+      caddy_0: "static.{{env \"DOMAIN_NAME\"}}"
+      caddy_0.root: "* /srv/django-static"
+      caddy_0.file_server: ""
+      # Cache static files aggressively
+      caddy_0.header.Cache-Control: "public, max-age=31536000"
+      caddy_0.header.X-Served-By: "caddy-main"
+      caddy_0.header.X-Static-Path: "/srv/django-static"
+      caddy_0.tls: "internal"
+      
+      # Django Media Files - Served directly by Caddy main container  
+      caddy_1: "media.{{env \"DOMAIN_NAME\"}}"
+      # Protected media serving - check auth first
+      caddy_1.route.0_@protected.path: "/protected/*"
+      caddy_1.route.0_forward_auth: "@protected {{env \"AUTH_BACKEND_URL\"}}/api/auth/"
+      caddy_1.route.0_root: "@protected /srv/django-media"
+      caddy_1.route.0_file_server: "@protected"
+      # Public media files (no auth required)  
+      caddy_1.route.1_@public.path: "/public/*"
+      caddy_1.route.1_root: "@public /srv/django-media"
+      caddy_1.route.1_file_server: "@public"
+      # Headers for media files
+      caddy_1.header.X-Served-By: "caddy-main"
+      caddy_1.header.X-Media-Path: "/srv/django-media"
+      caddy_1.header.X-Content-Type-Options: "nosniff"
+      caddy_1.tls: "internal"
+
+  # Test Volume/Storage Functions
+  static-server:
+    image: nginx:alpine
+    networks:
+      - caddy
+    volumes:
+      - ./test-data/static:/usr/share/nginx/html:ro
+    labels:
+      caddy: static.example.com
+      caddy.root: "* {{mountSource \"/usr/share/nginx/html\"}}"
+      caddy.file_server: ""
+      caddy.tls: internal
+
+  # Test Mixed Static + API (Volume + Reverse Proxy)
+  mixed-app:
+    image: nginx:alpine
+    networks:
+      - caddy
+    volumes:
+      - ./test-data/webapp:/var/www/html:ro
+    labels:
+      caddy: mixed.example.com
+      # Serve static files first
+      caddy.route.0_@static.file: "{path} {path}.html {path}/index.html"
+      caddy.route.0_root: "@static {{mountSource \"/var/www/html\"}}"
+      caddy.route.0_file_server: "@static"
+      # Proxy API requests
+      caddy.route.1_@api.path_regexp: "^/api/"
+      caddy.route.1_reverse_proxy: "@api {{upstreams 80}}"
+      caddy.tls: internal
+
+  # Test Environment Variable Functions
+  env-app:
+    image: traefik/whoami
+    networks:
+      - caddy
+    environment:
+      - APP_NAME=testapp
+      - APP_VERSION=1.0
+      - APP_ENV=testing
+      - DEBUG=true
+    labels:
+      caddy: env-config.example.com
+      caddy.route.0_path: "/config"
+      caddy.route.0_respond: |
+        200 {
+          body "APP_NAME={{env \"APP_NAME\"}} APP_VERSION={{env \"APP_VERSION\"}} ENV={{env \"APP_ENV\"}} DEBUG={{env \"DEBUG\"}}"
+        }
+      caddy.route.1_reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: internal
+
+  # Test Environment-Based Authentication
+  auth-app:
+    image: traefik/whoami
+    networks:
+      - caddy
+    environment:
+      - ADMIN_USER=admin
+      - ADMIN_PASS=secret123
+      - ENABLE_AUTH=true
+    labels:
+      caddy: auth.example.com
+      caddy.basicauth: "{{if env \"ENABLE_AUTH\"}}/admin {{env \"ADMIN_USER\"}} {{env \"ADMIN_PASS\"}}{{end}}"
+      caddy.route.0_path: "/admin"
+      caddy.route.0_respond: |
+        200 {
+          body "Admin Access Granted"
+        }
+      caddy.route.1_reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: internal
+
+  # Test Network/Port Functions
+  network-app:
+    image: traefik/whoami
+    networks:
+      - caddy
+      - backend
+    labels:
+      caddy: network-info.example.com
+      caddy.route.0_path: "/info"
+      caddy.route.0_respond: |
+        200 {
+          body "Primary IP: {{primaryIP}} Networks: {{range networks}}{{.}} {{end}}"
+        }
+      caddy.route.1_reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: internal
+
+  # Test Multi-Port Routing
+  multi-port-app:
+    image: traefik/whoami
+    networks:
+      - caddy
+      - backend
+    ports:
+      - "8180:80"
+      - "9090:80"
+    labels:
+      caddy: multi-port.example.com
+      caddy.route.0_path: "/api/*"
+      caddy.route.0_respond: |
+        200 {
+          body "API Port: {{portMapping 8180}}"
+        }
+      caddy.route.1_path: "/admin/*"
+      caddy.route.1_respond: |
+        200 {
+          body "Admin Port: {{portMapping 9090}}"
+        }
+      caddy.route.2_reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: internal
+
+  # Test Container State Functions
+  health-app:
+    image: traefik/whoami
+    networks:
+      - caddy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      retries: 3
+      start_period: 5s
+    labels:
+      caddy: status.example.com
+      caddy.route.0_path: "/status"
+      caddy.route.0_respond: |
+        200 {
+          body "Container: {{if isRunning}}running{{else}}stopped{{end}} Healthy: {{isHealthy}} Uptime: {{uptime}}"
+        }
+      caddy.route.1_path: "/health"
+      caddy.route.1_respond: "200 OK"
+      caddy.route.2_reverse_proxy: "{{if isRunning}}{{upstreams 80}}{{end}}"
+      caddy.respond: "{{if not (isRunning)}}503 Service Unavailable{{end}}"
+      caddy.tls: internal
+
+  # Test Label/Metadata Functions
+  metadata-app:
+    image: nginx:alpine
+    networks:
+      - caddy
+    labels:
+      caddy: metadata.example.com
+      app.name: test-app
+      app.version: v2.1.0
+      app.tier: frontend
+      caddy.route.0_path: "/info"
+      caddy.route.0_respond: |
+        200 {
+          body "Container: {{containerName}} Image: {{imageName}} Tag: {{imageTag}} App: {{label \"app.name\"}}"
+        }
+      caddy.route.1_reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: internal
+
+  # Test Dynamic Configuration from Labels
+  dynamic-config-app:
+    image: traefik/whoami
+    networks:
+      - caddy
+    labels:
+      caddy: dynamic-config.example.com
+      app.rate_limit: "100"
+      app.rate_window: "1m"
+      app.cors_origin: "https://example.com"
+      caddy.rate_limit: "{{label \"app.rate_limit\"}} {{label \"app.rate_window\"}}"
+      caddy.header.Access-Control-Allow-Origin: "{{label \"app.cors_origin\"}}"
+      caddy.route.0_path: "/config"
+      caddy.route.0_respond: |
+        200 {
+          body "Rate Limit: {{label \"app.rate_limit\"}} Window: {{label \"app.rate_window\"}} CORS: {{label \"app.cors_origin\"}}"
+        }
+      caddy.route.1_reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: internal
+
+  # Test Complex Real-World Scenario: React App with API Backend
+  react-frontend:
+    image: nginx:alpine
+    networks:
+      - caddy
+    volumes:
+      - ./test-data/react-build:/usr/share/nginx/html:ro
+    environment:
+      - NODE_ENV=production
+    labels:
+      caddy: webapp.example.com
+      # Serve React static files
+      caddy.root: "* {{mountSource \"/usr/share/nginx/html\"}}"
+      caddy.file_server: ""
+      # Proxy API calls to backend
+      caddy.route.0_@api.path: "/api/*"
+      caddy.route.0_reverse_proxy: "@api api-backend:3000"
+      # Add environment headers
+      caddy.header.X-Environment: "{{env \"NODE_ENV\"}}"
+      caddy.header.X-Container: "{{containerName}}"
+      caddy.tls: internal
+
+  # API Backend for React app
+  api-backend:
+    image: traefik/whoami
+    networks:
+      - caddy
+    environment:
+      - NODE_ENV=production
+    labels:
+      # This container doesn't get direct access, only through frontend proxy
+      caddy.route.0_path: "/api/data"
+      caddy.route.0_respond: |
+        200 {
+          body "API Data from {{containerName}}"
+        }
+
+  # Test Conditional Configuration
+  conditional-app:
+    image: traefik/whoami
+    networks:
+      - caddy
+    environment:
+      - AUTH_ENABLED=true
+      - MAINTENANCE_MODE=false
+    labels:
+      caddy: conditional.example.com
+      app.auth_user: user
+      app.auth_pass: pass
+      # Conditional authentication
+      caddy.basicauth: "{{if env \"AUTH_ENABLED\"}}/protected {{label \"app.auth_user\"}} {{label \"app.auth_pass\"}}{{end}}"
+      # Conditional maintenance mode
+      caddy.respond: "{{if env \"MAINTENANCE_MODE\"}}503 Under Maintenance{{end}}"
+      caddy.route.0_path: "/protected"
+      caddy.route.0_respond: |
+        200 {
+          body "Protected Content - Auth: {{env \"AUTH_ENABLED\"}} Maintenance: {{env \"MAINTENANCE_MODE\"}}"
+        }
+      caddy.route.1_reverse_proxy: "{{if not (env \"MAINTENANCE_MODE\")}}{{upstreams 80}}{{end}}"
+      caddy.tls: internal
+
+  # Django Real-World Scenario: ASGI/WSGI with Static and Media Files
+  django-wsgi:
+    image: python:3.11-slim
+    command: >
+      sh -c "pip install hypercorn django gunicorn &&
+             echo 'from django.http import JsonResponse; from django.urls import path; from django.conf import settings; settings.configure(DEBUG=True, ROOT_URLCONF=__name__); urlpatterns = [path(\"health/\", lambda r: JsonResponse({\"status\": \"healthy\", \"service\": \"wsgi\"})), path(\"api/users/\", lambda r: JsonResponse({\"users\": [\"alice\", \"bob\"], \"service\": \"wsgi\"})), path(\"admin/login/\", lambda r: JsonResponse({\"admin\": \"login\", \"service\": \"wsgi\"}))]' > app.py &&
+             python -m hypercorn app:application --bind 0.0.0.0:8000"
+    networks:
+      - caddy
+      - backend
+    environment:
+      - DJANGO_SETTINGS_MODULE=myproject.settings
+      - DJANGO_ENV=production
+      - DATABASE_URL=postgres://user:pass@db:5432/mydb
+    volumes:
+      - django-static:/app/static
+      - django-media:/app/media
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
+      interval: 30s
+      retries: 3
+    labels:
+      # Django WSGI handles admin and API endpoints
+      caddy: "{{env \"DOMAIN_NAME\"}}"
+      caddy.route.0_@admin.path: "/admin/*"
+      caddy.route.0_reverse_proxy: "@admin {{upstreams 8000}}"
+      caddy.route.1_@api.path: "/api/*"
+      caddy.route.1_reverse_proxy: "@api {{upstreams 8000}}"
+      caddy.header.X-Service: "{{containerName}}"
+      caddy.header.X-Environment: "{{env \"DJANGO_ENV\"}}"
+      caddy.tls: internal
+
+  django-asgi:
+    image: python:3.11-slim
+    command: >
+      sh -c "pip install hypercorn django channels &&
+             echo 'from django.http import JsonResponse; from django.urls import path; from django.conf import settings; settings.configure(DEBUG=True, ROOT_URLCONF=__name__); urlpatterns = [path(\"ws/chat/\", lambda r: JsonResponse({\"websocket\": \"chat\", \"service\": \"asgi\"})), path(\"ws/notifications/\", lambda r: JsonResponse({\"websocket\": \"notifications\", \"service\": \"asgi\"}))]' > asgi_app.py &&
+             python -m hypercorn asgi_app:application --bind 0.0.0.0:8001"
+    networks:
+      - caddy
+      - backend
+    environment:
+      - DJANGO_SETTINGS_MODULE=myproject.settings
+      - DJANGO_ENV=production
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - django-static:/app/static
+      - django-media:/app/media
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/ws/chat/')"]
+      interval: 30s
+      retries: 3
+    labels:
+      # Django ASGI handles WebSocket connections
+      caddy: "{{env \"DOMAIN_NAME\"}}"
+      caddy.route.0_@websocket.header: "Connection *Upgrade*"
+      caddy.route.0_@websocket.header_regexp: "Upgrade websocket"
+      caddy.route.0_@websocket.path: "/ws/*"
+      caddy.route.0_reverse_proxy: "@websocket {{upstreams 8001}}"
+      caddy.header.X-Service: "{{containerName}}"
+      caddy.header.X-Environment: "{{env \"DJANGO_ENV\"}}"
+      caddy.tls: internal
+
+  # Django Static Files - Pure Caddy serving from volumes (NO NGINX!)
+  # This is just a dummy container to mount the volumes - Caddy does the serving
+  django-static-data:
+    image: busybox:latest
+    command: ["sleep", "3600"]  # Keep container alive to maintain volumes
+    volumes:
+      - django-static:/app/static
+      - ./test-data/django/static:/app/static:ro
+    # No labels - this container doesn't serve anything, just holds volumes
+
+  # Django Media Files - Pure Caddy serving from volumes (NO NGINX!)  
+  # This is just a dummy container to mount the volumes - Caddy does the serving
+  django-media-data:
+    image: busybox:latest
+    command: ["sleep", "3600"]  # Keep container alive to maintain volumes
+    environment:
+      - DOMAIN_NAME=myapp.local
+    volumes:
+      - django-media:/app/media
+      - ./test-data/django/media:/app/media:ro
+    # No labels - this container doesn't serve anything, just holds volumes
+
+  # Django Combined App - Shows all services working together
+  django-combined:
+    image: python:3.11-slim
+    command: >
+      sh -c "pip install hypercorn django &&
+             echo 'import json; from django.http import JsonResponse, HttpResponse; from django.urls import path; from django.conf import settings; settings.configure(DEBUG=True, ROOT_URLCONF=__name__); urlpatterns = [path(\"\", lambda r: HttpResponse(f\"<html><head><title>Django App</title><link rel=stylesheet href=https://static.{r.get_host()}/admin/css/base.css><script src=https://static.{r.get_host()}/js/main.js></script></head><body><div class=header><h1>Django Application</h1></div><div class=content><h2>Services Status</h2><ul><li><a href=/health/>Health Check</a></li><li><a href=/api/status/>API Status</a></li><li><a href=https://static.{r.get_host()}/>Static Files</a></li><li><a href=https://media.{r.get_host()}/public/uploads/test-image.txt>Public Media</a></li></ul><p>Container: django-combined</p><p>Environment: production</p></div></body></html>\", content_type=\"text/html\")), path(\"health/\", lambda r: JsonResponse({\"status\": \"healthy\", \"services\": {\"wsgi\": \"running\", \"asgi\": \"running\", \"static\": \"serving\", \"media\": \"serving\"}})), path(\"api/status/\", lambda r: JsonResponse({\"application\": \"django-combined\", \"static_url\": f\"https://static.{r.get_host()}\", \"media_url\": f\"https://media.{r.get_host()}\", \"container\": \"django-combined\"}))]' > combined_app.py &&
+             python -m hypercorn combined_app:application --bind 0.0.0.0:8000"
+    networks:
+      - caddy
+    environment:
+      - DJANGO_SETTINGS_MODULE=myproject.settings
+      - DJANGO_ENV=production
+      - DOMAIN_NAME=myapp.local
+    volumes:
+      - django-static:/app/static:ro
+      - django-media:/app/media:ro
+    labels:
+      caddy: "{{env \"DOMAIN_NAME\"}}"
+      # Main Django application
+      caddy.reverse_proxy: "{{upstreams 8000}}"
+      # Add helpful headers
+      caddy.header.X-Django-App: "combined"
+      caddy.header.X-Static-URL: "https://static.{{env \"DOMAIN_NAME\"}}"
+      caddy.header.X-Media-URL: "https://media.{{env \"DOMAIN_NAME\"}}"
+      caddy.header.X-Container: "{{containerName}}"
+      caddy.header.X-Environment: "{{env \"DJANGO_ENV\"}}"
+      caddy.header.X-Healthy: "{{isHealthy}}"
+      caddy.tls: internal
+
+volumes:
+  django-static:
+  django-media:
+
+networks:
+  caddy:
+    name: caddy_test
+    external: true
+  backend:
+  management:

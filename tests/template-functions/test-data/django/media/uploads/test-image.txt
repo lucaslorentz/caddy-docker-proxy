@@ -1,0 +1,5 @@
+Django Media File - Test Upload
+This simulates a user-uploaded media file that would be served with X-SendFile headers.
+Timestamp: 2024-01-01 12:00:00
+User: test-user
+Type: document
