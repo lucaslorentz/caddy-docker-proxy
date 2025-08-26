@@ -189,6 +189,7 @@ func (dockerLoader *DockerLoader) listenEvents() {
 	args.Add("type", "service")
 	args.Add("type", "container")
 	args.Add("type", "config")
+	args.Add("type", "network")
 
 	for i, dockerClient := range dockerLoader.dockerClients {
 		context, cancel := context.WithCancel(context.Background())
@@ -217,7 +218,9 @@ func (dockerLoader *DockerLoader) listenEvents() {
 					(event.Type == "service" && event.Action == "update") ||
 					(event.Type == "service" && event.Action == "remove") ||
 					(event.Type == "config" && event.Action == "create") ||
-					(event.Type == "config" && event.Action == "remove")
+					(event.Type == "config" && event.Action == "remove") ||
+					(event.Type == "network" && event.Action == "connect") ||
+					(event.Type == "network" && event.Action == "disconnect")
 
 				if update {
 					dockerLoader.skipEvents[i] = true
