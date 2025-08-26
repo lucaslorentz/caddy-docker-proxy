@@ -3,7 +3,7 @@ module github.com/lucaslorentz/caddy-docker-proxy/v2
 go 1.25
 
 require (
-	github.com/caddyserver/caddy/v2 v2.10.1
+	github.com/caddyserver/caddy/v2 v2.10.2
 	github.com/docker/docker v28.3.3+incompatible
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.10.0
