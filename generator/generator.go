@@ -56,13 +56,11 @@ func CreateGenerator(dockerClients []docker.Client, dockerUtils docker.Utils, op
 func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []string) {
 	var caddyfileBuffer bytes.Buffer
 
-	if g.ingressNetworks == nil {
-		ingressNetworks, err := g.getIngressNetworks(logger)
-		if err == nil {
-			g.ingressNetworks = ingressNetworks
-		} else {
-			logger.Error("Failed to get ingress networks", zap.Error(err))
-		}
+	ingressNetworks, err := g.getIngressNetworks(logger)
+	if err == nil {
+		g.ingressNetworks = ingressNetworks
+	} else {
+		logger.Error("Failed to get ingress networks", zap.Error(err))
 	}
 
 	if time.Since(g.swarmIsAvailableTime) > swarmAvailabilityCacheInterval {
