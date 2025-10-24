@@ -372,6 +372,13 @@ caddy.rewrite: * /target{path}
 caddy.reverse_proxy: {{upstreams}}
 ```
 
+Proxying requests matching a path
+```yml
+caddy: example.com
+caddy.handle: /source/*
+caddy.handle.0_reverse_proxy: {{upstreams}}
+```
+
 Proxying requests matching a path, while stripping that path prefix
 ```yml
 caddy: example.com
@@ -400,6 +407,13 @@ Proxying multiple domains, with certificates for each
 ```yml
 caddy: example.com, example.org, www.example.com, www.example.org
 caddy.reverse_proxy: {{upstreams}}
+```
+
+Redirecting
+```yml
+caddy: example.com
+caddy.redir_0: /favicon.ico  /alternative/icon.ico 302
+caddy.redir_1: /photo.png    /updated-photo.png    302
 ```
 
 **More community-maintained examples are available in the [Wiki](https://github.com/lucaslorentz/caddy-docker-proxy/wiki).**
