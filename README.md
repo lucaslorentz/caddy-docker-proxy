@@ -52,7 +52,6 @@ $ docker network create caddy
 
 `caddy/compose.yml`
 ```yml
-version: "3.7"
 services:
   caddy:
     image: lucaslorentz/caddy-docker-proxy:ci-alpine
@@ -82,7 +81,6 @@ $ docker compose up -d
 
 `whoami/compose.yml`
 ```yml
-version: '3.7'
 services:
   whoami:
     image: traefik/whoami
