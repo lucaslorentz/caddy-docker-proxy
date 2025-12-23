@@ -13,7 +13,7 @@ Every time a Docker object changes, the plugin updates the Caddyfile and trigger
 
 ## Table of contents
 
-  * [Basic usage example, using docker-compose](#basic-usage-example-using-docker-compose)
+  * [Basic usage example, using docker compose](#basic-usage-example-using-docker-compose)
   * [Labels to Caddyfile conversion](#labels-to-caddyfile-conversion)
     + [Tokens and arguments](#tokens-and-arguments)
     + [Ordering and isolation](#ordering-and-isolation)
@@ -41,16 +41,16 @@ Every time a Docker object changes, the plugin updates the Caddyfile and trigger
   * [Connecting to Docker Host](#connecting-to-docker-host)
   * [Volumes](#volumes)
   * [Trying it](#trying-it)
-    + [With docker-compose file](#with-docker-compose-file)
+    + [With docker compose file](#with-docker-compose-file)
     + [With run commands](#with-run-commands)
   * [Building it](#building-it)
 
-## Basic usage example, using docker-compose
+## Basic usage example, using docker compose
 ```shell
 $ docker network create caddy
 ```
 
-`caddy/docker-compose.yml`
+`caddy/compose.yml`
 ```yml
 version: "3.7"
 services:
@@ -77,10 +77,10 @@ volumes:
   caddy_data: {}
 ```
 ```shell
-$ docker-compose up -d
+$ docker compose up -d
 ```
 
-`whoami/docker-compose.yml`
+`whoami/compose.yml`
 ```yml
 version: '3.7'
 services:
@@ -97,7 +97,7 @@ networks:
     external: true
 ```
 ```shell
-$ docker-compose up -d
+$ docker compose up -d
 ```
 Now, visit `https://whoami.example.com`. The site will be served [automatically over HTTPS](https://caddyserver.com/docs/automatic-https) with a certificate issued by Let's Encrypt or ZeroSSL.
 		
@@ -430,7 +430,7 @@ You can also add raw text to your Caddyfile using Docker configs. Just add Caddy
 Caddy docker proxy is able to proxy to swarm services or raw containers. Both features are always enabled, and what will differentiate the proxy target is where you define your labels.
 
 ### Services
-To proxy swarm services, labels should be defined at service level. In a docker-compose file, labels should be _inside_ `deploy`, like:
+To proxy swarm services, labels should be defined at service level. In a docker compose file, labels should be _inside_ `deploy`, like:
 ```yml
 services:
   foo:
@@ -443,7 +443,7 @@ services:
 Caddy will use service DNS name as target or all service tasks IPs, depending on configuration **proxy-service-tasks**.
 
 ### Containers
-To proxy containers, labels should be defined at container level. In a docker-compose file, labels should be _outside_ `deploy`, like:
+To proxy containers, labels should be defined at container level. In a docker compose file, labels should be _outside_ `deploy`, like:
 ```yml
 services:
   foo:
@@ -626,7 +626,7 @@ Multiple Caddy instances automatically orchestrate certificate issuing between t
 
 ## Trying it
 
-### With docker-compose file
+### With docker compose file
 
 Clone this repository.
 
