@@ -45,12 +45,12 @@ Every time a Docker object changes, the plugin updates the Caddyfile and trigger
     + [With run commands](#with-run-commands)
   * [Building it](#building-it)
 
-## Basic usage example, using docker compose
+## Basic usage example (Docker Compose)
 ```shell
 $ docker network create caddy
 ```
 
-`caddy/compose.yml`
+`caddy/compose.yaml`
 ```yml
 services:
   caddy:
@@ -79,7 +79,7 @@ volumes:
 $ docker compose up -d
 ```
 
-`whoami/compose.yml`
+`whoami/compose.yaml`
 ```yml
 services:
   whoami:
@@ -428,7 +428,7 @@ You can also add raw text to your Caddyfile using Docker configs. Just add Caddy
 Caddy docker proxy is able to proxy to swarm services or raw containers. Both features are always enabled, and what will differentiate the proxy target is where you define your labels.
 
 ### Services
-To proxy swarm services, labels should be defined at service level. In a docker compose file, labels should be _inside_ `deploy`, like:
+To proxy swarm services, labels should be defined at service level. With your `compose.yaml`, labels should be _inside_ `deploy`, like:
 ```yml
 services:
   foo:
@@ -441,7 +441,7 @@ services:
 Caddy will use service DNS name as target or all service tasks IPs, depending on configuration **proxy-service-tasks**.
 
 ### Containers
-To proxy containers, labels should be defined at container level. In a docker compose file, labels should be _outside_ `deploy`, like:
+To proxy containers, labels should be defined at container level. With your `compose.yaml`, labels should be _outside_ `deploy`, like:
 ```yml
 services:
   foo:
@@ -624,7 +624,7 @@ Multiple Caddy instances automatically orchestrate certificate issuing between t
 
 ## Trying it
 
-### With docker compose file
+### With Docker Compose (`compose.yaml`)
 
 Clone this repository.
 
