@@ -41,7 +41,7 @@ Every time a Docker object changes, the plugin updates the Caddyfile and trigger
   * [Connecting to Docker Host](#connecting-to-docker-host)
   * [Volumes](#volumes)
   * [Trying it](#trying-it)
-    + [With docker compose file](#with-docker-compose-file)
+    + [With Docker Compose (`compose.yaml`)](#with-docker-compose-composeyaml)
     + [With run commands](#with-run-commands)
   * [Building it](#building-it)
 
