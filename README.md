@@ -13,7 +13,7 @@ Every time a Docker object changes, the plugin updates the Caddyfile and trigger
 
 ## Table of contents
 
-  * [Basic usage example, using docker-compose](#basic-usage-example-using-docker-compose)
+  * [Basic usage example, using docker compose](#basic-usage-example-using-docker-compose)
   * [Labels to Caddyfile conversion](#labels-to-caddyfile-conversion)
     + [Tokens and arguments](#tokens-and-arguments)
     + [Ordering and isolation](#ordering-and-isolation)
@@ -41,11 +41,11 @@ Every time a Docker object changes, the plugin updates the Caddyfile and trigger
   * [Connecting to Docker Host](#connecting-to-docker-host)
   * [Volumes](#volumes)
   * [Trying it](#trying-it)
-    + [With docker-compose file](#with-docker-compose-file)
+    + [With Docker Compose (`compose.yaml`)](#with-docker-compose-composeyaml)
     + [With run commands](#with-run-commands)
   * [Building it](#building-it)
 
-## Basic usage example, using docker-compose
+## Basic usage example (Docker Compose)
 ```shell
 $ docker network create caddy --ipv6
 ```
@@ -54,9 +54,8 @@ $ docker network create caddy --ipv6
 > The `--ipv6` flag instructs Docker to assign IPv6 addresses for all containers connected to this network.
 > Without this flag, Caddy (as well as any upstream services) will see Docker's gateway IP address instead of the actual client IP addresses for IPv6 clients.
 
-`caddy/docker-compose.yml`
+`caddy/compose.yaml`
 ```yml
-version: "3.7"
 services:
   caddy:
     image: lucaslorentz/caddy-docker-proxy:ci-alpine
@@ -81,12 +80,11 @@ volumes:
   caddy_data: {}
 ```
 ```shell
-$ docker-compose up -d
+$ docker compose up -d
 ```
 
-`whoami/docker-compose.yml`
+`whoami/compose.yaml`
 ```yml
-version: '3.7'
 services:
   whoami:
     image: traefik/whoami
@@ -101,7 +99,7 @@ networks:
     external: true
 ```
 ```shell
-$ docker-compose up -d
+$ docker compose up -d
 ```
 Now, visit `https://whoami.example.com`. The site will be served [automatically over HTTPS](https://caddyserver.com/docs/automatic-https) with a certificate issued by Let's Encrypt or ZeroSSL.
 		
@@ -376,6 +374,13 @@ caddy.rewrite: * /target{path}
 caddy.reverse_proxy: {{upstreams}}
 ```
 
+Proxying requests matching a path
+```yml
+caddy: example.com
+caddy.handle: /source/*
+caddy.handle.0_reverse_proxy: {{upstreams}}
+```
+
 Proxying requests matching a path, while stripping that path prefix
 ```yml
 caddy: example.com
@@ -406,6 +411,13 @@ caddy: example.com, example.org, www.example.com, www.example.org
 caddy.reverse_proxy: {{upstreams}}
 ```
 
+Redirecting
+```yml
+caddy: example.com
+caddy.redir_0: /favicon.ico  /alternative/icon.ico 302
+caddy.redir_1: /photo.png    /updated-photo.png    302
+```
+
 **More community-maintained examples are available in the [Wiki](https://github.com/lucaslorentz/caddy-docker-proxy/wiki).**
 
 ## Docker configs
@@ -420,7 +432,7 @@ You can also add raw text to your Caddyfile using Docker configs. Just add Caddy
 Caddy docker proxy is able to proxy to swarm services or raw containers. Both features are always enabled, and what will differentiate the proxy target is where you define your labels.
 
 ### Services
-To proxy swarm services, labels should be defined at service level. In a docker-compose file, labels should be _inside_ `deploy`, like:
+To proxy swarm services, labels should be defined at service level. With your `compose.yaml`, labels should be _inside_ `deploy`, like:
 ```yml
 services:
   foo:
@@ -433,7 +445,7 @@ services:
 Caddy will use service DNS name as target or all service tasks IPs, depending on configuration **proxy-service-tasks**.
 
 ### Containers
-To proxy containers, labels should be defined at container level. In a docker-compose file, labels should be _outside_ `deploy`, like:
+To proxy containers, labels should be defined at container level. With your `compose.yaml`, labels should be _outside_ `deploy`, like:
 ```yml
 services:
   foo:
@@ -616,7 +628,7 @@ Multiple Caddy instances automatically orchestrate certificate issuing between t
 
 ## Trying it
 
-### With docker-compose file
+### With Docker Compose (`compose.yaml`)
 
 Clone this repository.
 
