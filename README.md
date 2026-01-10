@@ -47,8 +47,12 @@ Every time a Docker object changes, the plugin updates the Caddyfile and trigger
 
 ## Basic usage example (Docker Compose)
 ```shell
-$ docker network create caddy
+$ docker network create caddy --ipv6
 ```
+
+> [!NOTE]
+> The `--ipv6` flag instructs Docker to assign IPv6 addresses for all containers connected to this network.
+> Without this flag, Caddy (as well as any upstream services) will see Docker's gateway IP address instead of the actual client IP addresses for IPv6 clients.
 
 `caddy/compose.yaml`
 ```yml
