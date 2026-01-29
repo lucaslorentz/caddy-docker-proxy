@@ -270,7 +270,7 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	if eventThrottleIntervalEnv := os.Getenv("CADDY_DOCKER_EVENT_THROTTLE_INTERVAL"); eventThrottleIntervalEnv != "" {
 		if p, err := time.ParseDuration(eventThrottleIntervalEnv); err != nil {
 			log.Error("Failed to parse CADDY_DOCKER_EVENT_THROTTLE_INTERVAL", zap.String("CADDY_DOCKER_EVENT_THROTTLE_INTERVAL", eventThrottleIntervalEnv), zap.Error(err))
-			options.EventThrottleInterval = pollingIntervalFlag
+			options.EventThrottleInterval = eventThrottleIntervalFlag
 		} else {
 			options.EventThrottleInterval = p
 		}
