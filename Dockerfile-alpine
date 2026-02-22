@@ -7,7 +7,6 @@ ENV XDG_CONFIG_HOME /config
 ENV XDG_DATA_HOME /data
 
 RUN apk add -U --no-cache ca-certificates curl
-RUN mkdir -p /etc/caddy
 
 COPY artifacts/binaries/$TARGETPLATFORM/caddy /bin/
 
