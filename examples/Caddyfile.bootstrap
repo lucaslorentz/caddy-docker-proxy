@@ -1,0 +1,7 @@
+# Minimal bootstrap config.
+# This file is mounted into the Caddy service before the controller rolls out
+# the generated Caddyfile via Swarm configs.
+
+:80 {
+	respond "bootstrapping" 503
+}

@@ -1,5 +1,6 @@
 FROM --platform=${BUILDPLATFORM} alpine:3.20.3 as alpine
 RUN apk add -U --no-cache ca-certificates
+RUN mkdir -p /etc/caddy
 
 # Image starts here
 FROM scratch
@@ -13,6 +14,7 @@ ENV XDG_DATA_HOME /data
 WORKDIR /
 
 COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=alpine /etc/caddy /etc/caddy
 
 COPY artifacts/binaries/$TARGETPLATFORM/caddy /bin/
 

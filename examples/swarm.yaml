@@ -1,0 +1,70 @@
+version: '3.7'
+
+configs:
+  caddy_bootstrap:
+    file: ./Caddyfile.bootstrap
+
+services:
+  # Caddy runs on workers and does NOT need the Docker socket.
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    command:
+      - run
+      - --config
+      - /etc/caddy/Caddyfile
+      - --adapter
+      - caddyfile
+    ports:
+      - 80:80
+      - 443:443
+    configs:
+      - source: caddy_bootstrap
+        target: /etc/caddy/Caddyfile
+        mode: 0444
+    volumes:
+      # Persist certificates and other Caddy state
+      - caddy_data:/data
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == worker
+      update_config:
+        parallelism: 1
+        delay: 5s
+        monitor: 10s
+        failure_action: rollback
+        order: stop-first
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        monitor: 10s
+        order: stop-first
+
+  # Controller runs on a manager, generates a full Caddyfile from labels,
+  # and rolls it out by updating the existing Swarm service above.
+  controller:
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    environment:
+      - CADDY_DOCKER_MODE=swarm
+      # NOTE: Swarm service names are <stack>_<service>.
+      # If you deploy this stack as `docker stack deploy -c examples/swarm.yaml caddy`,
+      # then the service name will be `caddy_caddy`.
+      - CADDY_DOCKER_SWARM_SERVICE=caddy_caddy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  whoami:
+    image: traefik/whoami
+    deploy:
+      labels:
+        caddy: whoami.example.com
+        caddy.reverse_proxy: "{{upstreams 80}}"
+        caddy.tls: internal
+
+volumes:
+  caddy_data: {}
