@@ -488,6 +488,8 @@ Controller-only mode that renders a full Caddyfile and rolls it out to an existi
 
 This mode doesn't use (or expose) Caddy's Admin API. Instead, it updates the target service to mount the generated Caddyfile at `/etc/caddy/Caddyfile` (or `--swarm-caddyfile-target`). This triggers a Swarm service update (tasks get restarted according to the service's update/rollback settings).
 
+Each configuration change creates a new Swarm config object named `<prefix>-<sha256>` (see `--swarm-config-prefix`). Old configs are not garbage-collected automatically.
+
 This mode requires access to a Swarm **manager** Docker API.
 
 [Configuration example](examples/swarm.yaml#L1)
