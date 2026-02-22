@@ -7,13 +7,8 @@ configs:
 services:
   # Caddy runs on workers and does NOT need the Docker socket.
   caddy:
-    image: lucaslorentz/caddy-docker-proxy:ci-alpine
-    command:
-      - run
-      - --config
-      - /etc/caddy/Caddyfile
-      - --adapter
-      - caddyfile
+    # Vanilla Caddy image; no docker-proxy plugin required on workers.
+    image: caddy:2-alpine
     ports:
       - 80:80
       - 443:443
