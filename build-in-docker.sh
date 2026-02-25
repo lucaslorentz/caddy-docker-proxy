@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-IMAGE="${GO_DOCKER_IMAGE:=golang:1.25-bookworm}"
+IMAGE="${GO_DOCKER_IMAGE:=golang:1.26-bookworm}"
 ARTIFACTS="${ARTIFACTS:=./artifacts}"
 
 mkdir -p "$ROOT_DIR/.cache/go-build" "$ROOT_DIR/.cache/gomod"
