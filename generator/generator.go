@@ -276,7 +276,7 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 		}
 	}
 
-	logger.Info("IngressNetworksMap", zap.String("ingres", fmt.Sprintf("%v", ingressNetworks)))
+	logger.Debug("IngressNetworksMap", zap.String("ingres", fmt.Sprintf("%v", ingressNetworks)))
 
 	return ingressNetworks, nil
 }
