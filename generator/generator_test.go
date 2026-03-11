@@ -25,11 +25,9 @@ var caddyNetworkName = "network-name"
 
 const newLine = "\n"
 const containerIdLog = `INFO	Caddy ContainerID	{"ID": "container-id"}` + newLine
-const ingressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[network-id:true network-name:true]"}` + newLine
-const otherIngressNetworksMapLog = `INFO	IngressNetworksMap	{"ingres": "map[other-network-id:true other-network-name:true]"}` + newLine
 const swarmIsAvailableLog = `INFO	Swarm is available	{"new": true}` + newLine
 const swarmIsDisabledLog = `INFO	Swarm is available	{"new": false}` + newLine
-const commonLogs = containerIdLog + ingressNetworksMapLog + swarmIsAvailableLog
+const commonLogs = containerIdLog + swarmIsAvailableLog
 
 func init() {
 	log.SetOutput(io.Discard)

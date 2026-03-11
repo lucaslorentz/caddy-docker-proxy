@@ -131,7 +131,7 @@ func TestContainers_ManualIngressNetworks(t *testing.T) {
 		"	reverse_proxy 10.0.0.1\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
+	const expectedLogs = swarmIsAvailableLog
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.IngressNetworks = []string{"other-network-name"}
@@ -177,7 +177,7 @@ func TestContainers_OverrideIngressNetworks(t *testing.T) {
 		"	reverse_proxy 10.0.0.2\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
+	const expectedLogs = swarmIsAvailableLog
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.IngressNetworks = []string{"other-network-name"}
