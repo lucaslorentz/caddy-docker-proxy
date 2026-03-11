@@ -355,8 +355,9 @@ func addAdminListen(configJSON []byte, listen string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Respect explicit admin settings from Caddyfile/JSON config.
-	if config.Admin != nil {
+	// Respect explicit admin settings from Caddyfile/JSON config,
+	// but override "admin off" since the plugin requires the admin API.
+	if config.Admin != nil && !config.Admin.Disabled {
 		return configJSON, nil
 	}
 	config.Admin = &caddy.AdminConfig{
