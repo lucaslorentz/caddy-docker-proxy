@@ -132,7 +132,7 @@ func TestServices_ManualIngressNetwork(t *testing.T) {
 		"	reverse_proxy service\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
+	const expectedLogs = swarmIsAvailableLog
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.IngressNetworks = []string{"other-network-name"}
@@ -170,7 +170,7 @@ func TestServices_SwarmDisabled(t *testing.T) {
 
 	const expectedCaddyfile = "# Empty caddyfile"
 
-	const expectedLogs = containerIdLog + ingressNetworksMapLog + swarmIsDisabledLog
+	const expectedLogs = containerIdLog + swarmIsDisabledLog
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
@@ -375,7 +375,7 @@ func TestServiceTasks_ManualIngressNetwork(t *testing.T) {
 		"	reverse_proxy 10.0.0.1:5000\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
+	const expectedLogs = swarmIsAvailableLog
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
@@ -453,7 +453,7 @@ func TestServiceTasks_OverrideIngressNetwork(t *testing.T) {
 		"	reverse_proxy 10.0.0.2:5000\n" +
 		"}\n"
 
-	const expectedLogs = otherIngressNetworksMapLog + swarmIsAvailableLog
+	const expectedLogs = swarmIsAvailableLog
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
