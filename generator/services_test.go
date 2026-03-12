@@ -203,8 +203,7 @@ func TestServiceTasks_Empty(t *testing.T) {
 		"	reverse_proxy\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs +
-		`WARN	Service has no tasks in running state	{"service": "service", "serviceId": "SERVICEID"}` + newLine
+	const expectedLogs = commonLogs
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
@@ -267,8 +266,7 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 		"	reverse_proxy\n" +
 		"}\n"
 
-	const expectedLogs = commonLogs +
-		`WARN	Service has no tasks in running state	{"service": "service", "serviceId": "SERVICEID"}` + newLine
+	const expectedLogs = commonLogs
 
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true

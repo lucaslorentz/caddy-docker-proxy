@@ -91,7 +91,7 @@ func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logger *
 	}
 
 	if !hasRunningTasks {
-		logger.Warn("Service has no tasks in running state", zap.String("service", service.Spec.Name), zap.String("serviceId", service.ID))
+		logger.Debug("Service has no tasks in running state", zap.String("service", service.Spec.Name), zap.String("serviceId", service.ID))
 
 	} else if len(tasksIps) == 0 {
 		logger.Warn("Service is not in same network as caddy", zap.String("service", service.Spec.Name), zap.String("serviceId", service.ID))
