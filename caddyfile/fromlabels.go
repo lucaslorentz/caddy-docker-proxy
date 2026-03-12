@@ -5,11 +5,14 @@ import (
 	"math"
 	"regexp"
 	"strconv"
+	"strings"
 	"text/template"
 )
 
 var whitespaceRegex = regexp.MustCompile("\\s+")
 var labelParserRegex = regexp.MustCompile(`^(?:(.+)\.)?(?:(\d+)_)?([^.]+?)(?:_(\d+))?$`)
+
+const escapedDotPlaceholder = "\x00"
 
 // FromLabels converts key value labels into a caddyfile
 func FromLabels(labels map[string]string, templateData interface{}, templateFuncs template.FuncMap) (*Container, error) {
@@ -37,7 +40,9 @@ func getOrCreateBlock(container *Container, path string, blocksByPath map[string
 		return block
 	}
 
-	parentPath, order, name := parsePath(path)
+	parentPath, order, name := parsePath(strings.ReplaceAll(path, `\.`, escapedDotPlaceholder))
+	parentPath = strings.ReplaceAll(parentPath, escapedDotPlaceholder, `\.`)
+	name = strings.ReplaceAll(name, escapedDotPlaceholder, ".")
 
 	block := CreateBlock()
 	block.Order = order
