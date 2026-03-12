@@ -256,7 +256,7 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 			if err != nil {
 				return nil, err
 			}
-			logger.Info("Caddy ContainerID", zap.String("ID", containerID))
+			logger.Debug("Caddy ContainerID", zap.String("ID", containerID))
 			container, err := dockerClient.ContainerInspect(context.Background(), containerID)
 			if err != nil {
 				return nil, err
@@ -276,7 +276,7 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 		}
 	}
 
-	logger.Debug("IngressNetworksMap", zap.String("ingres", fmt.Sprintf("%v", ingressNetworks)))
+	logger.Debug("IngressNetworksMap", zap.String("ingress", fmt.Sprintf("%v", ingressNetworks)))
 
 	return ingressNetworks, nil
 }
