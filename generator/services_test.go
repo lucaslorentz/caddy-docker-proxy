@@ -170,7 +170,7 @@ func TestServices_SwarmDisabled(t *testing.T) {
 
 	const expectedCaddyfile = "# Empty caddyfile"
 
-	const expectedLogs = containerIdLog + swarmIsDisabledLog
+	const expectedLogs = swarmIsDisabledLog
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }

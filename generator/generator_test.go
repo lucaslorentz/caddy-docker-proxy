@@ -24,10 +24,9 @@ var caddyNetworkID = "network-id"
 var caddyNetworkName = "network-name"
 
 const newLine = "\n"
-const containerIdLog = `INFO	Caddy ContainerID	{"ID": "container-id"}` + newLine
 const swarmIsAvailableLog = `INFO	Swarm is available	{"new": true}` + newLine
 const swarmIsDisabledLog = `INFO	Swarm is available	{"new": false}` + newLine
-const commonLogs = containerIdLog + swarmIsAvailableLog
+const commonLogs = swarmIsAvailableLog
 
 func init() {
 	log.SetOutput(io.Discard)
