@@ -1,0 +1,22 @@
+caddy = (extendable-proxy)
+caddy.reverse_proxy.{blocks\.proxy_target} =
+caddy.reverse_proxy.{blocks\.proxy_options} =
+
+caddy_1 = localhost
+caddy_1.dynamic_dns.provider = cloudflare token123
+caddy_1.dynamic_dns.domains.mydomain\.fr =
+----------
+(extendable-proxy) {
+	reverse_proxy {
+		{blocks.proxy_options}
+		{blocks.proxy_target}
+	}
+}
+localhost {
+	dynamic_dns {
+		domains {
+			mydomain.fr
+		}
+		provider cloudflare token123
+	}
+}
