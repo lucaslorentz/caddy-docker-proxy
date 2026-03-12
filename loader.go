@@ -158,6 +158,7 @@ func (dockerLoader *DockerLoader) Start() error {
 		zap.Strings("DockerSockets", dockerLoader.options.DockerSockets),
 		zap.Strings("DockerCertsPath", dockerLoader.options.DockerCertsPath),
 		zap.Strings("DockerAPIsVersion", dockerLoader.options.DockerAPIsVersion),
+		zap.String("CaddyfileAutosavePath", CaddyfileAutosavePath),
 	)
 
 	ready := make(chan struct{})
