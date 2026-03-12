@@ -550,6 +550,14 @@ CADDY_DOCKER_NO_SCOPE=<bool, default scope used>
 
 Check **examples** folder to see how to set them on a Docker Compose file.
 
+## Viewing the generated Caddyfile
+
+The generated Caddyfile is automatically saved to `Caddyfile.autosave` inside Caddy's config directory whenever it changes. The full path is logged at startup and depends on the environment (typically `/config/caddy/Caddyfile.autosave` in Docker). You can inspect it to troubleshoot label-to-Caddyfile conversion issues:
+
+```sh
+docker exec <caddy-container> cat /config/caddy/Caddyfile.autosave
+```
+
 ## Docker images
 Docker images are available at Docker hub:
 https://hub.docker.com/r/lucaslorentz/caddy-docker-proxy/
