@@ -1,0 +1,38 @@
+version: "3.7"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - caddy
+
+  controller:
+    image: caddy-docker-proxy:local
+    networks:
+      - caddy
+    environment:
+      - CADDY_DOCKER_MODE=swarm
+      - CADDY_DOCKER_SWARM_SERVICE=caddy_test_caddy
+      - CADDY_DOCKER_SWARM_CONFIG_PREFIX=cdp-test-caddy_test
+    volumes:
+      - source: "${DOCKER_SOCKET_PATH}"
+        target: "${DOCKER_SOCKET_PATH}"
+        type: ${DOCKER_SOCKET_TYPE}
+
+  service:
+    image: traefik/whoami
+    networks:
+      - caddy
+    deploy:
+      labels:
+        caddy: service.local
+        caddy.reverse_proxy: "{{upstreams 80}}"
+        caddy.tls: "internal"
+
+networks:
+  caddy:
+    name: caddy_test
+    external: true

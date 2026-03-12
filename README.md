@@ -482,6 +482,18 @@ A single controller instance can configure all server instances in your cluster.
 
 [Configuration example](examples/distributed.yaml#L21)
 
+### Swarm
+
+Controller-only mode that renders a full Caddyfile and rolls it out to an existing Swarm service as an immutable Swarm **config**.
+
+This mode doesn't use (or expose) Caddy's Admin API. Instead, it updates the target service to mount the generated Caddyfile at `/etc/caddy/Caddyfile` (or `--swarm-caddyfile-target`). This triggers a Swarm service update (tasks get restarted according to the service's update/rollback settings).
+
+Each configuration change creates a new Swarm config object named `<prefix>-<sha256>` (see `--swarm-config-prefix`). Old configs are not garbage-collected automatically.
+
+This mode requires access to a Swarm **manager** Docker API.
+
+[Configuration example](examples/swarm.yaml#L1)
+
 ### Standalone (default)
 
 This mode executes a controller and a server in the same instance and doesn't require additional configuration.
@@ -515,7 +527,7 @@ Usage of docker-proxy:
   --label-prefix string
         Prefix for Docker labels (default "caddy")
   --mode
-        Which mode this instance should run: standalone | controller | server
+        Which mode this instance should run: standalone | controller | server | swarm
   --polling-interval duration
         Interval Caddy should manually check Docker for a new Caddyfile (default 30s)
   --event-throttle-interval duration
@@ -526,6 +538,15 @@ Usage of docker-proxy:
         Proxy to service tasks instead of service load balancer (default true)
   --scan-stopped-containers
         Scan stopped containers and use their labels for Caddyfile generation (default false)
+
+  --swarm-service string
+        Existing Swarm service name/ID to update (swarm mode only)
+  --swarm-caddyfile-target string
+        Target path inside the Swarm service task to mount the generated Caddyfile (swarm mode only) (default "/etc/caddy/Caddyfile")
+  --swarm-config-prefix string
+        Prefix for generated Swarm config objects (swarm mode only) (default "caddyfile")
+  --swarm-config-hash-len int
+        Length of sha256 hex used in generated Swarm config name (swarm mode only) (default 32)
 ```
 
 Those flags can also be set via environment variables:
@@ -546,6 +567,12 @@ CADDY_DOCKER_PROCESS_CADDYFILE=<bool>
 CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
 CADDY_DOCKER_SCAN_STOPPED_CONTAINERS=<bool>
 CADDY_DOCKER_NO_SCOPE=<bool, default scope used>
+
+# Swarm mode
+CADDY_DOCKER_SWARM_SERVICE=<string>
+CADDY_DOCKER_SWARM_CADDYFILE_TARGET=<string>
+CADDY_DOCKER_SWARM_CONFIG_PREFIX=<string>
+CADDY_DOCKER_SWARM_CONFIG_HASH_LEN=<int>
 ```
 
 Check **examples** folder to see how to set them on a Docker Compose file.

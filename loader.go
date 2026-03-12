@@ -42,14 +42,19 @@ type DockerLoader struct {
 	lastVersion     int64
 	serversVersions *utils.StringInt64CMap
 	serversUpdating *utils.StringBoolCMap
+
+	// swarmServiceClientIndex is the docker client index used to manage the
+	// configured SwarmService. Only used when options.SwarmMode is enabled.
+	swarmServiceClientIndex int
 }
 
 // CreateDockerLoader creates a docker loader
 func CreateDockerLoader(options *config.Options) *DockerLoader {
 	return &DockerLoader{
-		options:         options,
-		serversVersions: utils.NewStringInt64CMap(),
-		serversUpdating: utils.NewStringBoolCMap(),
+		options:                 options,
+		serversVersions:         utils.NewStringInt64CMap(),
+		serversUpdating:         utils.NewStringBoolCMap(),
+		swarmServiceClientIndex: -1,
 	}
 }
 
@@ -158,6 +163,11 @@ func (dockerLoader *DockerLoader) Start() error {
 		zap.Strings("DockerSockets", dockerLoader.options.DockerSockets),
 		zap.Strings("DockerCertsPath", dockerLoader.options.DockerCertsPath),
 		zap.Strings("DockerAPIsVersion", dockerLoader.options.DockerAPIsVersion),
+		zap.Bool("SwarmMode", dockerLoader.options.SwarmMode),
+		zap.String("SwarmService", dockerLoader.options.SwarmService),
+		zap.String("SwarmCaddyfileTarget", dockerLoader.options.SwarmCaddyfileTarget),
+		zap.String("SwarmConfigPrefix", dockerLoader.options.SwarmConfigPrefix),
+		zap.Int("SwarmConfigHashLen", dockerLoader.options.SwarmConfigHashLen),
 	)
 
 	ready := make(chan struct{})
@@ -254,30 +264,40 @@ func (dockerLoader *DockerLoader) update() bool {
 	if caddyfileChanged {
 		log.Info("New Caddyfile", zap.ByteString("caddyfile", caddyfile))
 
-        tmpPath := CaddyfileAutosavePath + ".tmp"
-        if err := os.WriteFile(tmpPath, caddyfile, 0640); err != nil {
-            log.Warn("Failed to write temporary caddyfile", zap.Error(err), zap.String("path", tmpPath))
-        } else if err := os.Rename(tmpPath, CaddyfileAutosavePath); err != nil {
-            log.Warn("Failed to autosave caddyfile", zap.Error(err), zap.String("path", CaddyfileAutosavePath))
-        }
-
-		adapter := caddyconfig.GetAdapter("caddyfile")
-
-		configJSON, warn, err := adapter.Adapt(caddyfile, nil)
-
-		if warn != nil {
-			log.Warn("Caddyfile to json warning", zap.String("warn", fmt.Sprintf("%v", warn)))
+		tmpPath := CaddyfileAutosavePath + ".tmp"
+		if err := os.WriteFile(tmpPath, caddyfile, 0640); err != nil {
+			log.Warn("Failed to write temporary caddyfile", zap.Error(err), zap.String("path", tmpPath))
+		} else if err := os.Rename(tmpPath, CaddyfileAutosavePath); err != nil {
+			log.Warn("Failed to autosave caddyfile", zap.Error(err), zap.String("path", CaddyfileAutosavePath))
 		}
 
-		if err != nil {
-			log.Error("Failed to convert caddyfile into json config", zap.Error(err))
+		if !dockerLoader.options.SwarmMode {
+			adapter := caddyconfig.GetAdapter("caddyfile")
+
+			configJSON, warn, err := adapter.Adapt(caddyfile, nil)
+
+			if warn != nil {
+				log.Warn("Caddyfile to json warning", zap.String("warn", fmt.Sprintf("%v", warn)))
+			}
+
+			if err != nil {
+				log.Error("Failed to convert caddyfile into json config", zap.Error(err))
+				return false
+			}
+
+			log.Info("New Config JSON", zap.ByteString("json", configJSON))
+
+			dockerLoader.lastJSONConfig = configJSON
+			dockerLoader.lastVersion++
+		}
+	}
+
+	if dockerLoader.options.SwarmMode {
+		if err := dockerLoader.updateSwarmService(); err != nil {
+			log.Error("Failed to update swarm service", zap.Error(err))
 			return false
 		}
-
-		log.Info("New Config JSON", zap.ByteString("json", configJSON))
-
-		dockerLoader.lastJSONConfig = configJSON
-		dockerLoader.lastVersion++
+		return true
 	}
 
 	var wg sync.WaitGroup
