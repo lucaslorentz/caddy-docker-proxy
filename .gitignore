@@ -4,3 +4,4 @@ debug.test
 local
 .DS_Store
 buildenv_*
+.cache/*
