@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/docker/docker/errdefs"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
@@ -271,6 +272,10 @@ func (g *CaddyfileGenerator) getIngressNetworks(dockerClients []docker.Client, l
 			logger.Debug("Caddy ContainerID", zap.String("ID", containerID))
 			container, err := dockerClient.ContainerInspect(context.Background(), containerID)
 			if err != nil {
+				if errdefs.IsNotFound(err) {
+					// caddy container lives on one socket; others won't have it
+					continue
+				}
 				return nil, err
 			}
 
