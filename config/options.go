@@ -13,6 +13,8 @@ type Options struct {
 	DockerSockets          []string
 	DockerCertsPath        []string
 	DockerAPIsVersion      []string
+	DockerRetryMin         time.Duration
+	DockerRetryMax         time.Duration
 	LabelPrefix            string
 	ControlledServersLabel string
 	ProxyServiceTasks      bool

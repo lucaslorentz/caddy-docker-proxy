@@ -15,8 +15,6 @@ import (
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/joho/godotenv"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
@@ -33,10 +31,10 @@ var CaddyfileAutosavePath = filepath.Join(caddy.AppConfigDir(), "Caddyfile.autos
 type DockerLoader struct {
 	options         *config.Options
 	initialized     bool
-	dockerClients   []docker.Client
+	mu              sync.RWMutex
+	socketManagers  []*socketManager
 	generator       *generator.CaddyfileGenerator
 	timer           *time.Timer
-	skipEvents      []bool
 	lastCaddyfile   []byte
 	lastJSONConfig  []byte
 	lastVersion     int64
@@ -51,6 +49,37 @@ func CreateDockerLoader(options *config.Options) *DockerLoader {
 		serversVersions: utils.NewStringInt64CMap(),
 		serversUpdating: utils.NewStringBoolCMap(),
 	}
+}
+
+// getConnectedClients returns a snapshot of all currently connected docker clients.
+func (dockerLoader *DockerLoader) getConnectedClients() []docker.Client {
+	dockerLoader.mu.RLock()
+	defer dockerLoader.mu.RUnlock()
+
+	clients := []docker.Client{}
+	for _, sm := range dockerLoader.socketManagers {
+		if sm.client != nil {
+			clients = append(clients, sm.client)
+		}
+	}
+	return clients
+}
+
+// setClient sets or clears a socket manager's client under write lock.
+func (dockerLoader *DockerLoader) setClient(sm *socketManager, c docker.Client) {
+	dockerLoader.mu.Lock()
+	defer dockerLoader.mu.Unlock()
+	sm.client = c
+}
+
+// triggerUpdate triggers an immediate Caddyfile regeneration.
+func (dockerLoader *DockerLoader) triggerUpdate() {
+	dockerLoader.timer.Reset(0)
+}
+
+// triggerThrottledUpdate triggers a throttled Caddyfile regeneration.
+func (dockerLoader *DockerLoader) triggerThrottledUpdate() {
+	dockerLoader.timer.Reset(dockerLoader.options.EventThrottleInterval)
 }
 
 func logger() *zap.Logger {
@@ -75,49 +104,32 @@ func (dockerLoader *DockerLoader) Start() error {
 		log.Info("environment file loaded", zap.String("envFile", dockerLoader.options.EnvFile))
 	}
 
-	dockerClients := []docker.Client{}
-	for i, dockerSocket := range dockerLoader.options.DockerSockets {
-		// cf https://github.com/docker/go-docker/blob/master/client.go
-		// setenv to use NewEnvClient
-		// or manually
+	if len(dockerLoader.options.DockerSockets) > 0 {
+		// Multi-socket mode: each socket is optional with retry
+		for i, dockerSocket := range dockerLoader.options.DockerSockets {
+			certsPath := ""
+			if len(dockerLoader.options.DockerCertsPath) >= i+1 {
+				certsPath = dockerLoader.options.DockerCertsPath[i]
+			}
 
-		os.Setenv("DOCKER_HOST", dockerSocket)
+			apiVersion := ""
+			if len(dockerLoader.options.DockerAPIsVersion) >= i+1 {
+				apiVersion = dockerLoader.options.DockerAPIsVersion[i]
+			}
 
-		if len(dockerLoader.options.DockerCertsPath) >= i+1 && dockerLoader.options.DockerCertsPath[i] != "" {
-			os.Setenv("DOCKER_CERT_PATH", dockerLoader.options.DockerCertsPath[i])
-		} else {
-			os.Unsetenv("DOCKER_CERT_PATH")
+			sm := newSocketManager(
+				dockerSocket,
+				certsPath,
+				apiVersion,
+				dockerLoader.options.DockerRetryMin,
+				dockerLoader.options.DockerRetryMax,
+				dockerLoader,
+			)
+			dockerLoader.socketManagers = append(dockerLoader.socketManagers, sm)
 		}
-
-		if len(dockerLoader.options.DockerAPIsVersion) >= i+1 && dockerLoader.options.DockerAPIsVersion[i] != "" {
-			os.Setenv("DOCKER_API_VERSION", dockerLoader.options.DockerAPIsVersion[i])
-		} else {
-			os.Unsetenv("DOCKER_API_VERSION")
-		}
-
+	} else {
+		// Default single-socket mode: strict, fail on error (backwards compat)
 		dockerClient, err := client.NewEnvClient()
-		if err != nil {
-			log.Error("Docker connection failed to docker specify socket", zap.Error(err), zap.String("DockerSocket", dockerSocket))
-			return err
-		}
-
-		dockerPing, err := dockerClient.Ping(context.Background())
-		if err != nil {
-			log.Error("Docker ping failed on specify socket", zap.Error(err), zap.String("DockerSocket", dockerSocket))
-			return err
-		}
-
-		dockerClient.NegotiateAPIVersionPing(dockerPing)
-
-		wrappedClient := docker.WrapClient(dockerClient)
-
-		dockerClients = append(dockerClients, wrappedClient)
-	}
-
-	// by default it will used the env docker
-	if len(dockerClients) == 0 {
-		dockerClient, err := client.NewEnvClient()
-		dockerLoader.options.DockerSockets = append(dockerLoader.options.DockerSockets, os.Getenv("DOCKER_HOST"))
 		if err != nil {
 			log.Error("Docker connection failed", zap.Error(err))
 			return err
@@ -130,17 +142,22 @@ func (dockerLoader *DockerLoader) Start() error {
 		}
 
 		dockerClient.NegotiateAPIVersionPing(dockerPing)
-
 		wrappedClient := docker.WrapClient(dockerClient)
 
-		dockerClients = append(dockerClients, wrappedClient)
+		// Create a socket manager that is already connected (no retry loop)
+		sm := &socketManager{
+			socket:   os.Getenv("DOCKER_HOST"),
+			retryMin: dockerLoader.options.DockerRetryMin,
+			retryMax: dockerLoader.options.DockerRetryMax,
+			client:   wrappedClient,
+			loader:   dockerLoader,
+		}
+		dockerLoader.socketManagers = append(dockerLoader.socketManagers, sm)
+		dockerLoader.options.DockerSockets = append(dockerLoader.options.DockerSockets, sm.socket)
 	}
 
-	dockerLoader.dockerClients = dockerClients
-	dockerLoader.skipEvents = make([]bool, len(dockerLoader.dockerClients))
-
 	dockerLoader.generator = generator.CreateGenerator(
-		dockerClients,
+		dockerLoader.getConnectedClients,
 		docker.CreateUtils(),
 		dockerLoader.options,
 	)
@@ -158,6 +175,8 @@ func (dockerLoader *DockerLoader) Start() error {
 		zap.Strings("DockerSockets", dockerLoader.options.DockerSockets),
 		zap.Strings("DockerCertsPath", dockerLoader.options.DockerCertsPath),
 		zap.Strings("DockerAPIsVersion", dockerLoader.options.DockerAPIsVersion),
+		zap.Duration("DockerRetryMin", dockerLoader.options.DockerRetryMin),
+		zap.Duration("DockerRetryMax", dockerLoader.options.DockerRetryMax),
 		zap.String("CaddyfileAutosavePath", CaddyfileAutosavePath),
 	)
 
@@ -168,80 +187,24 @@ func (dockerLoader *DockerLoader) Start() error {
 	})
 	close(ready)
 
-	go dockerLoader.monitorEvents()
+	// Start socket manager goroutines for event monitoring
+	for _, sm := range dockerLoader.socketManagers {
+		if sm.client != nil {
+			// Already connected (default single-socket path) — just monitor events
+			go sm.monitorEvents()
+		} else {
+			// Not yet connected (multi-socket path) — run full lifecycle
+			go sm.run()
+		}
+	}
 
 	return nil
 }
 
-func (dockerLoader *DockerLoader) monitorEvents() {
-	for {
-		dockerLoader.listenEvents()
-		time.Sleep(30 * time.Second)
-	}
-}
-
-func (dockerLoader *DockerLoader) listenEvents() {
-	args := filters.NewArgs()
-	if !isTrue.MatchString(os.Getenv("CADDY_DOCKER_NO_SCOPE")) {
-		// This env var is useful for Podman where in some instances the scope can cause some issues.
-		args.Add("scope", "swarm")
-		args.Add("scope", "local")
-	}
-	args.Add("type", "service")
-	args.Add("type", "container")
-	args.Add("type", "config")
-	args.Add("type", "network")
-
-	for i, dockerClient := range dockerLoader.dockerClients {
-		context, cancel := context.WithCancel(context.Background())
-
-		eventsChan, errorChan := dockerClient.Events(context, events.ListOptions{
-			Filters: args,
-		})
-
-		log := logger()
-		log.Info("Connecting to docker events", zap.String("DockerSocket", dockerLoader.options.DockerSockets[i]))
-
-	ListenEvents:
-		for {
-			select {
-			case event := <-eventsChan:
-				if dockerLoader.skipEvents[i] {
-					continue
-				}
-
-				update := (event.Type == "container" && event.Action == "create") ||
-					(event.Type == "container" && event.Action == "start") ||
-					(event.Type == "container" && event.Action == "stop") ||
-					(event.Type == "container" && event.Action == "die") ||
-					(event.Type == "container" && event.Action == "destroy") ||
-					(event.Type == "service" && event.Action == "create") ||
-					(event.Type == "service" && event.Action == "update") ||
-					(event.Type == "service" && event.Action == "remove") ||
-					(event.Type == "config" && event.Action == "create") ||
-					(event.Type == "config" && event.Action == "remove") ||
-					(event.Type == "network" && event.Action == "connect") ||
-					(event.Type == "network" && event.Action == "disconnect")
-
-				if update {
-					dockerLoader.skipEvents[i] = true
-					dockerLoader.timer.Reset(dockerLoader.options.EventThrottleInterval)
-				}
-			case err := <-errorChan:
-				cancel()
-				if err != nil {
-					log.Error("Docker events error", zap.Error(err))
-				}
-				break ListenEvents
-			}
-		}
-	}
-}
-
 func (dockerLoader *DockerLoader) update() bool {
 	dockerLoader.timer.Reset(dockerLoader.options.PollingInterval)
-	for i := 0; i < len(dockerLoader.skipEvents); i++ {
-		dockerLoader.skipEvents[i] = false
+	for _, sm := range dockerLoader.socketManagers {
+		sm.skipEvents = false
 	}
 
 	// Don't cache the logger more globally, it can change based on config reloads

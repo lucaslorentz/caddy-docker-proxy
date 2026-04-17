@@ -500,6 +500,8 @@ Run `caddy help docker-proxy` to see the raw flag output.
 | `--docker-sockets` | `CADDY_DOCKER_SOCKETS` | Comma-separated Docker sockets.<br>**Default:** `DOCKER_HOST` or the default socket |
 | `--docker-certs-path` | `CADDY_DOCKER_CERTS_PATH` | Comma-separated cert paths (one per socket; leave entry empty for sockets without certs) |
 | `--docker-apis-version` | `CADDY_DOCKER_APIS_VERSION` | Comma-separated API versions (one per socket) |
+| `--docker-retry-min` | `CADDY_DOCKER_RETRY_MIN` | Minimum retry interval for Docker socket reconnection (see [Optional Docker Sockets](#optional-docker-sockets)).<br>**Default:** `1s` |
+| `--docker-retry-max` | `CADDY_DOCKER_RETRY_MAX` | Maximum retry interval for Docker socket reconnection (see [Optional Docker Sockets](#optional-docker-sockets)).<br>**Default:** `30s` |
 | `--controller-network` | `CADDY_CONTROLLER_NETWORK` | Network allowed to configure the Caddy server, in CIDR (e.g. `10.200.200.0/24`) |
 | `--ingress-networks` | `CADDY_INGRESS_NETWORKS` | Comma-separated ingress networks connecting Caddy to containers.<br>**Default:** networks attached to the controller container |
 | `--caddyfile-path` | `CADDY_DOCKER_CADDYFILE_PATH` | Path to a base Caddyfile that will be extended with Docker sites |
@@ -514,6 +516,16 @@ Run `caddy help docker-proxy` to see the raw flag output.
 | _(env only)_ | `CADDY_DOCKER_NO_SCOPE` | Disable Docker event scope filter (useful for Podman).<br>**Default:** `false` |
 
 Check the **examples** folder to see how to set them in a Docker Compose file.
+
+## Optional Docker Sockets
+
+When multiple docker sockets are specified via `--docker-sockets` (or `CADDY_DOCKER_SOCKETS`), each socket is treated as optional. If a socket is unavailable at startup, caddy-docker-proxy logs a warning and retries with exponential backoff. When the socket becomes available, its containers and services are immediately incorporated into the Caddyfile.
+
+If a previously connected socket goes down, its routes are removed from the Caddyfile on the next regeneration cycle.
+
+Retry timing is controlled by `--docker-retry-min` (default `1s`) and `--docker-retry-max` (default `30s`). The retry interval starts at the minimum and doubles after each failed attempt until it reaches the maximum.
+
+The default behavior (no `--docker-sockets` flag) is unchanged — a single docker socket is required and a connection failure at startup is a fatal error.
 
 ## Viewing the generated Caddyfile
 

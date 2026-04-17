@@ -141,7 +141,11 @@ func testGeneration(
 		customizeOptions(options)
 	}
 
-	generator := CreateGenerator([]docker.Client{dockerClient}, dockerUtils, options)
+	clientProvider := func() []docker.Client {
+		return []docker.Client{dockerClient}
+	}
+
+	generator := CreateGenerator(clientProvider, dockerUtils, options)
 
 	var logsBuffer bytes.Buffer
 	encoderConfig := zap.NewDevelopmentEncoderConfig()
