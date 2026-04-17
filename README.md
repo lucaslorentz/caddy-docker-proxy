@@ -30,7 +30,7 @@ Every time a Docker object changes, the plugin updates the Caddyfile and trigger
     + [Server](#server)
     + [Controller](#controller)
     + [Standalone (default)](#standalone-default)
-  * [Caddy CLI](#caddy-cli)
+  * [Options](#options)
   * [Docker images](#docker-images)
     + [Choosing the version numbers](#choosing-the-version-numbers)
     + [Chosing between default or alpine images](#chosing-between-default-or-alpine-images)
@@ -488,67 +488,32 @@ This mode executes a controller and a server in the same instance and doesn't re
 
 [Configuration example](examples/standalone.yaml#L11)
 
-## Caddy CLI
+## Options
 
-This plugin extends caddy's CLI with the command `caddy docker-proxy`.
+This plugin extends Caddy's CLI with the `caddy docker-proxy` command. Each option below can be configured either as a CLI flag or via its corresponding environment variable — use whichever fits your deployment.
 
-Run `caddy help docker-proxy` to see all available flags.
+Run `caddy help docker-proxy` to see the raw flag output.
 
-```
-Usage of docker-proxy:
-  --caddyfile-path string
-        Path to a base Caddyfile that will be extended with Docker sites
-  --envfile
-        Path to an environment file with environment variables in the KEY=VALUE format to load into the Caddy process
-  --controller-network string
-        Network allowed to configure Caddy server in CIDR notation. Ex: 10.200.200.0/24
-  --ingress-networks string
-        Comma separated name of ingress networks connecting Caddy servers to containers.
-        When not defined, networks attached to controller container are considered ingress networks
-  --docker-sockets
-        Comma separated docker sockets
-        When not defined, DOCKER_HOST (or default docker socket if DOCKER_HOST not defined)
-  --docker-certs-path
-        Comma separated cert path, you could use empty value when no cert path for the concern index docker socket like cert_path0,,cert_path2
-  --docker-apis-version
-        Comma separated apis version, you could use empty value when no api version for the concern index docker socket like cert_path0,,cert_path2
-  --label-prefix string
-        Prefix for Docker labels (default "caddy")
-  --mode
-        Which mode this instance should run: standalone | controller | server
-  --polling-interval duration
-        Interval Caddy should manually check Docker for a new Caddyfile (default 30s)
-  --event-throttle-interval duration
-        Interval to throttle caddyfile updates triggered by docker events (default 100ms)
-  --process-caddyfile
-        Process Caddyfile before loading it, removing invalid servers (default true)
-  --proxy-service-tasks
-        Proxy to service tasks instead of service load balancer (default true)
-  --scan-stopped-containers
-        Scan stopped containers and use their labels for Caddyfile generation (default false)
-```
+| CLI flag | Env var | Description |
+|---|---|---|
+| `--mode` | `CADDY_DOCKER_MODE` | Which mode to run: `standalone` \| `controller` \| `server`.<br>**Default:** `standalone` |
+| `--docker-sockets` | `CADDY_DOCKER_SOCKETS` | Comma-separated Docker sockets.<br>**Default:** `DOCKER_HOST` or the default socket |
+| `--docker-certs-path` | `CADDY_DOCKER_CERTS_PATH` | Comma-separated cert paths (one per socket; leave entry empty for sockets without certs) |
+| `--docker-apis-version` | `CADDY_DOCKER_APIS_VERSION` | Comma-separated API versions (one per socket) |
+| `--controller-network` | `CADDY_CONTROLLER_NETWORK` | Network allowed to configure the Caddy server, in CIDR (e.g. `10.200.200.0/24`) |
+| `--ingress-networks` | `CADDY_INGRESS_NETWORKS` | Comma-separated ingress networks connecting Caddy to containers.<br>**Default:** networks attached to the controller container |
+| `--caddyfile-path` | `CADDY_DOCKER_CADDYFILE_PATH` | Path to a base Caddyfile that will be extended with Docker sites |
+| `--envfile` | `CADDY_DOCKER_ENVFILE` | Path to an env file (`KEY=VALUE`) loaded into the Caddy process |
+| `--label-prefix` | `CADDY_DOCKER_LABEL_PREFIX` | Prefix for Docker labels.<br>**Default:** `caddy` |
+| `--proxy-service-tasks` | `CADDY_DOCKER_PROXY_SERVICE_TASKS` | Proxy to service tasks instead of the service load balancer.<br>**Default:** `true` |
+| `--process-caddyfile` | `CADDY_DOCKER_PROCESS_CADDYFILE` | Process the Caddyfile before loading, removing invalid servers.<br>**Default:** `true` |
+| `--scan-stopped-containers` | `CADDY_DOCKER_SCAN_STOPPED_CONTAINERS` | Scan stopped containers and use their labels.<br>**Default:** `false` |
+| `--polling-interval` | `CADDY_DOCKER_POLLING_INTERVAL` | Interval to manually check Docker for a new Caddyfile.<br>**Default:** `30s` |
+| `--event-throttle-interval` | `CADDY_DOCKER_EVENT_THROTTLE_INTERVAL` | Interval to throttle Caddyfile updates triggered by Docker events.<br>**Default:** `100ms` |
+| _(env only)_ | `CADDY_ADMIN` | Override Caddy's admin listen address |
+| _(env only)_ | `CADDY_DOCKER_NO_SCOPE` | Disable Docker event scope filter (useful for Podman).<br>**Default:** `false` |
 
-Those flags can also be set via environment variables:
-
-```
-CADDY_DOCKER_CADDYFILE_PATH=<string>
-CADDY_DOCKER_ENVFILE=<string>
-CADDY_ADMIN=<string>
-CADDY_CONTROLLER_NETWORK=<string>
-CADDY_INGRESS_NETWORKS=<string>
-CADDY_DOCKER_SOCKETS=<string>
-CADDY_DOCKER_CERTS_PATH=<string>
-CADDY_DOCKER_APIS_VERSION=<string>
-CADDY_DOCKER_LABEL_PREFIX=<string>
-CADDY_DOCKER_MODE=<string>
-CADDY_DOCKER_POLLING_INTERVAL=<duration>
-CADDY_DOCKER_PROCESS_CADDYFILE=<bool>
-CADDY_DOCKER_PROXY_SERVICE_TASKS=<bool>
-CADDY_DOCKER_SCAN_STOPPED_CONTAINERS=<bool>
-CADDY_DOCKER_NO_SCOPE=<bool, default scope used>
-```
-
-Check **examples** folder to see how to set them on a Docker Compose file.
+Check the **examples** folder to see how to set them in a Docker Compose file.
 
 ## Viewing the generated Caddyfile
 
