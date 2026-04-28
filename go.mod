@@ -3,11 +3,12 @@ module github.com/lucaslorentz/caddy-docker-proxy/v2
 go 1.25.0
 
 require (
+	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/caddyserver/caddy/v2 v2.11.2
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.11.1
-	go.uber.org/zap v1.27.1
+	go.uber.org/zap v1.28.0
 )
 
 require (
@@ -24,7 +25,6 @@ require (
 	github.com/KimMachineGun/automemlimit v0.7.5 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
-	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
