@@ -6,13 +6,7 @@ configs:
 
 services:
   caddy:
-    image: caddy-docker-proxy:local
-    command:
-      - run
-      - --config
-      - /etc/caddy/Caddyfile
-      - --adapter
-      - caddyfile
+    image: caddy:2-alpine
     ports:
       - 80:80
       - 443:443
