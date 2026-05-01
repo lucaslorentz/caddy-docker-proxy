@@ -10,7 +10,7 @@ cleanup_configs() {
   docker config ls --format "{{.Name}}" | grep "^${CONFIG_PREFIX}-" | xargs -r docker config rm || true
 }
 
-trap cleanup_configs EXIT
+cleanup_configs
 
 docker stack deploy -c compose.yaml --prune caddy_test
 
