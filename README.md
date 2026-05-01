@@ -482,6 +482,16 @@ A single controller instance can configure all server instances in your cluster.
 
 [Configuration example](examples/distributed.yaml#L21)
 
+### Swarm
+
+Controller-only mode that renders a full Caddyfile and rolls it out to an existing Swarm service as an immutable Swarm **config**.
+
+This mode doesn't use (or expose) Caddy's Admin API. Instead, it updates the target service to mount the generated Caddyfile at `/etc/caddy/Caddyfile` (or `--swarm-caddyfile-target`). This triggers a Swarm service update (tasks get restarted according to the service's update/rollback settings).
+
+This mode requires access to a Swarm **manager** Docker API.
+
+[Configuration example](examples/swarm.yaml#L1)
+
 ### Standalone (default)
 
 This mode executes a controller and a server in the same instance and doesn't require additional configuration.
@@ -496,7 +506,7 @@ Run `caddy help docker-proxy` to see the raw flag output.
 
 | CLI flag | Env var | Description |
 |---|---|---|
-| `--mode` | `CADDY_DOCKER_MODE` | Which mode to run: `standalone` \| `controller` \| `server`.<br>**Default:** `standalone` |
+| `--mode` | `CADDY_DOCKER_MODE` | Which mode to run: `standalone` \| `controller` \| `server` \| `swarm`.<br>**Default:** `standalone` |
 | `--docker-sockets` | `CADDY_DOCKER_SOCKETS` | Comma-separated Docker sockets.<br>**Default:** `DOCKER_HOST` or the default socket |
 | `--docker-certs-path` | `CADDY_DOCKER_CERTS_PATH` | Comma-separated cert paths (one per socket; leave entry empty for sockets without certs) |
 | `--docker-apis-version` | `CADDY_DOCKER_APIS_VERSION` | Comma-separated API versions (one per socket) |
@@ -510,6 +520,10 @@ Run `caddy help docker-proxy` to see the raw flag output.
 | `--scan-stopped-containers` | `CADDY_DOCKER_SCAN_STOPPED_CONTAINERS` | Scan stopped containers and use their labels.<br>**Default:** `false` |
 | `--polling-interval` | `CADDY_DOCKER_POLLING_INTERVAL` | Interval to manually check Docker for a new Caddyfile.<br>**Default:** `30s` |
 | `--event-throttle-interval` | `CADDY_DOCKER_EVENT_THROTTLE_INTERVAL` | Interval to throttle Caddyfile updates triggered by Docker events.<br>**Default:** `100ms` |
+| `--swarm-service` | `CADDY_DOCKER_SWARM_SERVICE` | Existing Swarm service name/ID to update when running in `swarm` mode |
+| `--swarm-caddyfile-target` | `CADDY_DOCKER_SWARM_CADDYFILE_TARGET` | Target path inside the Swarm service task to mount the generated Caddyfile.<br>**Default:** `/etc/caddy/Caddyfile` |
+| `--swarm-config-prefix` | `CADDY_DOCKER_SWARM_CONFIG_PREFIX` | Prefix for generated Swarm config objects.<br>**Default:** `caddyfile` |
+| `--swarm-config-hash-len` | `CADDY_DOCKER_SWARM_CONFIG_HASH_LEN` | Length of sha256 hex used in generated Swarm config names.<br>**Default:** `32` |
 | _(env only)_ | `CADDY_ADMIN` | Override Caddy's admin listen address |
 | _(env only)_ | `CADDY_DOCKER_NO_SCOPE` | Disable Docker event scope filter (useful for Podman).<br>**Default:** `false` |
 
