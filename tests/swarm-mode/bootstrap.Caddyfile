@@ -1,3 +1,0 @@
-:80 {
-	respond "bootstrapping" 503
-}

@@ -1,9 +1,5 @@
 version: "3.7"
 
-configs:
-  caddy_bootstrap:
-    file: ./bootstrap.Caddyfile
-
 services:
   caddy:
     image: caddy:2-alpine
@@ -12,10 +8,6 @@ services:
       - 443:443
     networks:
       - caddy
-    configs:
-      - source: caddy_bootstrap
-        target: /etc/caddy/Caddyfile
-        mode: 0444
 
   controller:
     image: caddy-docker-proxy:local

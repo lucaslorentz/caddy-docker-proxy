@@ -2,7 +2,7 @@ version: '3.7'
 
 configs:
   caddy_bootstrap:
-    file: ./Caddyfile.bootstrap
+    file: ./Caddyfile
 
 services:
   # Caddy runs on workers and does NOT need the Docker socket.
