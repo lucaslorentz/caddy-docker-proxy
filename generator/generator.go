@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/swarm"
+	"github.com/docker/docker/errdefs"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
@@ -28,11 +29,15 @@ const IngressNetworkLabel = "caddy_ingress_network"
 
 const swarmAvailabilityCacheInterval = 1 * time.Minute
 
+// ClientProvider returns the current set of connected docker clients
+type ClientProvider func() []docker.Client
+
 // CaddyfileGenerator generates caddyfile from docker configuration
 type CaddyfileGenerator struct {
 	options              *config.Options
 	labelRegex           *regexp.Regexp
-	dockerClients        []docker.Client
+	clientProvider       ClientProvider
+	dockerClients        []docker.Client // set per-call in GenerateCaddyfile for downstream methods
 	dockerUtils          docker.Utils
 	ingressNetworks      map[string]bool
 	swarmIsAvailable     []bool
@@ -40,31 +45,39 @@ type CaddyfileGenerator struct {
 }
 
 // CreateGenerator creates a new generator
-func CreateGenerator(dockerClients []docker.Client, dockerUtils docker.Utils, options *config.Options) *CaddyfileGenerator {
+func CreateGenerator(clientProvider ClientProvider, dockerUtils docker.Utils, options *config.Options) *CaddyfileGenerator {
 	var labelRegexString = fmt.Sprintf("^%s(_\\d+)?(\\.|$)", regexp.QuoteMeta(options.LabelPrefix))
 
 	return &CaddyfileGenerator{
-		options:          options,
-		labelRegex:       regexp.MustCompile(labelRegexString),
-		dockerClients:    dockerClients,
-		swarmIsAvailable: make([]bool, len(dockerClients)),
-		dockerUtils:      dockerUtils,
+		options:        options,
+		labelRegex:     regexp.MustCompile(labelRegexString),
+		clientProvider: clientProvider,
+		dockerUtils:    dockerUtils,
 	}
 }
 
 // GenerateCaddyfile generates a caddy file config from docker metadata
 func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []string) {
+	dockerClients := g.clientProvider()
+	g.dockerClients = dockerClients
+
+	// Rebuild swarm availability tracking when the client count changes
+	clientCountChanged := len(g.swarmIsAvailable) != len(dockerClients)
+	if clientCountChanged {
+		g.swarmIsAvailable = make([]bool, len(dockerClients))
+	}
+
 	var caddyfileBuffer bytes.Buffer
 
-	ingressNetworks, err := g.getIngressNetworks(logger)
+	ingressNetworks, err := g.getIngressNetworks(dockerClients, logger)
 	if err == nil {
 		g.ingressNetworks = ingressNetworks
 	} else {
 		logger.Error("Failed to get ingress networks", zap.Error(err))
 	}
 
-	if time.Since(g.swarmIsAvailableTime) > swarmAvailabilityCacheInterval {
-		g.checkSwarmAvailability(logger, time.Time.IsZero(g.swarmIsAvailableTime))
+	if clientCountChanged || time.Since(g.swarmIsAvailableTime) > swarmAvailabilityCacheInterval {
+		g.checkSwarmAvailability(dockerClients, logger, time.Time.IsZero(g.swarmIsAvailableTime))
 		g.swarmIsAvailableTime = time.Now()
 	}
 
@@ -88,7 +101,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		logger.Debug("Skipping default Caddyfile because no path is set")
 	}
 
-	for i, dockerClient := range g.dockerClients {
+	for i, dockerClient := range dockerClients {
 
 		// Add Caddyfile from swarm configs
 		if g.swarmIsAvailable[i] {
@@ -214,9 +227,9 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 	return caddyfileContent, controlledServers
 }
 
-func (g *CaddyfileGenerator) checkSwarmAvailability(logger *zap.Logger, isFirstCheck bool) {
+func (g *CaddyfileGenerator) checkSwarmAvailability(dockerClients []docker.Client, logger *zap.Logger, isFirstCheck bool) {
 
-	for i, dockerClient := range g.dockerClients {
+	for i, dockerClient := range dockerClients {
 		info, err := dockerClient.Info(context.Background())
 		if err == nil {
 			newSwarmIsAvailable := info.Swarm.LocalNodeState == swarm.LocalNodeStateActive
@@ -231,10 +244,10 @@ func (g *CaddyfileGenerator) checkSwarmAvailability(logger *zap.Logger, isFirstC
 	}
 }
 
-func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]bool, error) {
+func (g *CaddyfileGenerator) getIngressNetworks(dockerClients []docker.Client, logger *zap.Logger) (map[string]bool, error) {
 	ingressNetworks := map[string]bool{}
 
-	for _, dockerClient := range g.dockerClients {
+	for _, dockerClient := range dockerClients {
 		if len(g.options.IngressNetworks) > 0 {
 			networks, err := dockerClient.NetworkList(context.Background(), network.ListOptions{})
 			if err != nil {
@@ -259,6 +272,10 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 			logger.Debug("Caddy ContainerID", zap.String("ID", containerID))
 			container, err := dockerClient.ContainerInspect(context.Background(), containerID)
 			if err != nil {
+				if errdefs.IsNotFound(err) {
+					// caddy container lives on one socket; others won't have it
+					continue
+				}
 				return nil, err
 			}
 

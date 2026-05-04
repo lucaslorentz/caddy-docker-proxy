@@ -70,6 +70,12 @@ func init() {
 			fs.Duration("event-throttle-interval", 100*time.Millisecond,
 				"Interval to throttle caddyfile updates triggered by docker events")
 
+			fs.Duration("docker-retry-min", 1*time.Second,
+				"Minimum retry interval for docker socket reconnection")
+
+			fs.Duration("docker-retry-max", 30*time.Second,
+				"Maximum retry interval for docker socket reconnection")
+
 			return fs
 		}(),
 	})
@@ -172,6 +178,8 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	dockerCertsPathFlag := flags.String("docker-certs-path")
 	dockerAPIsVersionFlag := flags.String("docker-apis-version")
 	ingressNetworksFlag := flags.String("ingress-networks")
+	dockerRetryMinFlag := flags.Duration("docker-retry-min")
+	dockerRetryMaxFlag := flags.Duration("docker-retry-max")
 
 	options := &config.Options{}
 
@@ -295,6 +303,28 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		}
 	} else {
 		options.EventThrottleInterval = eventThrottleIntervalFlag
+	}
+
+	if dockerRetryMinEnv := os.Getenv("CADDY_DOCKER_RETRY_MIN"); dockerRetryMinEnv != "" {
+		if p, err := time.ParseDuration(dockerRetryMinEnv); err != nil {
+			log.Error("Failed to parse CADDY_DOCKER_RETRY_MIN", zap.String("CADDY_DOCKER_RETRY_MIN", dockerRetryMinEnv), zap.Error(err))
+			options.DockerRetryMin = dockerRetryMinFlag
+		} else {
+			options.DockerRetryMin = p
+		}
+	} else {
+		options.DockerRetryMin = dockerRetryMinFlag
+	}
+
+	if dockerRetryMaxEnv := os.Getenv("CADDY_DOCKER_RETRY_MAX"); dockerRetryMaxEnv != "" {
+		if p, err := time.ParseDuration(dockerRetryMaxEnv); err != nil {
+			log.Error("Failed to parse CADDY_DOCKER_RETRY_MAX", zap.String("CADDY_DOCKER_RETRY_MAX", dockerRetryMaxEnv), zap.Error(err))
+			options.DockerRetryMax = dockerRetryMaxFlag
+		} else {
+			options.DockerRetryMax = p
+		}
+	} else {
+		options.DockerRetryMax = dockerRetryMaxFlag
 	}
 
 	return options
