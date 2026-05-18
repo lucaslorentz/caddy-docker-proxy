@@ -1,12 +1,19 @@
 package generator
 
 import (
+	"bufio"
+	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/api/types/system"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
+	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestServices_TemplateData(t *testing.T) {
@@ -520,4 +527,83 @@ func TestServiceTasks_Running(t *testing.T) {
 	testGeneration(t, dockerClient, func(options *config.Options) {
 		options.ProxyServiceTasks = true
 	}, expectedCaddyfile, expectedLogs)
+}
+
+// TestServiceTasks_OneClientTaskListError verifies that when running in
+// multi-socket mode and one of the docker clients returns an error from
+// TaskList (e.g. a Swarm worker responding "This node is not a swarm
+// manager"), the generator continues to collect tasks from the remaining
+// healthy clients instead of dropping the service's upstreams entirely.
+//
+// Regression test for #801 / fix for the pre-existing fail-fast in
+// getServiceTasksIps that was carried over from the single-client era in
+// PR #303 without adapting the error semantics for the multi-client loop.
+func TestServiceTasks_OneClientTaskListError(t *testing.T) {
+	managerClient := createBasicDockerClientMock()
+	managerClient.ServicesData = []swarm.Service{
+		{
+			ID: "SERVICEID",
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: "service",
+					Labels: map[string]string{
+						fmtLabel("%s"):               "service.testdomain.com",
+						fmtLabel("%s.reverse_proxy"): "{{upstreams 5000}}",
+					},
+				},
+			},
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					{NetworkID: caddyNetworkID},
+				},
+			},
+		},
+	}
+	managerClient.TasksData = []swarm.Task{
+		{
+			ServiceID: "SERVICEID",
+			NetworksAttachments: []swarm.NetworkAttachment{
+				{
+					Network:   swarm.Network{ID: caddyNetworkID},
+					Addresses: []string{"10.0.0.1/24"},
+				},
+			},
+			DesiredState: swarm.TaskStateRunning,
+			Status:       swarm.TaskStatus{State: swarm.TaskStateRunning},
+		},
+	}
+
+	// Second client behaves like a Swarm worker: TaskList returns the
+	// "not a swarm manager" error that real workers return.
+	workerClient := createBasicDockerClientMock()
+	workerClient.TaskListErr = errors.New("Error response from daemon: This node is not a swarm manager.")
+
+	options := &config.Options{
+		LabelPrefix:       DefaultLabelPrefix,
+		ProxyServiceTasks: true,
+	}
+
+	dockerUtils := createDockerUtilsMock()
+	generator := CreateGenerator(
+		[]docker.Client{managerClient, workerClient},
+		dockerUtils,
+		options,
+	)
+
+	var logsBuffer bytes.Buffer
+	encoderConfig := zap.NewDevelopmentEncoderConfig()
+	encoderConfig.TimeKey = ""
+	encoder := zapcore.NewConsoleEncoder(encoderConfig)
+	writer := bufio.NewWriter(&logsBuffer)
+	logger := zap.New(zapcore.NewCore(encoder, zapcore.AddSync(writer), zapcore.InfoLevel))
+
+	caddyfileBytes, _ := generator.GenerateCaddyfile(logger)
+	writer.Flush()
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy 10.0.0.1:5000\n" +
+		"}\n"
+
+	assert.Equal(t, expectedCaddyfile, string(caddyfileBytes),
+		"manager client's task IP must still reach the Caddyfile when a peer client's TaskList errors")
 }

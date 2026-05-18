@@ -60,7 +60,8 @@ func (g *CaddyfileGenerator) getServiceTasksIps(service *swarm.Service, logger *
 	for _, dockerClient := range g.dockerClients {
 		tasks, err := dockerClient.TaskList(context.Background(), types.TaskListOptions{Filters: taskListFilter})
 		if err != nil {
-			return []string{}, err
+			logger.Debug("Failed to get Swarm tasks from docker client, skipping", zap.String("service", service.Spec.Name), zap.Error(err))
+			continue
 		}
 
 		for _, task := range tasks {

@@ -17,6 +17,7 @@ type ClientMock struct {
 	ServicesData         []swarm.Service
 	ConfigsData          []swarm.Config
 	TasksData            []swarm.Task
+	TaskListErr          error
 	NetworksData         []network.Summary
 	InfoData             system.Info
 	ContainerInspectData map[string]types.ContainerJSON
@@ -37,6 +38,9 @@ func (mock *ClientMock) ServiceList(ctx context.Context, options types.ServiceLi
 
 // TaskList list all tasks
 func (mock *ClientMock) TaskList(ctx context.Context, options types.TaskListOptions) ([]swarm.Task, error) {
+	if mock.TaskListErr != nil {
+		return nil, mock.TaskListErr
+	}
 	matchingTasks := []swarm.Task{}
 	for _, task := range mock.TasksData {
 		if !options.Filters.Match("service", task.ServiceID) {
