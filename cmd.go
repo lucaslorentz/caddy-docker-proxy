@@ -2,9 +2,11 @@ package caddydockerproxy
 
 import (
 	"flag"
+	"fmt"
 	"net"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,7 +30,7 @@ func init() {
 			fs := flag.NewFlagSet("docker-proxy", flag.ExitOnError)
 
 			fs.String("mode", "standalone",
-				"Which mode this instance should run: standalone | controller | server")
+				"Which mode this instance should run: standalone | controller | server | swarm")
 
 			fs.String("docker-sockets", "",
 				"Docker sockets comma separate")
@@ -70,6 +72,18 @@ func init() {
 			fs.Duration("event-throttle-interval", 100*time.Millisecond,
 				"Interval to throttle caddyfile updates triggered by docker events")
 
+			fs.String("swarm-service", "",
+				"Existing Swarm service name/ID to update (swarm mode only)")
+
+			fs.String("swarm-caddyfile-target", "/etc/caddy/Caddyfile",
+				"Target path inside the Swarm service task to mount the generated Caddyfile (swarm mode only)")
+
+			fs.String("swarm-config-prefix", "caddyfile",
+				"Prefix for generated Swarm config objects (swarm mode only)")
+
+			fs.Int("swarm-config-hash-len", 32,
+				"Length of sha256 hex used in generated Swarm config name (swarm mode only)")
+
 			return fs
 		}(),
 	})
@@ -80,6 +94,12 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 
 	options := createOptions(flags)
 	log := logger()
+
+	if options.SwarmMode {
+		if strings.TrimSpace(options.SwarmService) == "" {
+			return 1, fmt.Errorf("swarm mode requires --swarm-service (or CADDY_DOCKER_SWARM_SERVICE)")
+		}
+	}
 
 	if options.Mode&config.Server == config.Server {
 		log.Info("Running caddy proxy server")
@@ -172,6 +192,10 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	dockerCertsPathFlag := flags.String("docker-certs-path")
 	dockerAPIsVersionFlag := flags.String("docker-apis-version")
 	ingressNetworksFlag := flags.String("ingress-networks")
+	swarmServiceFlag := flags.String("swarm-service")
+	swarmCaddyfileTargetFlag := flags.String("swarm-caddyfile-target")
+	swarmConfigPrefixFlag := flags.String("swarm-config-prefix")
+	swarmConfigHashLenFlag := flags.Int("swarm-config-hash-len")
 
 	options := &config.Options{}
 
@@ -186,6 +210,9 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		options.Mode = config.Controller
 	case "server":
 		options.Mode = config.Server
+	case "swarm":
+		options.Mode = config.Controller
+		options.SwarmMode = true
 	default:
 		options.Mode = config.Standalone
 	}
@@ -295,6 +322,33 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		}
 	} else {
 		options.EventThrottleInterval = eventThrottleIntervalFlag
+	}
+
+	if swarmServiceEnv := os.Getenv("CADDY_DOCKER_SWARM_SERVICE"); swarmServiceEnv != "" {
+		options.SwarmService = swarmServiceEnv
+	} else {
+		options.SwarmService = swarmServiceFlag
+	}
+
+	if swarmCaddyfileTargetEnv := os.Getenv("CADDY_DOCKER_SWARM_CADDYFILE_TARGET"); swarmCaddyfileTargetEnv != "" {
+		options.SwarmCaddyfileTarget = swarmCaddyfileTargetEnv
+	} else {
+		options.SwarmCaddyfileTarget = swarmCaddyfileTargetFlag
+	}
+
+	if swarmConfigPrefixEnv := os.Getenv("CADDY_DOCKER_SWARM_CONFIG_PREFIX"); swarmConfigPrefixEnv != "" {
+		options.SwarmConfigPrefix = swarmConfigPrefixEnv
+	} else {
+		options.SwarmConfigPrefix = swarmConfigPrefixFlag
+	}
+
+	options.SwarmConfigHashLen = swarmConfigHashLenFlag
+	if swarmConfigHashLenEnv := os.Getenv("CADDY_DOCKER_SWARM_CONFIG_HASH_LEN"); swarmConfigHashLenEnv != "" {
+		if v, err := strconv.Atoi(swarmConfigHashLenEnv); err != nil {
+			log.Error("Failed to parse CADDY_DOCKER_SWARM_CONFIG_HASH_LEN", zap.String("CADDY_DOCKER_SWARM_CONFIG_HASH_LEN", swarmConfigHashLenEnv), zap.Error(err))
+		} else {
+			options.SwarmConfigHashLen = v
+		}
 	}
 
 	return options

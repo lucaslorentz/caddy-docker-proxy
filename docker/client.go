@@ -16,6 +16,8 @@ import (
 type Client interface {
 	ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error)
 	ServiceList(ctx context.Context, options types.ServiceListOptions) ([]swarm.Service, error)
+	ServiceInspectWithRaw(ctx context.Context, serviceID string, opts swarm.ServiceInspectOptions) (swarm.Service, []byte, error)
+	ServiceUpdate(ctx context.Context, serviceID string, version swarm.Version, service swarm.ServiceSpec, options swarm.ServiceUpdateOptions) (swarm.ServiceUpdateResponse, error)
 	TaskList(ctx context.Context, options types.TaskListOptions) ([]swarm.Task, error)
 	Info(ctx context.Context) (system.Info, error)
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
@@ -23,6 +25,7 @@ type Client interface {
 	NetworkList(ctx context.Context, options network.ListOptions) ([]network.Summary, error)
 	ConfigList(ctx context.Context, options types.ConfigListOptions) ([]swarm.Config, error)
 	ConfigInspectWithRaw(ctx context.Context, id string) (swarm.Config, []byte, error)
+	ConfigCreate(ctx context.Context, config swarm.ConfigSpec) (swarm.ConfigCreateResponse, error)
 	Events(ctx context.Context, options events.ListOptions) (<-chan events.Message, <-chan error)
 }
 
@@ -43,6 +46,14 @@ func (wrapper *clientWrapper) ContainerList(ctx context.Context, options contain
 
 func (wrapper *clientWrapper) ServiceList(ctx context.Context, options types.ServiceListOptions) ([]swarm.Service, error) {
 	return wrapper.client.ServiceList(ctx, options)
+}
+
+func (wrapper *clientWrapper) ServiceInspectWithRaw(ctx context.Context, serviceID string, opts swarm.ServiceInspectOptions) (swarm.Service, []byte, error) {
+	return wrapper.client.ServiceInspectWithRaw(ctx, serviceID, opts)
+}
+
+func (wrapper *clientWrapper) ServiceUpdate(ctx context.Context, serviceID string, version swarm.Version, service swarm.ServiceSpec, options swarm.ServiceUpdateOptions) (swarm.ServiceUpdateResponse, error) {
+	return wrapper.client.ServiceUpdate(ctx, serviceID, version, service, options)
 }
 
 func (wrapper *clientWrapper) TaskList(ctx context.Context, options types.TaskListOptions) ([]swarm.Task, error) {
@@ -71,6 +82,10 @@ func (wrapper *clientWrapper) NetworkList(ctx context.Context, options network.L
 
 func (wrapper *clientWrapper) ConfigInspectWithRaw(ctx context.Context, id string) (swarm.Config, []byte, error) {
 	return wrapper.client.ConfigInspectWithRaw(ctx, id)
+}
+
+func (wrapper *clientWrapper) ConfigCreate(ctx context.Context, config swarm.ConfigSpec) (swarm.ConfigCreateResponse, error) {
+	return wrapper.client.ConfigCreate(ctx, config)
 }
 
 func (wrapper *clientWrapper) Events(ctx context.Context, options events.ListOptions) (<-chan events.Message, <-chan error) {

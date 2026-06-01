@@ -24,6 +24,15 @@ type Options struct {
 	Secret                 string
 	ControllerNetwork      *net.IPNet
 	IngressNetworks        []string
+
+	// SwarmMode enables atomic Caddyfile distribution via Swarm configs.
+	// When enabled, this instance updates an existing Swarm service by mounting
+	// a newly created, content-addressed Swarm config at SwarmCaddyfileTarget.
+	SwarmMode            bool
+	SwarmService         string
+	SwarmCaddyfileTarget string
+	SwarmConfigPrefix    string
+	SwarmConfigHashLen   int
 }
 
 // Mode represents how this instance should run
