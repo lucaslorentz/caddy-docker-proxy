@@ -81,6 +81,21 @@ jobs:
       #   run: .\run-docker-tests-windows.sh
       #   shell: bash
 
+      # Workaround for actions/runner-images#13729: the Docker daemon is
+      # frequently not running when the windows-2022 runner starts, causing
+      # `npipe:////./pipe/docker_engine` connection failures. Start the
+      # service and wait for it to become responsive before building.
+      - name: Ensure Docker is running (Windows)
+        shell: pwsh
+        run: |
+          Start-Service docker
+          for ($i = 0; $i -lt 30; $i++) {
+            docker info *> $null
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            Start-Sleep 2
+          }
+          docker info
+
       - name: Build Docker Images
         run: ./build-images-windows.sh
         env:
