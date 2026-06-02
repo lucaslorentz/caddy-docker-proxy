@@ -510,6 +510,8 @@ Run `caddy help docker-proxy` to see the raw flag output.
 | `--scan-stopped-containers` | `CADDY_DOCKER_SCAN_STOPPED_CONTAINERS` | Scan stopped containers and use their labels.<br>**Default:** `false` |
 | `--polling-interval` | `CADDY_DOCKER_POLLING_INTERVAL` | Interval to manually check Docker for a new Caddyfile.<br>**Default:** `30s` |
 | `--event-throttle-interval` | `CADDY_DOCKER_EVENT_THROTTLE_INTERVAL` | Interval to throttle Caddyfile updates triggered by Docker events.<br>**Default:** `100ms` |
+| `--log-level` | `CADDY_DOCKER_LOG_LEVEL` | Log level: `DEBUG` \| `INFO` \| `WARN` \| `ERROR`. Empty keeps Caddy's default |
+| `--log-format` | `CADDY_DOCKER_LOG_FORMAT` | Log format: `console` \| `json`. Empty keeps Caddy's default |
 | _(env only)_ | `CADDY_ADMIN` | Override Caddy's admin listen address |
 | _(env only)_ | `CADDY_DOCKER_NO_SCOPE` | Disable Docker event scope filter (useful for Podman).<br>**Default:** `false` |
 

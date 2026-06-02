@@ -42,6 +42,7 @@ type DockerLoader struct {
 	lastVersion     int64
 	serversVersions *utils.StringInt64CMap
 	serversUpdating *utils.StringBoolCMap
+	caddyLogging    *caddy.Logging
 }
 
 // CreateDockerLoader creates a docker loader
@@ -50,12 +51,12 @@ func CreateDockerLoader(options *config.Options) *DockerLoader {
 		options:         options,
 		serversVersions: utils.NewStringInt64CMap(),
 		serversUpdating: utils.NewStringBoolCMap(),
+		caddyLogging:    buildCaddyLoggingConfig(options),
 	}
 }
 
 func logger() *zap.Logger {
-	return caddy.Log().
-		Named("docker-proxy")
+	return caddy.Log().Named("docker-proxy")
 }
 
 // Start docker loader
@@ -253,7 +254,7 @@ func (dockerLoader *DockerLoader) update() bool {
 	dockerLoader.lastCaddyfile = caddyfile
 
 	if caddyfileChanged {
-		log.Info("New Caddyfile", zap.ByteString("caddyfile", caddyfile))
+		log.Debug("New Caddyfile", zap.ByteString("caddyfile", caddyfile))
 
         tmpPath := CaddyfileAutosavePath + ".tmp"
         if err := os.WriteFile(tmpPath, caddyfile, 0640); err != nil {
@@ -275,7 +276,7 @@ func (dockerLoader *DockerLoader) update() bool {
 			return false
 		}
 
-		log.Info("New Config JSON", zap.ByteString("json", configJSON))
+		log.Debug("New Config JSON", zap.ByteString("json", configJSON))
 
 		dockerLoader.lastJSONConfig = configJSON
 		dockerLoader.lastVersion++
@@ -315,9 +316,9 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 
 	url := "http://" + server + ":2019/load"
 
-	postBody, err := addAdminListen(dockerLoader.lastJSONConfig, getServerAdminListen(dockerLoader.options, server))
+	postBody, err := dockerLoader.prepareServerConfig(server)
 	if err != nil {
-		log.Error("Failed to add admin listen to", zap.String("server", server), zap.Error(err))
+		log.Error("Failed to prepare configuration for", zap.String("server", server), zap.Error(err))
 		return
 	}
 
@@ -350,20 +351,28 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 	log.Info("Successfully configured", zap.String("server", server))
 }
 
-func addAdminListen(configJSON []byte, listen string) ([]byte, error) {
+// prepareServerConfig builds the config to push to server from the loader's last
+// generated config, with a single unmarshal/marshal round-trip.
+func (dockerLoader *DockerLoader) prepareServerConfig(server string) ([]byte, error) {
 	config := &caddy.Config{}
-	err := json.Unmarshal(configJSON, config)
-	if err != nil {
+	if err := json.Unmarshal(dockerLoader.lastJSONConfig, config); err != nil {
 		return nil, err
 	}
-	// Respect explicit admin settings from Caddyfile/JSON config,
-	// but override "admin off" since the plugin requires the admin API.
-	if config.Admin != nil && !config.Admin.Disabled {
-		return configJSON, nil
+
+	// Respect an explicit admin endpoint, but override "admin off" since the
+	// plugin requires the admin API.
+	if config.Admin == nil || config.Admin.Disabled {
+		config.Admin = &caddy.AdminConfig{Listen: getServerAdminListen(dockerLoader.options, server)}
 	}
-	config.Admin = &caddy.AdminConfig{
-		Listen: listen,
+
+	// Re-apply our logging only to the local Caddy (the standalone self-push),
+	// so --log-level/--log-format survive its config reload. Remote servers run
+	// their own instance and manage their own logging. Logging already defined
+	// in the config (e.g. via labels) is respected.
+	if server == "localhost" && dockerLoader.caddyLogging != nil && (config.Logging == nil || len(config.Logging.Logs) == 0) {
+		config.Logging = dockerLoader.caddyLogging
 	}
+
 	return json.Marshal(config)
 }
 
