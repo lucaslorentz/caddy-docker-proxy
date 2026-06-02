@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/caddyserver/caddy/v2"
+	"github.com/caddyserver/caddy/v2/caddyconfig"
 	caddycmd "github.com/caddyserver/caddy/v2/cmd"
+	caddylogging "github.com/caddyserver/caddy/v2/modules/logging"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/generator"
 
@@ -70,6 +72,12 @@ func init() {
 			fs.Duration("event-throttle-interval", 100*time.Millisecond,
 				"Interval to throttle caddyfile updates triggered by docker events")
 
+			fs.String("log-level", "",
+				"Log level: DEBUG | INFO | WARN | ERROR. Applies in all modes. Empty keeps Caddy's default (INFO)")
+
+			fs.String("log-format", "",
+				"Log format: console | json. Applies in all modes. Empty keeps Caddy's default")
+
 			return fs
 		}(),
 	})
@@ -79,23 +87,17 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 	caddy.TrapSignals()
 
 	options := createOptions(flags)
-	log := logger()
+
+	if err := caddy.Run(buildCaddyRunConfig(options)); err != nil {
+		return 1, err
+	}
 
 	if options.Mode&config.Server == config.Server {
-		log.Info("Running caddy proxy server")
-
-		err := caddy.Run(&caddy.Config{
-			Admin: &caddy.AdminConfig{
-				Listen: getAdminListen(options),
-			},
-		})
-		if err != nil {
-			return 1, err
-		}
+		logger().Info("Running caddy proxy server")
 	}
 
 	if options.Mode&config.Controller == config.Controller {
-		log.Info("Running caddy proxy controller")
+		logger().Info("Running caddy proxy controller")
 		loader := CreateDockerLoader(options)
 		if err := loader.Start(); err != nil {
 			if err := caddy.Stop(); err != nil {
@@ -107,6 +109,51 @@ func cmdFunc(flags caddycmd.Flags) (int, error) {
 	}
 
 	select {}
+}
+
+// buildCaddyRunConfig builds the Caddy config to run: the admin config plus the
+// configured logging.
+func buildCaddyRunConfig(options *config.Options) *caddy.Config {
+	return &caddy.Config{
+		Admin:   buildCaddyAdminConfig(options),
+		Logging: buildCaddyLoggingConfig(options),
+	}
+}
+
+// buildCaddyAdminConfig builds Caddy's admin config: controller-only mode
+// doesn't serve anything, so its admin endpoint is disabled; server/standalone
+// exposes the admin endpoint used to load configs.
+func buildCaddyAdminConfig(options *config.Options) *caddy.AdminConfig {
+	if options.Mode&config.Server != config.Server {
+		return &caddy.AdminConfig{Disabled: true}
+	}
+	return &caddy.AdminConfig{Listen: getAdminListen(options)}
+}
+
+// buildCaddyLoggingConfig builds Caddy's logging config from the configured
+// log level/format. Unset values are left empty so Caddy applies its own
+// defaults.
+func buildCaddyLoggingConfig(options *config.Options) *caddy.Logging {
+	defaultLog := &caddy.CustomLog{}
+
+	if level := strings.ToUpper(strings.TrimSpace(options.LogLevel)); level != "" {
+		defaultLog.Level = level
+	}
+	switch strings.ToLower(strings.TrimSpace(options.LogFormat)) {
+	case "console":
+		defaultLog.EncoderRaw = caddyconfig.JSONModuleObject(caddylogging.ConsoleEncoder{}, "format", "console", nil)
+	case "json":
+		defaultLog.EncoderRaw = caddyconfig.JSONModuleObject(caddylogging.JSONEncoder{}, "format", "json", nil)
+	}
+	// Controller-only mode runs Caddy with the admin endpoint disabled; drop the
+	// admin logger so Caddy doesn't warn that it's disabled on every start.
+	if options.Mode&config.Server != config.Server {
+		defaultLog.Exclude = append(defaultLog.Exclude, "admin")
+	}
+
+	return &caddy.Logging{
+		Logs: map[string]*caddy.CustomLog{"default": defaultLog},
+	}
 }
 
 func getAdminListen(options *config.Options) string {
@@ -172,6 +219,8 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 	dockerCertsPathFlag := flags.String("docker-certs-path")
 	dockerAPIsVersionFlag := flags.String("docker-apis-version")
 	ingressNetworksFlag := flags.String("ingress-networks")
+	logLevelFlag := flags.String("log-level")
+	logFormatFlag := flags.String("log-format")
 
 	options := &config.Options{}
 
@@ -295,6 +344,38 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 		}
 	} else {
 		options.EventThrottleInterval = eventThrottleIntervalFlag
+	}
+
+	if logLevelEnv := os.Getenv("CADDY_DOCKER_LOG_LEVEL"); logLevelEnv != "" {
+		options.LogLevel = logLevelEnv
+	} else {
+		options.LogLevel = logLevelFlag
+	}
+
+	if logFormatEnv := os.Getenv("CADDY_DOCKER_LOG_FORMAT"); logFormatEnv != "" {
+		options.LogFormat = logFormatEnv
+	} else {
+		options.LogFormat = logFormatFlag
+	}
+
+	// Ignore an unrecognized log level/format instead of failing Caddy startup
+	// (level) or applying an empty logging config (format); matches how other
+	// invalid options fall back above.
+	if options.LogLevel != "" {
+		switch strings.ToLower(options.LogLevel) {
+		case "debug", "info", "warn", "error", "panic", "fatal":
+		default:
+			log.Error("Ignoring invalid log level", zap.String("log-level", options.LogLevel))
+			options.LogLevel = ""
+		}
+	}
+	if options.LogFormat != "" {
+		switch strings.ToLower(options.LogFormat) {
+		case "console", "json":
+		default:
+			log.Error("Ignoring invalid log format", zap.String("log-format", options.LogFormat))
+			options.LogFormat = ""
+		}
 	}
 
 	return options
