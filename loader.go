@@ -256,12 +256,14 @@ func (dockerLoader *DockerLoader) update() bool {
 	if caddyfileChanged {
 		log.Debug("New Caddyfile", zap.ByteString("caddyfile", caddyfile))
 
-        tmpPath := CaddyfileAutosavePath + ".tmp"
-        if err := os.WriteFile(tmpPath, caddyfile, 0640); err != nil {
-            log.Warn("Failed to write temporary caddyfile", zap.Error(err), zap.String("path", tmpPath))
-        } else if err := os.Rename(tmpPath, CaddyfileAutosavePath); err != nil {
-            log.Warn("Failed to autosave caddyfile", zap.Error(err), zap.String("path", CaddyfileAutosavePath))
-        }
+		tmpPath := CaddyfileAutosavePath + ".tmp"
+		if err := os.MkdirAll(filepath.Dir(CaddyfileAutosavePath), 0700); err != nil {
+			log.Warn("Failed to create autosave directory", zap.Error(err), zap.String("path", filepath.Dir(CaddyfileAutosavePath)))
+		} else if err := os.WriteFile(tmpPath, caddyfile, 0640); err != nil {
+			log.Warn("Failed to write temporary caddyfile", zap.Error(err), zap.String("path", tmpPath))
+		} else if err := os.Rename(tmpPath, CaddyfileAutosavePath); err != nil {
+			log.Warn("Failed to autosave caddyfile", zap.Error(err), zap.String("path", CaddyfileAutosavePath))
+		}
 
 		adapter := caddyconfig.GetAdapter("caddyfile")
 
