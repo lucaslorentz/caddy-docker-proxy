@@ -75,7 +75,8 @@ func TestContainers_DifferentNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.ContainersData = []types.Container{
 		{
-			ID: "CONTAINER-ID",
+			ID:    "CONTAINER-ID",
+			Names: []string{"/lonely-container"},
 			NetworkSettings: &types.SummaryNetworkSettings{
 				Networks: map[string]*network.EndpointSettings{
 					"other-network": {
@@ -96,7 +97,7 @@ func TestContainers_DifferentNetwork(t *testing.T) {
 		"}\n"
 
 	const expectedLogs = commonLogs +
-		`WARN	Container is not in same network as caddy	{"container": "CONTAINER-ID", "container id": "CONTAINER-ID"}` + newLine
+		`WARN	Container is not in same network as caddy	{"container": "lonely-container", "container networks": ["other-network"], "ingress networks": []}` + newLine
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
