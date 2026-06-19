@@ -15,14 +15,12 @@ import (
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
 	"github.com/joho/godotenv"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/generator"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/utils"
+	"github.com/moby/moby/client"
 
 	"go.uber.org/zap"
 )
@@ -79,7 +77,7 @@ func (dockerLoader *DockerLoader) Start() error {
 	dockerClients := []docker.Client{}
 	for i, dockerSocket := range dockerLoader.options.DockerSockets {
 		// cf https://github.com/docker/go-docker/blob/master/client.go
-		// setenv to use NewEnvClient
+		// set env to configure the Docker client
 		// or manually
 
 		os.Setenv("DOCKER_HOST", dockerSocket)
@@ -96,19 +94,17 @@ func (dockerLoader *DockerLoader) Start() error {
 			os.Unsetenv("DOCKER_API_VERSION")
 		}
 
-		dockerClient, err := client.NewEnvClient()
+		dockerClient, err := client.New(client.FromEnv)
 		if err != nil {
 			log.Error("Docker connection failed to docker specify socket", zap.Error(err), zap.String("DockerSocket", dockerSocket))
 			return err
 		}
 
-		dockerPing, err := dockerClient.Ping(context.Background())
+		_, err = dockerClient.Ping(context.Background(), client.PingOptions{NegotiateAPIVersion: true})
 		if err != nil {
 			log.Error("Docker ping failed on specify socket", zap.Error(err), zap.String("DockerSocket", dockerSocket))
 			return err
 		}
-
-		dockerClient.NegotiateAPIVersionPing(dockerPing)
 
 		wrappedClient := docker.WrapClient(dockerClient)
 
@@ -117,20 +113,18 @@ func (dockerLoader *DockerLoader) Start() error {
 
 	// by default it will used the env docker
 	if len(dockerClients) == 0 {
-		dockerClient, err := client.NewEnvClient()
+		dockerClient, err := client.New(client.FromEnv)
 		dockerLoader.options.DockerSockets = append(dockerLoader.options.DockerSockets, os.Getenv("DOCKER_HOST"))
 		if err != nil {
 			log.Error("Docker connection failed", zap.Error(err))
 			return err
 		}
 
-		dockerPing, err := dockerClient.Ping(context.Background())
+		_, err = dockerClient.Ping(context.Background(), client.PingOptions{NegotiateAPIVersion: true})
 		if err != nil {
 			log.Error("Docker ping failed", zap.Error(err))
 			return err
 		}
-
-		dockerClient.NegotiateAPIVersionPing(dockerPing)
 
 		wrappedClient := docker.WrapClient(dockerClient)
 
@@ -182,7 +176,7 @@ func (dockerLoader *DockerLoader) monitorEvents() {
 }
 
 func (dockerLoader *DockerLoader) listenEvents() {
-	args := filters.NewArgs()
+	args := make(client.Filters)
 	if !isTrue.MatchString(os.Getenv("CADDY_DOCKER_NO_SCOPE")) {
 		// This env var is useful for Podman where in some instances the scope can cause some issues.
 		args.Add("scope", "swarm")
@@ -196,7 +190,7 @@ func (dockerLoader *DockerLoader) listenEvents() {
 	for i, dockerClient := range dockerLoader.dockerClients {
 		context, cancel := context.WithCancel(context.Background())
 
-		eventsChan, errorChan := dockerClient.Events(context, events.ListOptions{
+		eventsChan, errorChan := dockerClient.Events(context, client.EventsListOptions{
 			Filters: args,
 		})
 

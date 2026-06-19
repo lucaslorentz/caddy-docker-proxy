@@ -4,12 +4,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docker/docker/api/types"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
+	"github.com/moby/moby/api/types/container"
 	"go.uber.org/zap"
 )
 
-func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container, logger *zap.Logger) (*caddyfile.Container, error) {
+func (g *CaddyfileGenerator) getContainerCaddyfile(container *container.Summary, logger *zap.Logger) (*caddyfile.Container, error) {
 	caddyLabels := g.filterLabels(container.Labels)
 
 	return labelsToCaddyfile(caddyLabels, container, func() ([]string, error) {
@@ -17,7 +17,7 @@ func (g *CaddyfileGenerator) getContainerCaddyfile(container *types.Container, l
 	})
 }
 
-func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container, logger *zap.Logger, onlyIngressIps bool) ([]string, error) {
+func (g *CaddyfileGenerator) getContainerIPAddresses(container *container.Summary, logger *zap.Logger, onlyIngressIps bool) ([]string, error) {
 	ips := []string{}
 
 	ingressNetworkFromLabel, overrideNetwork := container.Labels[IngressNetworkLabel]
@@ -33,8 +33,8 @@ func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container,
 			include = g.ingressNetworks[network.NetworkID]
 		}
 
-		if include {
-			ips = append(ips, network.IPAddress)
+		if include && network.IPAddress.IsValid() {
+			ips = append(ips, network.IPAddress.String())
 		}
 	}
 
@@ -56,7 +56,7 @@ func (g *CaddyfileGenerator) getContainerIPAddresses(container *types.Container,
 
 // containerName returns a human-friendly container name (without Docker's
 // leading slash), falling back to the container ID.
-func containerName(container *types.Container) string {
+func containerName(container *container.Summary) string {
 	if len(container.Names) > 0 {
 		return strings.TrimPrefix(container.Names[0], "/")
 	}

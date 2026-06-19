@@ -3,50 +3,50 @@ package docker
 import (
 	"context"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/swarm"
-	"github.com/docker/docker/api/types/system"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/events"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/api/types/swarm"
+	"github.com/moby/moby/api/types/system"
+	"github.com/moby/moby/client"
 )
 
 // ClientMock allows easily mocking of docker client data
 type ClientMock struct {
-	ContainersData       []types.Container
+	ContainersData       []container.Summary
 	ServicesData         []swarm.Service
 	ConfigsData          []swarm.Config
 	TasksData            []swarm.Task
 	TaskListErr          error
 	NetworksData         []network.Summary
 	InfoData             system.Info
-	ContainerInspectData map[string]types.ContainerJSON
+	ContainerInspectData map[string]container.InspectResponse
 	NetworkInspectData   map[string]network.Inspect
 	EventsChannel        chan events.Message
 	ErrorsChannel        chan error
 }
 
 // ContainerList list all containers
-func (mock *ClientMock) ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
+func (mock *ClientMock) ContainerList(ctx context.Context, options client.ContainerListOptions) ([]container.Summary, error) {
 	return mock.ContainersData, nil
 }
 
 // ServiceList list all services
-func (mock *ClientMock) ServiceList(ctx context.Context, options types.ServiceListOptions) ([]swarm.Service, error) {
+func (mock *ClientMock) ServiceList(ctx context.Context, options client.ServiceListOptions) ([]swarm.Service, error) {
 	return mock.ServicesData, nil
 }
 
 // TaskList list all tasks
-func (mock *ClientMock) TaskList(ctx context.Context, options types.TaskListOptions) ([]swarm.Task, error) {
+func (mock *ClientMock) TaskList(ctx context.Context, options client.TaskListOptions) ([]swarm.Task, error) {
 	if mock.TaskListErr != nil {
 		return nil, mock.TaskListErr
 	}
 	matchingTasks := []swarm.Task{}
 	for _, task := range mock.TasksData {
-		if !options.Filters.Match("service", task.ServiceID) {
+		if !filterMatches(options.Filters, "service", task.ServiceID) {
 			continue
 		}
-		if !options.Filters.Match("desired-state", string(task.DesiredState)) {
+		if !filterMatches(options.Filters, "desired-state", string(task.DesiredState)) {
 			continue
 		}
 		matchingTasks = append(matchingTasks, task)
@@ -55,12 +55,12 @@ func (mock *ClientMock) TaskList(ctx context.Context, options types.TaskListOpti
 }
 
 // ConfigList list all configs
-func (mock *ClientMock) ConfigList(ctx context.Context, options types.ConfigListOptions) ([]swarm.Config, error) {
+func (mock *ClientMock) ConfigList(ctx context.Context, options client.ConfigListOptions) ([]swarm.Config, error) {
 	return mock.ConfigsData, nil
 }
 
 // NetworkList list all networks
-func (mock *ClientMock) NetworkList(ctx context.Context, options network.ListOptions) ([]network.Summary, error) {
+func (mock *ClientMock) NetworkList(ctx context.Context, options client.NetworkListOptions) ([]network.Summary, error) {
 	return mock.NetworksData, nil
 }
 
@@ -70,12 +70,12 @@ func (mock *ClientMock) Info(ctx context.Context) (system.Info, error) {
 }
 
 // ContainerInspect returns information about a specific container
-func (mock *ClientMock) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
+func (mock *ClientMock) ContainerInspect(ctx context.Context, containerID string) (container.InspectResponse, error) {
 	return mock.ContainerInspectData[containerID], nil
 }
 
 // NetworkInspect returns information about a specific network
-func (mock *ClientMock) NetworkInspect(ctx context.Context, networkID string, options network.InspectOptions) (network.Inspect, error) {
+func (mock *ClientMock) NetworkInspect(ctx context.Context, networkID string, options client.NetworkInspectOptions) (network.Inspect, error) {
 	return mock.NetworkInspectData[networkID], nil
 }
 
@@ -90,6 +90,14 @@ func (mock *ClientMock) ConfigInspectWithRaw(ctx context.Context, id string) (sw
 }
 
 // Events listen for events in docker
-func (mock *ClientMock) Events(ctx context.Context, options events.ListOptions) (<-chan events.Message, <-chan error) {
+func (mock *ClientMock) Events(ctx context.Context, options client.EventsListOptions) (<-chan events.Message, <-chan error) {
 	return mock.EventsChannel, mock.ErrorsChannel
+}
+
+func filterMatches(filters client.Filters, term string, value string) bool {
+	values, ok := filters[term]
+	if !ok {
+		return true
+	}
+	return values[value]
 }

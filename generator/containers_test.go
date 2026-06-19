@@ -3,22 +3,22 @@ package generator
 import (
 	"testing"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/network"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 )
 
 func TestContainers_TemplateData(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
-	dockerClient.ContainersData = []types.Container{
+	dockerClient.ContainersData = []container.Summary{
 		{
 			Names: []string{
 				"/container-name",
 			},
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: "172.17.0.2",
+						IPAddress: mustAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -41,16 +41,16 @@ func TestContainers_TemplateData(t *testing.T) {
 
 func TestContainers_PicksRightNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
-	dockerClient.ContainersData = []types.Container{
+	dockerClient.ContainersData = []container.Summary{
 		{
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"other-network": {
-						IPAddress: "10.0.0.1",
+						IPAddress: mustAddr("10.0.0.1"),
 						NetworkID: "other-network-id",
 					},
 					"caddy-network": {
-						IPAddress: "172.17.0.2",
+						IPAddress: mustAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -73,14 +73,14 @@ func TestContainers_PicksRightNetwork(t *testing.T) {
 
 func TestContainers_DifferentNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
-	dockerClient.ContainersData = []types.Container{
+	dockerClient.ContainersData = []container.Summary{
 		{
 			ID:    "CONTAINER-ID",
 			Names: []string{"/lonely-container"},
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"other-network": {
-						IPAddress: "10.0.0.1",
+						IPAddress: mustAddr("10.0.0.1"),
 						NetworkID: "other-network-id",
 					},
 				},
@@ -105,18 +105,15 @@ func TestContainers_DifferentNetwork(t *testing.T) {
 func TestContainers_ManualIngressNetworks(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.NetworksData = []network.Summary{
-		{
-			ID:   "other-network-id",
-			Name: "other-network-name",
-		},
+		networkSummary("other-network-id", "other-network-name"),
 	}
-	dockerClient.ContainersData = []types.Container{
+	dockerClient.ContainersData = []container.Summary{
 		{
 			ID: "CONTAINER-ID",
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"other-network": {
-						IPAddress: "10.0.0.1",
+						IPAddress: mustAddr("10.0.0.1"),
 						NetworkID: "other-network-id",
 					},
 				},
@@ -142,26 +139,20 @@ func TestContainers_ManualIngressNetworks(t *testing.T) {
 func TestContainers_OverrideIngressNetworks(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.NetworksData = []network.Summary{
-		{
-			ID:   "other-network-id",
-			Name: "other-network-name",
-		},
-		{
-			ID:   "another-network-id",
-			Name: "another-network-name",
-		},
+		networkSummary("other-network-id", "other-network-name"),
+		networkSummary("another-network-id", "another-network-name"),
 	}
-	dockerClient.ContainersData = []types.Container{
+	dockerClient.ContainersData = []container.Summary{
 		{
 			ID: "CONTAINER-ID",
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"other-network": {
-						IPAddress: "10.0.0.1",
+						IPAddress: mustAddr("10.0.0.1"),
 						NetworkID: "other-network-id",
 					},
 					"another-network": {
-						IPAddress: "10.0.0.2",
+						IPAddress: mustAddr("10.0.0.2"),
 						NetworkID: "other-network-id",
 					},
 				},
@@ -187,12 +178,12 @@ func TestContainers_OverrideIngressNetworks(t *testing.T) {
 
 func TestContainers_Replicas(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
-	dockerClient.ContainersData = []types.Container{
+	dockerClient.ContainersData = []container.Summary{
 		{
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: "172.17.0.2",
+						IPAddress: mustAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -203,10 +194,10 @@ func TestContainers_Replicas(t *testing.T) {
 			},
 		},
 		{
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: "172.17.0.3",
+						IPAddress: mustAddr("172.17.0.3"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -229,12 +220,12 @@ func TestContainers_Replicas(t *testing.T) {
 
 func TestContainers_DoNotMergeDifferentProxies(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
-	dockerClient.ContainersData = []types.Container{
+	dockerClient.ContainersData = []container.Summary{
 		{
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: "172.17.0.2",
+						IPAddress: mustAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -245,10 +236,10 @@ func TestContainers_DoNotMergeDifferentProxies(t *testing.T) {
 			},
 		},
 		{
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: "172.17.0.3",
+						IPAddress: mustAddr("172.17.0.3"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -272,12 +263,12 @@ func TestContainers_DoNotMergeDifferentProxies(t *testing.T) {
 
 func TestContainers_ComplexMerge(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
-	dockerClient.ContainersData = []types.Container{
+	dockerClient.ContainersData = []container.Summary{
 		{
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: "172.17.0.2",
+						IPAddress: mustAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -293,10 +284,10 @@ func TestContainers_ComplexMerge(t *testing.T) {
 			},
 		},
 		{
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: "172.17.0.3",
+						IPAddress: mustAddr("172.17.0.3"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -338,12 +329,12 @@ func TestContainers_ComplexMerge(t *testing.T) {
 
 func TestContainers_WithSnippets(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
-	dockerClient.ContainersData = []types.Container{
+	dockerClient.ContainersData = []container.Summary{
 		{
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: "172.17.0.3",
+						IPAddress: mustAddr("172.17.0.3"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -355,10 +346,10 @@ func TestContainers_WithSnippets(t *testing.T) {
 			},
 		},
 		{
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: "172.17.0.2",
+						IPAddress: mustAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},

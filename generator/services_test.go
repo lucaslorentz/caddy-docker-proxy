@@ -6,11 +6,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/swarm"
-	"github.com/docker/docker/api/types/system"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/api/types/swarm"
+	"github.com/moby/moby/api/types/system"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -108,10 +108,7 @@ func TestServices_DifferentNetwork(t *testing.T) {
 func TestServices_ManualIngressNetwork(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.NetworksData = []network.Summary{
-		{
-			ID:   "other-network-id",
-			Name: "other-network-name",
-		},
+		networkSummary("other-network-id", "other-network-name"),
 	}
 	dockerClient.ServicesData = []swarm.Service{
 		{
@@ -248,7 +245,7 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
-					Addresses: []string{"10.0.0.1/24"},
+					Addresses: prefixes("10.0.0.1/24"),
 				},
 			},
 			DesiredState: swarm.TaskStateShutdown,
@@ -261,7 +258,7 @@ func TestServiceTasks_NotRunning(t *testing.T) {
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
-					Addresses: []string{"10.0.0.2/24"},
+					Addresses: prefixes("10.0.0.2/24"),
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,
@@ -311,7 +308,7 @@ func TestServiceTasks_DifferentNetwork(t *testing.T) {
 					Network: swarm.Network{
 						ID: "other-network-id",
 					},
-					Addresses: []string{"10.0.0.1/24"},
+					Addresses: prefixes("10.0.0.1/24"),
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,
@@ -355,10 +352,7 @@ func TestServiceTasks_ManualIngressNetwork(t *testing.T) {
 		},
 	}
 	dockerClient.NetworksData = []network.Summary{
-		{
-			ID:   "other-network-id",
-			Name: "other-network-name",
-		},
+		networkSummary("other-network-id", "other-network-name"),
 	}
 	dockerClient.TasksData = []swarm.Task{
 		{
@@ -368,7 +362,7 @@ func TestServiceTasks_ManualIngressNetwork(t *testing.T) {
 					Network: swarm.Network{
 						ID: "other-network-id",
 					},
-					Addresses: []string{"10.0.0.1/24"},
+					Addresses: prefixes("10.0.0.1/24"),
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,
@@ -413,14 +407,8 @@ func TestServiceTasks_OverrideIngressNetwork(t *testing.T) {
 		},
 	}
 	dockerClient.NetworksData = []network.Summary{
-		{
-			ID:   "other-network-id",
-			Name: "other-network-name",
-		},
-		{
-			ID:   "another-network-id",
-			Name: "another-network-name",
-		},
+		networkSummary("other-network-id", "other-network-name"),
+		networkSummary("another-network-id", "another-network-name"),
 	}
 	dockerClient.TasksData = []swarm.Task{
 		{
@@ -435,7 +423,7 @@ func TestServiceTasks_OverrideIngressNetwork(t *testing.T) {
 							},
 						},
 					},
-					Addresses: []string{"10.0.0.1/24"},
+					Addresses: prefixes("10.0.0.1/24"),
 				},
 				{
 					Network: swarm.Network{
@@ -446,7 +434,7 @@ func TestServiceTasks_OverrideIngressNetwork(t *testing.T) {
 							},
 						},
 					},
-					Addresses: []string{"10.0.0.2/24"},
+					Addresses: prefixes("10.0.0.2/24"),
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,
@@ -497,7 +485,7 @@ func TestServiceTasks_Running(t *testing.T) {
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
-					Addresses: []string{"10.0.0.1/24"},
+					Addresses: prefixes("10.0.0.1/24"),
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,
@@ -510,7 +498,7 @@ func TestServiceTasks_Running(t *testing.T) {
 					Network: swarm.Network{
 						ID: caddyNetworkID,
 					},
-					Addresses: []string{"10.0.0.2/24"},
+					Addresses: prefixes("10.0.0.2/24"),
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,
@@ -565,7 +553,7 @@ func TestServiceTasks_OneClientTaskListError(t *testing.T) {
 			NetworksAttachments: []swarm.NetworkAttachment{
 				{
 					Network:   swarm.Network{ID: caddyNetworkID},
-					Addresses: []string{"10.0.0.1/24"},
+					Addresses: prefixes("10.0.0.1/24"),
 				},
 			},
 			DesiredState: swarm.TaskStateRunning,
