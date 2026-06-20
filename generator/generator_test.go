@@ -67,7 +67,7 @@ func TestMergeConfigContent(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: mustAddr("172.17.0.2"),
+						IPAddress: netip.MustParseAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -186,18 +186,10 @@ func createBasicDockerClientMock() *docker.ClientMock {
 	}
 }
 
-func mustAddr(value string) netip.Addr {
-	return netip.MustParseAddr(value)
-}
-
-func mustPrefix(value string) netip.Prefix {
-	return netip.MustParsePrefix(value)
-}
-
 func prefixes(values ...string) []netip.Prefix {
 	result := make([]netip.Prefix, 0, len(values))
 	for _, value := range values {
-		result = append(result, mustPrefix(value))
+		result = append(result, netip.MustParsePrefix(value))
 	}
 	return result
 }

@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"net/netip"
 	"testing"
 
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
@@ -18,7 +19,7 @@ func TestContainers_TemplateData(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: mustAddr("172.17.0.2"),
+						IPAddress: netip.MustParseAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -46,11 +47,11 @@ func TestContainers_PicksRightNetwork(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"other-network": {
-						IPAddress: mustAddr("10.0.0.1"),
+						IPAddress: netip.MustParseAddr("10.0.0.1"),
 						NetworkID: "other-network-id",
 					},
 					"caddy-network": {
-						IPAddress: mustAddr("172.17.0.2"),
+						IPAddress: netip.MustParseAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -80,7 +81,7 @@ func TestContainers_DifferentNetwork(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"other-network": {
-						IPAddress: mustAddr("10.0.0.1"),
+						IPAddress: netip.MustParseAddr("10.0.0.1"),
 						NetworkID: "other-network-id",
 					},
 				},
@@ -113,7 +114,7 @@ func TestContainers_ManualIngressNetworks(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"other-network": {
-						IPAddress: mustAddr("10.0.0.1"),
+						IPAddress: netip.MustParseAddr("10.0.0.1"),
 						NetworkID: "other-network-id",
 					},
 				},
@@ -148,11 +149,11 @@ func TestContainers_OverrideIngressNetworks(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"other-network": {
-						IPAddress: mustAddr("10.0.0.1"),
+						IPAddress: netip.MustParseAddr("10.0.0.1"),
 						NetworkID: "other-network-id",
 					},
 					"another-network": {
-						IPAddress: mustAddr("10.0.0.2"),
+						IPAddress: netip.MustParseAddr("10.0.0.2"),
 						NetworkID: "other-network-id",
 					},
 				},
@@ -183,7 +184,7 @@ func TestContainers_Replicas(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: mustAddr("172.17.0.2"),
+						IPAddress: netip.MustParseAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -197,7 +198,7 @@ func TestContainers_Replicas(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: mustAddr("172.17.0.3"),
+						IPAddress: netip.MustParseAddr("172.17.0.3"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -225,7 +226,7 @@ func TestContainers_DoNotMergeDifferentProxies(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: mustAddr("172.17.0.2"),
+						IPAddress: netip.MustParseAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -239,7 +240,7 @@ func TestContainers_DoNotMergeDifferentProxies(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: mustAddr("172.17.0.3"),
+						IPAddress: netip.MustParseAddr("172.17.0.3"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -268,7 +269,7 @@ func TestContainers_ComplexMerge(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: mustAddr("172.17.0.2"),
+						IPAddress: netip.MustParseAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -287,7 +288,7 @@ func TestContainers_ComplexMerge(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: mustAddr("172.17.0.3"),
+						IPAddress: netip.MustParseAddr("172.17.0.3"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -334,7 +335,7 @@ func TestContainers_WithSnippets(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: mustAddr("172.17.0.3"),
+						IPAddress: netip.MustParseAddr("172.17.0.3"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -349,7 +350,7 @@ func TestContainers_WithSnippets(t *testing.T) {
 			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: mustAddr("172.17.0.2"),
+						IPAddress: netip.MustParseAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
