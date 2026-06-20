@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/netip"
 	"testing"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/swarm"
-	"github.com/docker/docker/api/types/system"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/api/types/swarm"
+	"github.com/moby/moby/api/types/system"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -58,15 +59,15 @@ func TestMergeConfigContent(t *testing.T) {
 			},
 		},
 	}
-	dockerClient.ContainersData = []types.Container{
+	dockerClient.ContainersData = []container.Summary{
 		{
 			Names: []string{
 				"container-name",
 			},
-			NetworkSettings: &types.SummaryNetworkSettings{
+			NetworkSettings: &container.NetworkSettingsSummary{
 				Networks: map[string]*network.EndpointSettings{
 					"caddy-network": {
-						IPAddress: "172.17.0.2",
+						IPAddress: netip.MustParseAddr("172.17.0.2"),
 						NetworkID: caddyNetworkID,
 					},
 				},
@@ -158,7 +159,7 @@ func testGeneration(
 
 func createBasicDockerClientMock() *docker.ClientMock {
 	return &docker.ClientMock{
-		ContainersData: []types.Container{},
+		ContainersData: []container.Summary{},
 		ServicesData:   []swarm.Service{},
 		ConfigsData:    []swarm.Config{},
 		TasksData:      []swarm.Task{},
@@ -168,9 +169,9 @@ func createBasicDockerClientMock() *docker.ClientMock {
 				LocalNodeState: swarm.LocalNodeStateActive,
 			},
 		},
-		ContainerInspectData: map[string]types.ContainerJSON{
+		ContainerInspectData: map[string]container.InspectResponse{
 			caddyContainerID: {
-				NetworkSettings: &types.NetworkSettings{
+				NetworkSettings: &container.NetworkSettings{
 					Networks: map[string]*network.EndpointSettings{
 						"overlay": {
 							NetworkID: caddyNetworkID,
@@ -179,12 +180,34 @@ func createBasicDockerClientMock() *docker.ClientMock {
 				},
 			},
 		},
-		NetworkInspectData: map[string]network.Summary{
-			caddyNetworkID: {
-				Ingress: false,
-				ID:      caddyNetworkID,
-				Name:    caddyNetworkName,
-			},
+		NetworkInspectData: map[string]network.Inspect{
+			caddyNetworkID: networkInspect(caddyNetworkID, caddyNetworkName),
+		},
+	}
+}
+
+func prefixes(values ...string) []netip.Prefix {
+	result := make([]netip.Prefix, 0, len(values))
+	for _, value := range values {
+		result = append(result, netip.MustParsePrefix(value))
+	}
+	return result
+}
+
+func networkSummary(id string, name string) network.Summary {
+	return network.Summary{
+		Network: network.Network{
+			ID:   id,
+			Name: name,
+		},
+	}
+}
+
+func networkInspect(id string, name string) network.Inspect {
+	return network.Inspect{
+		Network: network.Network{
+			ID:   id,
+			Name: name,
 		},
 	}
 }

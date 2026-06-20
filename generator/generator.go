@@ -10,13 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/swarm"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/config"
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/docker"
+	"github.com/moby/moby/api/types/swarm"
+	"github.com/moby/moby/client"
 
 	"go.uber.org/zap"
 )
@@ -92,7 +90,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 
 		// Add Caddyfile from swarm configs
 		if g.swarmIsAvailable[i] {
-			configs, err := dockerClient.ConfigList(context.Background(), types.ConfigListOptions{})
+			configs, err := dockerClient.ConfigList(context.Background(), client.ConfigListOptions{})
 			if err == nil {
 				for _, config := range configs {
 					if _, hasLabel := config.Spec.Labels[g.options.LabelPrefix]; hasLabel {
@@ -118,7 +116,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		}
 
 		// Add containers
-		containers, err := dockerClient.ContainerList(context.Background(), container.ListOptions{All: g.options.ScanStoppedContainers})
+		containers, err := dockerClient.ContainerList(context.Background(), client.ContainerListOptions{All: g.options.ScanStoppedContainers})
 		if err == nil {
 			for _, container := range containers {
 				if _, isControlledServer := container.Labels[g.options.ControlledServersLabel]; isControlledServer {
@@ -146,7 +144,7 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 
 		// Add services
 		if g.swarmIsAvailable[i] {
-			services, err := dockerClient.ServiceList(context.Background(), types.ServiceListOptions{})
+			services, err := dockerClient.ServiceList(context.Background(), client.ServiceListOptions{})
 			if err == nil {
 				for _, service := range services {
 					logger.Debug("Swarm service", zap.String("service", service.Spec.Name))
@@ -236,7 +234,7 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 
 	for _, dockerClient := range g.dockerClients {
 		if len(g.options.IngressNetworks) > 0 {
-			networks, err := dockerClient.NetworkList(context.Background(), network.ListOptions{})
+			networks, err := dockerClient.NetworkList(context.Background(), client.NetworkListOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -263,7 +261,7 @@ func (g *CaddyfileGenerator) getIngressNetworks(logger *zap.Logger) (map[string]
 			}
 
 			for _, networkEndpoint := range container.NetworkSettings.Networks {
-				networkInfo, err := dockerClient.NetworkInspect(context.Background(), networkEndpoint.NetworkID, network.InspectOptions{})
+				networkInfo, err := dockerClient.NetworkInspect(context.Background(), networkEndpoint.NetworkID, client.NetworkInspectOptions{})
 				if err != nil {
 					return nil, err
 				}
