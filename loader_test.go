@@ -2,6 +2,9 @@ package caddydockerproxy
 
 import (
 	"encoding/json"
+	"net"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/caddyserver/caddy/v2"
@@ -13,6 +16,97 @@ import (
 func TestGetServerAdminListen(t *testing.T) {
 	assert.Equal(t, "tcp/10.0.0.2:2019", getServerAdminListen(&config.Options{}, "10.0.0.2"))
 	assert.Equal(t, "tcp/0.0.0.0:2019", getServerAdminListen(&config.Options{AdminListen: "tcp/0.0.0.0:2019"}, "10.0.0.2"))
+}
+
+func TestAdminAPIEndpoint(t *testing.T) {
+	t.Run("uses default TCP admin endpoint", func(t *testing.T) {
+		loader := &DockerLoader{options: &config.Options{}}
+
+		client, url, cleanup, err := loader.adminAPIEndpoint("10.0.0.2")
+
+		require.NoError(t, err)
+		assert.Same(t, http.DefaultClient, client)
+		assert.Equal(t, "http://10.0.0.2:2019/load", url)
+		assert.Nil(t, cleanup)
+	})
+
+	t.Run("uses explicit TCP port with controlled server for wildcard host", func(t *testing.T) {
+		loader := &DockerLoader{options: &config.Options{AdminListen: "tcp/0.0.0.0:8080"}}
+
+		client, url, cleanup, err := loader.adminAPIEndpoint("10.0.0.2")
+
+		require.NoError(t, err)
+		assert.Same(t, http.DefaultClient, client)
+		assert.Equal(t, "http://10.0.0.2:8080/load", url)
+		assert.Nil(t, cleanup)
+	})
+
+	t.Run("uses explicit TCP host and port", func(t *testing.T) {
+		loader := &DockerLoader{options: &config.Options{AdminListen: "tcp/127.0.0.1:8080"}}
+
+		client, url, cleanup, err := loader.adminAPIEndpoint("10.0.0.2")
+
+		require.NoError(t, err)
+		assert.Same(t, http.DefaultClient, client)
+		assert.Equal(t, "http://127.0.0.1:8080/load", url)
+		assert.Nil(t, cleanup)
+	})
+
+	t.Run("uses Unix socket admin endpoint", func(t *testing.T) {
+		socketPath := t.TempDir() + "/caddy-admin.sock"
+		listener, err := net.Listen("unix", socketPath)
+		require.NoError(t, err)
+
+		requests := make(chan *http.Request, 1)
+		server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			requests <- r
+			w.WriteHeader(http.StatusOK)
+		})}
+		done := make(chan error, 1)
+		go func() {
+			done <- server.Serve(listener)
+		}()
+		t.Cleanup(func() {
+			require.NoError(t, server.Close())
+			err := <-done
+			if err != nil && err != http.ErrServerClosed {
+				t.Errorf("server failed: %v", err)
+			}
+		})
+
+		loader := &DockerLoader{options: &config.Options{AdminListen: "unix/" + socketPath + "|0200"}}
+
+		client, url, cleanup, err := loader.adminAPIEndpoint("localhost")
+		require.NoError(t, err)
+		require.NotNil(t, cleanup)
+		defer cleanup()
+		assert.Equal(t, "http://127.0.0.1/load", url)
+
+		resp, err := client.Post(url, "application/json", strings.NewReader(`{}`))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Equal(t, "/load", (<-requests).URL.Path)
+	})
+
+	t.Run("rejects invalid admin listen", func(t *testing.T) {
+		loader := &DockerLoader{options: &config.Options{AdminListen: "tcp/localhost:not-a-port"}}
+
+		_, _, _, err := loader.adminAPIEndpoint("localhost")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid admin listen address")
+	})
+
+	t.Run("rejects admin listen port ranges", func(t *testing.T) {
+		loader := &DockerLoader{options: &config.Options{AdminListen: "tcp/localhost:2019-2020"}}
+
+		_, _, _, err := loader.adminAPIEndpoint("localhost")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must resolve to a single endpoint")
+	})
 }
 
 func unmarshalConfig(t *testing.T, data []byte) *caddy.Config {

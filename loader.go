@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -310,7 +313,14 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 	log := logger()
 	log.Info("Sending configuration to", zap.String("server", server))
 
-	url := "http://" + server + ":2019/load"
+	client, url, cleanup, err := dockerLoader.adminAPIEndpoint(server)
+	if err != nil {
+		log.Error("Failed to determine admin API endpoint for", zap.String("server", server), zap.Error(err))
+		return
+	}
+	if cleanup != nil {
+		defer cleanup()
+	}
 
 	postBody, err := dockerLoader.prepareServerConfig(server)
 	if err != nil {
@@ -324,12 +334,13 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 
 	if err != nil {
 		log.Error("Failed to send configuration to", zap.String("server", server), zap.Error(err))
 		return
 	}
+	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -345,6 +356,48 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 	dockerLoader.serversVersions.Set(server, version)
 
 	log.Info("Successfully configured", zap.String("server", server))
+}
+
+func (dockerLoader *DockerLoader) adminAPIEndpoint(server string) (*http.Client, string, func(), error) {
+	adminListen := dockerLoader.options.AdminListen
+	if adminListen == "" {
+		return http.DefaultClient, "http://" + server + ":2019/load", nil, nil
+	}
+
+	adminAddr, err := caddy.ParseNetworkAddress(adminListen)
+	if err != nil {
+		return nil, "", nil, fmt.Errorf("invalid admin listen address %s: %w", adminListen, err)
+	}
+	if adminAddr.PortRangeSize() > 1 {
+		return nil, "", nil, fmt.Errorf("admin listen address %s must resolve to a single endpoint", adminListen)
+	}
+
+	if adminAddr.IsUnixNetwork() {
+		socketPath, _, _ := strings.Cut(adminAddr.Host, "|")
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+			var d net.Dialer
+			return d.DialContext(ctx, adminAddr.Network, socketPath)
+		}
+		// Caddy skips Host enforcement for Unix/fd admin listeners; this host
+		// only gives net/http a valid URL for the request.
+		return &http.Client{Transport: transport}, "http://127.0.0.1/load", transport.CloseIdleConnections, nil
+	}
+
+	host := adminAddr.Host
+	if isWildcardHost(host) {
+		host = server
+	}
+	port := strconv.FormatUint(uint64(adminAddr.StartPort), 10)
+	return http.DefaultClient, "http://" + net.JoinHostPort(host, port) + "/load", nil, nil
+}
+
+func isWildcardHost(host string) bool {
+	if host == "" {
+		return true
+	}
+	addr := net.ParseIP(host)
+	return addr != nil && addr.IsUnspecified()
 }
 
 // prepareServerConfig builds the config to push to server from the loader's last
