@@ -1,6 +1,6 @@
 module github.com/lucaslorentz/caddy-docker-proxy/v2
 
-go 1.25.1
+go 1.26
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
