@@ -17,10 +17,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// loadLocalConfig must surface a bad config as an error (and must not panic),
-// so a poison config fails the reload instead of crashing the process.
-func TestLoadLocalConfig_ReturnsErrorOnInvalidConfig(t *testing.T) {
-	err := loadLocalConfig([]byte("this is not valid json"))
+// pushLocal must surface a bad config as an error (and must not panic), so a
+// poison config fails the reload instead of crashing the process.
+func TestPushLocal_ReturnsErrorOnInvalidConfig(t *testing.T) {
+	err := pushLocal([]byte("this is not valid json"))
 	require.Error(t, err)
 }
 
@@ -59,7 +59,7 @@ func TestIntegration_LocalPushUsesCaddyLoad(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	loader.updateServer(&wg, "localhost")
+	loader.updateServer(&wg, localServer)
 	wg.Wait()
 
 	// The version is only recorded on a successful load.

@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"path/filepath"
 	"sync"
 	"time"
@@ -283,10 +281,21 @@ func (dockerLoader *DockerLoader) update() bool {
 		wg.Add(1)
 		go dockerLoader.updateServer(&wg, server)
 	}
+	// When this instance also serves (standalone/server mode), push to the
+	// in-process Caddy as well. The generator lists only remote servers, so the
+	// local target is added here.
+	if dockerLoader.options.Mode&config.Server == config.Server {
+		wg.Add(1)
+		go dockerLoader.updateServer(&wg, localServer)
+	}
 	wg.Wait()
 
 	return true
 }
+
+// localServer is the controlledServers entry that represents this in-process
+// Caddy. It is pushed via caddy.Load instead of the admin API.
+const localServer = "localhost"
 
 func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string) {
 	defer wg.Done()
@@ -316,64 +325,20 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 		return
 	}
 
-	if server == "localhost" {
-		// The loader runs in the same process as the local Caddy (controller and
-		// server share an instance), so load the config directly instead of
-		// looping back through the admin API over HTTP. This drops the dependency
-		// on the local admin endpoint being reachable - or even enabled.
-		//
-		// forceReload is false so an unchanged config is a no-op, matching the
-		// admin /load default. The recover guards parity with the HTTP path: the
-		// admin endpoint's net/http handler recovers panics during provisioning,
-		// but a direct call would otherwise crash the whole process.
-		if err := loadLocalConfig(postBody); err != nil {
-			log.Error("Failed to load configuration locally", zap.String("server", server), zap.Error(err))
-			return
-		}
+	// The local target loads in-process; remote targets POST to the admin API.
+	if server == localServer {
+		err = pushLocal(postBody)
 	} else {
-		url := "http://" + server + ":2019/load"
-
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(postBody))
-		if err != nil {
-			log.Error("Failed to create request to", zap.String("server", server), zap.Error(err))
-			return
-		}
-		req.Header.Set("Content-Type", "application/json")
-		resp, err := http.DefaultClient.Do(req)
-
-		if err != nil {
-			log.Error("Failed to send configuration to", zap.String("server", server), zap.Error(err))
-			return
-		}
-		defer resp.Body.Close()
-
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Error("Failed to read response from", zap.String("server", server), zap.Error(err))
-			return
-		}
-
-		if resp.StatusCode != 200 {
-			log.Error("Error response from server", zap.String("server", server), zap.Int("status code", resp.StatusCode), zap.ByteString("body", bodyBytes))
-			return
-		}
+		err = pushRemoteAdmin(server, postBody)
+	}
+	if err != nil {
+		log.Error("Failed to send configuration to", zap.String("server", server), zap.Error(err))
+		return
 	}
 
 	dockerLoader.serversVersions.Set(server, version)
 
 	log.Info("Successfully configured", zap.String("server", server))
-}
-
-// loadLocalConfig applies the config to the in-process Caddy via caddy.Load,
-// recovering any panic from config provisioning into an error so a poison
-// config fails the reload instead of crashing the process.
-func loadLocalConfig(postBody []byte) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic loading config locally: %v", r)
-		}
-	}()
-	return caddy.Load(postBody, false)
 }
 
 // prepareServerConfig builds the config to push to server from the loader's last
@@ -394,7 +359,7 @@ func (dockerLoader *DockerLoader) prepareServerConfig(server string) ([]byte, er
 	// so --log-level/--log-format survive its config reload. Remote servers run
 	// their own instance and manage their own logging. Logging already defined
 	// in the config (e.g. via labels) is respected.
-	if server == "localhost" && dockerLoader.caddyLogging != nil && (config.Logging == nil || len(config.Logging.Logs) == 0) {
+	if server == localServer && dockerLoader.caddyLogging != nil && (config.Logging == nil || len(config.Logging.Logs) == 0) {
 		config.Logging = dockerLoader.caddyLogging
 	}
 
