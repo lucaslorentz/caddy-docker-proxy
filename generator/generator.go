@@ -205,9 +205,9 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 		caddyfileContent = []byte("# Empty caddyfile")
 	}
 
-	if g.options.Mode&config.Server == config.Server {
-		controlledServers = append(controlledServers, "localhost")
-	}
+	// controlledServers lists only the remote servers discovered from labels.
+	// The loader pushes to the local in-process Caddy itself when this instance
+	// runs in server mode, so the local target is not represented here.
 
 	return caddyfileContent, controlledServers
 }
