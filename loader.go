@@ -310,41 +310,70 @@ func (dockerLoader *DockerLoader) updateServer(wg *sync.WaitGroup, server string
 	log := logger()
 	log.Info("Sending configuration to", zap.String("server", server))
 
-	url := "http://" + server + ":2019/load"
-
 	postBody, err := dockerLoader.prepareServerConfig(server)
 	if err != nil {
 		log.Error("Failed to prepare configuration for", zap.String("server", server), zap.Error(err))
 		return
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(postBody))
-	if err != nil {
-		log.Error("Failed to create request to", zap.String("server", server), zap.Error(err))
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	if server == "localhost" {
+		// The loader runs in the same process as the local Caddy (controller and
+		// server share an instance), so load the config directly instead of
+		// looping back through the admin API over HTTP. This drops the dependency
+		// on the local admin endpoint being reachable - or even enabled.
+		//
+		// forceReload is false so an unchanged config is a no-op, matching the
+		// admin /load default. The recover guards parity with the HTTP path: the
+		// admin endpoint's net/http handler recovers panics during provisioning,
+		// but a direct call would otherwise crash the whole process.
+		if err := loadLocalConfig(postBody); err != nil {
+			log.Error("Failed to load configuration locally", zap.String("server", server), zap.Error(err))
+			return
+		}
+	} else {
+		url := "http://" + server + ":2019/load"
 
-	if err != nil {
-		log.Error("Failed to send configuration to", zap.String("server", server), zap.Error(err))
-		return
-	}
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer(postBody))
+		if err != nil {
+			log.Error("Failed to create request to", zap.String("server", server), zap.Error(err))
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
 
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error("Failed to read response from", zap.String("server", server), zap.Error(err))
-		return
-	}
+		if err != nil {
+			log.Error("Failed to send configuration to", zap.String("server", server), zap.Error(err))
+			return
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		log.Error("Error response from server", zap.String("server", server), zap.Int("status code", resp.StatusCode), zap.ByteString("body", bodyBytes))
-		return
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Error("Failed to read response from", zap.String("server", server), zap.Error(err))
+			return
+		}
+
+		if resp.StatusCode != 200 {
+			log.Error("Error response from server", zap.String("server", server), zap.Int("status code", resp.StatusCode), zap.ByteString("body", bodyBytes))
+			return
+		}
 	}
 
 	dockerLoader.serversVersions.Set(server, version)
 
 	log.Info("Successfully configured", zap.String("server", server))
+}
+
+// loadLocalConfig applies the config to the in-process Caddy via caddy.Load,
+// recovering any panic from config provisioning into an error so a poison
+// config fails the reload instead of crashing the process.
+func loadLocalConfig(postBody []byte) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic loading config locally: %v", r)
+		}
+	}()
+	return caddy.Load(postBody, false)
 }
 
 // prepareServerConfig builds the config to push to server from the loader's last
