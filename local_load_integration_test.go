@@ -86,4 +86,24 @@ func TestIntegration_LocalPushUsesCaddyLoad(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, status)
 	assert.Equal(t, "docker-proxy-local-load", body)
+
+	// Prove the local load did not reopen the admin endpoint. The localhost
+	// update path should not need an admin API because it loads config
+	// in-process.
+	adminURL := fmt.Sprintf("http://127.0.0.1:%d/config/", adminPort)
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	client := &http.Client{
+		Timeout:   100 * time.Millisecond,
+		Transport: transport,
+	}
+	defer transport.CloseIdleConnections()
+
+	assert.Never(t, func() bool {
+		resp, err := client.Get(adminURL)
+		if err != nil {
+			return false
+		}
+		defer resp.Body.Close()
+		return true
+	}, time.Second, 50*time.Millisecond, "local load must keep the admin endpoint disabled")
 }
