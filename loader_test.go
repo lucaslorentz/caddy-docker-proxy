@@ -46,14 +46,32 @@ func TestPrepareServerConfig(t *testing.T) {
 		assert.Equal(t, "tcp/0.0.0.0:2019", unmarshalConfig(t, out).Admin.Listen)
 	})
 
-	t.Run("overrides admin off", func(t *testing.T) {
+	t.Run("overrides admin off for remote servers", func(t *testing.T) {
+		in, err := json.Marshal(&caddy.Config{Admin: &caddy.AdminConfig{Disabled: true}})
+		require.NoError(t, err)
+		out, err := newLoader(in, nil).prepareServerConfig("10.0.0.2")
+		require.NoError(t, err)
+		result := unmarshalConfig(t, out)
+		assert.False(t, result.Admin.Disabled)
+		assert.Equal(t, "tcp/10.0.0.2:2019", result.Admin.Listen)
+	})
+
+	t.Run("keeps admin off for local server", func(t *testing.T) {
 		in, err := json.Marshal(&caddy.Config{Admin: &caddy.AdminConfig{Disabled: true}})
 		require.NoError(t, err)
 		out, err := newLoader(in, nil).prepareServerConfig("localhost")
 		require.NoError(t, err)
 		result := unmarshalConfig(t, out)
-		assert.False(t, result.Admin.Disabled)
-		assert.Equal(t, "tcp/localhost:2019", result.Admin.Listen)
+		assert.True(t, result.Admin.Disabled)
+		assert.Empty(t, result.Admin.Listen)
+	})
+
+	t.Run("disables admin fallback for local server", func(t *testing.T) {
+		out, err := newLoader(empty, nil).prepareServerConfig("localhost")
+		require.NoError(t, err)
+		result := unmarshalConfig(t, out)
+		assert.True(t, result.Admin.Disabled)
+		assert.Empty(t, result.Admin.Listen)
 	})
 
 	t.Run("injects logging on the local Caddy", func(t *testing.T) {

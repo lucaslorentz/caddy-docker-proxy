@@ -349,10 +349,15 @@ func (dockerLoader *DockerLoader) prepareServerConfig(server string) ([]byte, er
 		return nil, err
 	}
 
-	// Respect an explicit admin endpoint, but override "admin off" since the
-	// plugin requires the admin API.
+	// Local loads happen in-process, so keep the admin API disabled unless the
+	// config explicitly enables it. Remote servers still need an admin endpoint
+	// for controller pushes.
 	if config.Admin == nil || config.Admin.Disabled {
-		config.Admin = &caddy.AdminConfig{Listen: getServerAdminListen(dockerLoader.options, server)}
+		if server == localServer {
+			config.Admin = &caddy.AdminConfig{Disabled: true}
+		} else {
+			config.Admin = &caddy.AdminConfig{Listen: getServerAdminListen(dockerLoader.options, server)}
+		}
 	}
 
 	// Re-apply our logging only to the local Caddy (the standalone self-push),
