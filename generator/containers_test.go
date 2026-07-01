@@ -379,3 +379,98 @@ func TestContainers_WithSnippets(t *testing.T) {
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
+
+func TestContainers_ScanStoppedContainers_False(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []container.Summary{
+		{
+			ID: "CONTAINER-ID",
+			NetworkSettings: &container.NetworkSettingsSummary{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": {
+						IPAddress: netip.MustParseAddr("172.17.0.1"),
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
+			},
+			State: container.StateRunning,
+		},
+		{
+			ID: "CONTAINER-ID2",
+			NetworkSettings: &container.NetworkSettingsSummary{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": {
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):               "service2.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
+			},
+			State: container.StateExited,
+		},
+	}
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy 172.17.0.1\n" +
+		"}\n"
+
+	const expectedLogs = swarmIsAvailableLog
+
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
+}
+
+func TestContainers_ScanStoppedContainers_True(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []container.Summary{
+		{
+			ID: "CONTAINER-ID",
+			NetworkSettings: &container.NetworkSettingsSummary{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": {
+						IPAddress: netip.MustParseAddr("172.17.0.1"),
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
+			},
+			State: container.StateRunning,
+		},
+		{
+			ID: "CONTAINER-ID2",
+			NetworkSettings: &container.NetworkSettingsSummary{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": {
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):               "service2.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
+			},
+			State: container.StateExited,
+		},
+	}
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy 172.17.0.1\n" +
+		"}\n" +
+		"service2.testdomain.com {\n" +
+		"	reverse_proxy\n" +
+		"}\n"
+
+	const expectedLogs = swarmIsAvailableLog
+
+	testGeneration(t, dockerClient, func(options *config.Options) {
+		options.ScanStoppedContainers = true
+	}, expectedCaddyfile, expectedLogs)
+}

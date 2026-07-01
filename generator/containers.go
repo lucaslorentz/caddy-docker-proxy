@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
-	"github.com/moby/moby/api/types/container"
+	mobyContainer "github.com/moby/moby/api/types/container"
 	"go.uber.org/zap"
 )
 
-func (g *CaddyfileGenerator) getContainerCaddyfile(container *container.Summary, logger *zap.Logger) (*caddyfile.Container, error) {
+func (g *CaddyfileGenerator) getContainerCaddyfile(container *mobyContainer.Summary, logger *zap.Logger) (*caddyfile.Container, error) {
 	caddyLabels := g.filterLabels(container.Labels)
 
 	return labelsToCaddyfile(caddyLabels, container, func() ([]string, error) {
@@ -17,8 +17,12 @@ func (g *CaddyfileGenerator) getContainerCaddyfile(container *container.Summary,
 	})
 }
 
-func (g *CaddyfileGenerator) getContainerIPAddresses(container *container.Summary, logger *zap.Logger, onlyIngressIps bool) ([]string, error) {
+func (g *CaddyfileGenerator) getContainerIPAddresses(container *mobyContainer.Summary, logger *zap.Logger, onlyIngressIps bool) ([]string, error) {
 	ips := []string{}
+
+	if container.State != mobyContainer.StateRunning {
+		return ips, nil
+	}
 
 	ingressNetworkFromLabel, overrideNetwork := container.Labels[IngressNetworkLabel]
 
@@ -56,7 +60,7 @@ func (g *CaddyfileGenerator) getContainerIPAddresses(container *container.Summar
 
 // containerName returns a human-friendly container name (without Docker's
 // leading slash), falling back to the container ID.
-func containerName(container *container.Summary) string {
+func containerName(container *mobyContainer.Summary) string {
 	if len(container.Names) > 0 {
 		return strings.TrimPrefix(container.Names[0], "/")
 	}

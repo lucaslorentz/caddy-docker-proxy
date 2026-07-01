@@ -3,7 +3,7 @@ package docker
 import (
 	"context"
 
-	"github.com/moby/moby/api/types/container"
+	mobyContainer "github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/events"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/api/types/swarm"
@@ -13,22 +13,32 @@ import (
 
 // ClientMock allows easily mocking of docker client data
 type ClientMock struct {
-	ContainersData       []container.Summary
+	ContainersData       []mobyContainer.Summary
 	ServicesData         []swarm.Service
 	ConfigsData          []swarm.Config
 	TasksData            []swarm.Task
 	TaskListErr          error
 	NetworksData         []network.Summary
 	InfoData             system.Info
-	ContainerInspectData map[string]container.InspectResponse
+	ContainerInspectData map[string]mobyContainer.InspectResponse
 	NetworkInspectData   map[string]network.Inspect
 	EventsChannel        chan events.Message
 	ErrorsChannel        chan error
 }
 
 // ContainerList list all containers
-func (mock *ClientMock) ContainerList(ctx context.Context, options client.ContainerListOptions) ([]container.Summary, error) {
-	return mock.ContainersData, nil
+func (mock *ClientMock) ContainerList(ctx context.Context, options client.ContainerListOptions) ([]mobyContainer.Summary, error) {
+	var containers []mobyContainer.Summary
+	for _, container := range mock.ContainersData {
+		if container.State == "" {
+			container.State = mobyContainer.StateRunning
+		}
+		if !options.All && container.State != mobyContainer.StateRunning {
+			continue
+		}
+		containers = append(containers, container)
+	}
+	return containers, nil
 }
 
 // ServiceList list all services
@@ -70,7 +80,7 @@ func (mock *ClientMock) Info(ctx context.Context) (system.Info, error) {
 }
 
 // ContainerInspect returns information about a specific container
-func (mock *ClientMock) ContainerInspect(ctx context.Context, containerID string) (container.InspectResponse, error) {
+func (mock *ClientMock) ContainerInspect(ctx context.Context, containerID string) (mobyContainer.InspectResponse, error) {
 	return mock.ContainerInspectData[containerID], nil
 }
 
