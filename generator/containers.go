@@ -19,6 +19,7 @@ func (g *CaddyfileGenerator) getContainerCaddyfile(container *container.Summary,
 
 func (g *CaddyfileGenerator) getContainerIPAddresses(container *container.Summary, logger *zap.Logger, onlyIngressIps bool) ([]string, error) {
 	ips := []string{}
+	inIngressNetwork := false
 
 	ingressNetworkFromLabel, overrideNetwork := container.Labels[IngressNetworkLabel]
 
@@ -30,15 +31,19 @@ func (g *CaddyfileGenerator) getContainerIPAddresses(container *container.Summar
 		} else if overrideNetwork {
 			include = networkName == ingressNetworkFromLabel
 		} else {
-			include = g.ingressNetworks[network.NetworkID]
+			include = g.ingressNetworks[network.NetworkID] || g.ingressNetworks[networkName]
 		}
 
-		if include && network.IPAddress.IsValid() {
-			ips = append(ips, network.IPAddress.String())
+		if include {
+			inIngressNetwork = true
+			if network.IPAddress.IsValid() {
+				ips = append(ips, network.IPAddress.String())
+			}
 		}
 	}
 
-	if len(ips) == 0 {
+	// Warns when the container shares no ingress network with caddy.
+	if !inIngressNetwork {
 		networks := make([]string, 0, len(container.NetworkSettings.Networks))
 		for networkName := range container.NetworkSettings.Networks {
 			networks = append(networks, networkName)
