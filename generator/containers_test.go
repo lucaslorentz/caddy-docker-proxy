@@ -103,6 +103,71 @@ func TestContainers_DifferentNetwork(t *testing.T) {
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
 
+// A stopped container surfaced by CADDY_DOCKER_SCAN_STOPPED_CONTAINERS still
+// reports its ingress network but has released its runtime IP address. It is in
+// the same network as caddy, so it must not emit the "not in same network"
+// warning (matched here by network ID).
+func TestContainers_StoppedContainerInIngressNetworkDoesNotWarn(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []container.Summary{
+		{
+			ID:    "CONTAINER-ID",
+			Names: []string{"/stopped-container"},
+			NetworkSettings: &container.NetworkSettingsSummary{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": {
+						// No IPAddress: a stopped container has no runtime IP.
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
+			},
+		},
+	}
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy\n" +
+		"}\n"
+
+	const expectedLogs = commonLogs
+
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
+}
+
+// Same as above, but the stopped container reports no runtime NetworkID, so the
+// ingress network is matched by name instead. Still no warning.
+func TestContainers_StoppedContainerMatchesIngressByName(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []container.Summary{
+		{
+			ID:    "CONTAINER-ID",
+			Names: []string{"/stopped-container"},
+			NetworkSettings: &container.NetworkSettingsSummary{
+				Networks: map[string]*network.EndpointSettings{
+					// Keyed by the ingress network name, with neither a runtime
+					// NetworkID nor an IP address.
+					caddyNetworkName: {},
+				},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):               "service.testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams}}",
+			},
+		},
+	}
+
+	const expectedCaddyfile = "service.testdomain.com {\n" +
+		"	reverse_proxy\n" +
+		"}\n"
+
+	const expectedLogs = commonLogs
+
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
+}
+
 func TestContainers_ManualIngressNetworks(t *testing.T) {
 	dockerClient := createBasicDockerClientMock()
 	dockerClient.NetworksData = []network.Summary{
