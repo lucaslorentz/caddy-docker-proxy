@@ -512,7 +512,7 @@ Run `caddy help docker-proxy` to see the raw flag output.
 | `--event-throttle-interval` | `CADDY_DOCKER_EVENT_THROTTLE_INTERVAL` | Interval to throttle Caddyfile updates triggered by Docker events.<br>**Default:** `100ms` |
 | `--log-level` | `CADDY_DOCKER_LOG_LEVEL` | Log level: `DEBUG` \| `INFO` \| `WARN` \| `ERROR`. Empty keeps Caddy's default |
 | `--log-format` | `CADDY_DOCKER_LOG_FORMAT` | Log format: `console` \| `json`. Empty keeps Caddy's default |
-| _(env only)_ | `CADDY_ADMIN` | Override Caddy's admin listen address |
+| _(env only)_ | `CADDY_ADMIN` | Override Caddy's admin listen address, or `off` to disable the admin API. Enabled by default on `localhost:2019` (Caddy's default), which health checks and `/metrics` can rely on. The [`admin` global option](https://caddyserver.com/docs/caddyfile/options) via labels (e.g. `caddy.admin: off`) is also respected |
 | _(env only)_ | `CADDY_DOCKER_NO_SCOPE` | Disable Docker event scope filter (useful for Podman).<br>**Default:** `false` |
 
 Check the **examples** folder to see how to set them in a Docker Compose file.

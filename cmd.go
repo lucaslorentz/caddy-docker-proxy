@@ -120,11 +120,12 @@ func buildCaddyRunConfig(options *config.Options) *caddy.Config {
 	}
 }
 
-// buildCaddyAdminConfig builds Caddy's admin config: controller-only mode
-// doesn't serve anything, so its admin endpoint is disabled; server/standalone
-// exposes the admin endpoint used to load configs.
+// buildCaddyAdminConfig builds Caddy's admin config. The admin API is disabled
+// when requested via CADDY_ADMIN=off, or in controller-only mode which serves
+// nothing. A CADDY_ADMIN address or the controller network pick the listen;
+// otherwise Caddy's own default applies (localhost:2019).
 func buildCaddyAdminConfig(options *config.Options) *caddy.AdminConfig {
-	if options.Mode&config.Server != config.Server {
+	if options.AdminDisabled || options.Mode&config.Server != config.Server {
 		return &caddy.AdminConfig{Disabled: true}
 	}
 	return &caddy.AdminConfig{Listen: getAdminListen(options)}
@@ -145,9 +146,9 @@ func buildCaddyLoggingConfig(options *config.Options) *caddy.Logging {
 	case "json":
 		defaultLog.EncoderRaw = caddyconfig.JSONModuleObject(caddylogging.JSONEncoder{}, "format", "json", nil)
 	}
-	// Controller-only mode runs Caddy with the admin endpoint disabled; drop the
-	// admin logger so Caddy doesn't warn that it's disabled on every start.
-	if options.Mode&config.Server != config.Server {
+	// When the admin endpoint is disabled - controller-only mode, or CADDY_ADMIN=off -
+	// drop the admin logger so Caddy doesn't warn that it's disabled on every start.
+	if options.AdminDisabled || options.Mode&config.Server != config.Server {
 		defaultLog.Exclude = append(defaultLog.Exclude, "admin")
 	}
 
@@ -155,6 +156,12 @@ func buildCaddyLoggingConfig(options *config.Options) *caddy.Logging {
 		Logs: map[string]*caddy.CustomLog{"default": defaultLog},
 	}
 }
+
+// defaultAdminListen is the admin endpoint the plugin falls back to when none is
+// configured. It mirrors Caddy's own default (localhost:2019) in the plugin's
+// canonical "tcp/host:port" form, matching getServerAdminListen and
+// normalizeAdminListen.
+const defaultAdminListen = "tcp/localhost:2019"
 
 func getAdminListen(options *config.Options) string {
 	if options.AdminListen != "" {
@@ -190,7 +197,8 @@ func getAdminListen(options *config.Options) string {
 			}
 		}
 	}
-	return "tcp/localhost:2019"
+	// No listen to enforce: use the default (Caddy's own default, localhost:2019).
+	return defaultAdminListen
 }
 
 func normalizeAdminListen(listen string) string {
@@ -202,6 +210,15 @@ func normalizeAdminListen(listen string) string {
 		return listen
 	}
 	return "tcp/" + listen
+}
+
+// parseAdminEnv interprets the CADDY_ADMIN env value: "off" (case-insensitive)
+// disables Caddy's admin API; any other value is an admin listen address.
+func parseAdminEnv(value string) (listen string, disabled bool) {
+	if strings.EqualFold(strings.TrimSpace(value), "off") {
+		return "", true
+	}
+	return normalizeAdminListen(value), false
 }
 
 func createOptions(flags caddycmd.Flags) *config.Options {
@@ -241,8 +258,8 @@ func createOptions(flags caddycmd.Flags) *config.Options {
 
 	log := logger()
 
-	if adminListenEnv := os.Getenv("CADDY_ADMIN"); adminListenEnv != "" {
-		options.AdminListen = normalizeAdminListen(adminListenEnv)
+	if adminEnv := os.Getenv("CADDY_ADMIN"); adminEnv != "" {
+		options.AdminListen, options.AdminDisabled = parseAdminEnv(adminEnv)
 	}
 
 	if dockerSocketsEnv := os.Getenv("CADDY_DOCKER_SOCKETS"); dockerSocketsEnv != "" {

@@ -32,14 +32,15 @@ func freePort(t *testing.T) int {
 	return l.Addr().(*net.TCPAddr).Port
 }
 
-// Verifies that updateServer("localhost") applies the generated config straight
-// into the running Caddy via caddy.Load, with no admin API involved. The
-// instance is booted with the admin API disabled, so if the loader fell back to
-// the HTTP push it would POST to localhost:2019 and fail - the only way the
-// served config can go live here is the in-process load path.
-func TestIntegration_LocalPushUsesCaddyLoad(t *testing.T) {
+// runLocalPush boots a Caddy instance with the admin API disabled, pushes a
+// generated config through updateServer("localhost"), and asserts it went live
+// in-process (the served port responds). Because the instance boots with the
+// admin API disabled, a fall back to the HTTP push would POST to the admin
+// endpoint and fail - so a live served port proves the in-process caddy.Load
+// path. Returns the served app port.
+func runLocalPush(t *testing.T, options *config.Options) int {
+	t.Helper()
 	appPort := freePort(t)
-	adminPort := freePort(t)
 
 	caddyfile := fmt.Sprintf(":%d {\n\trespond \"docker-proxy-local-load\"\n}\n", appPort)
 	configJSON, warn, err := caddyconfig.GetAdapter("caddyfile").Adapt([]byte(caddyfile), nil)
@@ -50,7 +51,7 @@ func TestIntegration_LocalPushUsesCaddyLoad(t *testing.T) {
 	t.Cleanup(func() { _ = caddy.Stop() })
 
 	loader := &DockerLoader{
-		options:         &config.Options{AdminListen: fmt.Sprintf("tcp/localhost:%d", adminPort)},
+		options:         options,
 		lastJSONConfig:  configJSON,
 		lastVersion:     1,
 		serversVersions: utils.NewStringInt64CMap(),
@@ -87,23 +88,31 @@ func TestIntegration_LocalPushUsesCaddyLoad(t *testing.T) {
 	assert.Equal(t, http.StatusOK, status)
 	assert.Equal(t, "docker-proxy-local-load", body)
 
-	// Prove the local load did not reopen the admin endpoint. The localhost
-	// update path should not need an admin API because it loads config
-	// in-process.
-	adminURL := fmt.Sprintf("http://127.0.0.1:%d/config/", adminPort)
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	client := &http.Client{
-		Timeout:   100 * time.Millisecond,
-		Transport: transport,
-	}
-	defer transport.CloseIdleConnections()
+	return appPort
+}
 
-	assert.Never(t, func() bool {
-		resp, err := client.Get(adminURL)
+// Verifies that updateServer("localhost") applies the generated config straight
+// into the running Caddy via caddy.Load, with no admin API involved: booted with
+// the admin API disabled and CADDY_ADMIN=off, the served config can only go live
+// through the in-process load path.
+func TestIntegration_LocalPushUsesCaddyLoad(t *testing.T) {
+	runLocalPush(t, &config.Options{AdminDisabled: true})
+}
+
+// The admin API is enabled by default, so a local push must bring it up on the
+// configured address (here via CADDY_ADMIN) - health checks and /metrics that
+// rely on it keep working. See #820.
+func TestIntegration_LocalPushEnablesAdmin(t *testing.T) {
+	adminPort := freePort(t)
+	runLocalPush(t, &config.Options{AdminListen: fmt.Sprintf("tcp/localhost:%d", adminPort)})
+
+	adminURL := fmt.Sprintf("http://127.0.0.1:%d/config/", adminPort)
+	require.Eventually(t, func() bool {
+		resp, err := http.Get(adminURL)
 		if err != nil {
 			return false
 		}
 		defer resp.Body.Close()
-		return true
-	}, time.Second, 50*time.Millisecond, "local load must keep the admin endpoint disabled")
+		return resp.StatusCode == http.StatusOK
+	}, 5*time.Second, 50*time.Millisecond, "local load must keep the admin API enabled")
 }

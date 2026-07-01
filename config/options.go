@@ -10,6 +10,7 @@ type Options struct {
 	CaddyfilePath          string
 	EnvFile                string
 	AdminListen            string
+	AdminDisabled          bool
 	DockerSockets          []string
 	DockerCertsPath        []string
 	DockerAPIsVersion      []string
