@@ -42,6 +42,30 @@ func TestNormalizeAdminListen(t *testing.T) {
 	}
 }
 
+func TestParseAdminEnv(t *testing.T) {
+	testCases := []struct {
+		name           string
+		input          string
+		expectListen   string
+		expectDisabled bool
+	}{
+		{name: "off disables admin", input: "off", expectListen: "", expectDisabled: true},
+		{name: "off is case-insensitive", input: "OFF", expectListen: "", expectDisabled: true},
+		{name: "off is trimmed", input: "  off  ", expectListen: "", expectDisabled: true},
+		{name: "address without scheme gets tcp prefix", input: "0.0.0.0:2019", expectListen: "tcp/0.0.0.0:2019"},
+		{name: "prefixed address is kept", input: "tcp/localhost:2019", expectListen: "tcp/localhost:2019"},
+		{name: "unix socket is kept", input: "unix//run/caddy-admin.sock", expectListen: "unix//run/caddy-admin.sock"},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			listen, disabled := parseAdminEnv(testCase.input)
+			assert.Equal(t, testCase.expectListen, listen)
+			assert.Equal(t, testCase.expectDisabled, disabled)
+		})
+	}
+}
+
 func TestGetAdminListenPrefersConfiguredListen(t *testing.T) {
 	options := &config.Options{
 		AdminListen: "tcp/0.0.0.0:2019",
@@ -86,10 +110,16 @@ func TestBuildCaddyLoggingConfig(t *testing.T) {
 		assert.NotNil(t, logging)
 		assert.Contains(t, logging.Logs["default"].Exclude, "admin")
 	})
+
+	t.Run("admin disabled excludes the admin logger", func(t *testing.T) {
+		logging := buildCaddyLoggingConfig(&config.Options{Mode: config.Standalone, AdminDisabled: true})
+		assert.NotNil(t, logging)
+		assert.Contains(t, logging.Logs["default"].Exclude, "admin")
+	})
 }
 
 func TestBuildCaddyRunConfig(t *testing.T) {
-	t.Run("server/standalone uses the admin endpoint", func(t *testing.T) {
+	t.Run("server/standalone uses the default admin listen", func(t *testing.T) {
 		cfg := buildCaddyRunConfig(&config.Options{Mode: config.Standalone})
 		assert.NotNil(t, cfg)
 		assert.NotNil(t, cfg.Admin)
@@ -105,16 +135,34 @@ func TestBuildCaddyRunConfig(t *testing.T) {
 		assert.Equal(t, "ERROR", cfg.Logging.Logs["default"].Level)
 		assert.Contains(t, cfg.Logging.Logs["default"].Exclude, "admin")
 	})
+
+	t.Run("CADDY_ADMIN=off disables admin and excludes admin logs", func(t *testing.T) {
+		cfg := buildCaddyRunConfig(&config.Options{Mode: config.Standalone, AdminDisabled: true})
+		assert.NotNil(t, cfg)
+		assert.NotNil(t, cfg.Admin)
+		assert.True(t, cfg.Admin.Disabled)
+		assert.Contains(t, cfg.Logging.Logs["default"].Exclude, "admin")
+	})
 }
 
 func TestBuildCaddyAdminConfig(t *testing.T) {
-	t.Run("server/standalone listens", func(t *testing.T) {
+	t.Run("server/standalone uses the default admin listen", func(t *testing.T) {
 		admin := buildCaddyAdminConfig(&config.Options{Mode: config.Standalone})
 		assert.False(t, admin.Disabled)
 		assert.Equal(t, "tcp/localhost:2019", admin.Listen)
 	})
 
+	t.Run("uses the CADDY_ADMIN listen when set", func(t *testing.T) {
+		admin := buildCaddyAdminConfig(&config.Options{Mode: config.Standalone, AdminListen: "tcp/0.0.0.0:2019"})
+		assert.False(t, admin.Disabled)
+		assert.Equal(t, "tcp/0.0.0.0:2019", admin.Listen)
+	})
+
 	t.Run("controller-only disables admin", func(t *testing.T) {
 		assert.True(t, buildCaddyAdminConfig(&config.Options{Mode: config.Controller}).Disabled)
+	})
+
+	t.Run("CADDY_ADMIN=off disables admin", func(t *testing.T) {
+		assert.True(t, buildCaddyAdminConfig(&config.Options{Mode: config.Standalone, AdminDisabled: true}).Disabled)
 	})
 }

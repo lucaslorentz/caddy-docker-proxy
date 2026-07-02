@@ -349,15 +349,25 @@ func (dockerLoader *DockerLoader) prepareServerConfig(server string) ([]byte, er
 		return nil, err
 	}
 
-	// Local loads happen in-process, so keep the admin API disabled unless the
-	// config explicitly enables it. Remote servers still need an admin endpoint
-	// for controller pushes.
-	if config.Admin == nil || config.Admin.Disabled {
-		if server == localServer {
-			config.Admin = &caddy.AdminConfig{Disabled: true}
-		} else {
-			config.Admin = &caddy.AdminConfig{Listen: getServerAdminListen(dockerLoader.options, server)}
+	// Remote servers always need a reachable admin endpoint for controller
+	// pushes, so an absent or disabled admin config falls back to the server
+	// address. The local instance loads in-process and leaves the decision to
+	// the config: an explicit admin config ("admin off" included) is respected,
+	// and an absent one gets Caddy's own default. CADDY_ADMIN supplies the
+	// local listen address or "off" - applied here because Caddy itself has no
+	// disable semantics for that variable.
+	if server == localServer {
+		if config.Admin == nil {
+			if dockerLoader.options.AdminDisabled {
+				config.Admin = &caddy.AdminConfig{Disabled: true}
+			} else if dockerLoader.options.AdminListen != "" {
+				config.Admin = &caddy.AdminConfig{Listen: dockerLoader.options.AdminListen}
+			} else {
+				config.Admin = &caddy.AdminConfig{Listen: defaultAdminListen}
+			}
 		}
+	} else if config.Admin == nil || config.Admin.Disabled {
+		config.Admin = &caddy.AdminConfig{Listen: getServerAdminListen(dockerLoader.options, server)}
 	}
 
 	// Re-apply our logging only to the local Caddy (the standalone self-push),
