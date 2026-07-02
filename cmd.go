@@ -120,10 +120,8 @@ func buildCaddyRunConfig(options *config.Options) *caddy.Config {
 	}
 }
 
-// buildCaddyAdminConfig builds Caddy's admin config. The admin API is disabled
-// when requested via CADDY_ADMIN=off, or in controller-only mode which serves
-// nothing. A CADDY_ADMIN address or the controller network pick the listen;
-// otherwise Caddy's own default applies (localhost:2019).
+// buildCaddyAdminConfig builds Caddy's admin config: disabled for CADDY_ADMIN=off
+// or controller-only mode, otherwise the configured or default listen.
 func buildCaddyAdminConfig(options *config.Options) *caddy.AdminConfig {
 	if options.AdminDisabled || options.Mode&config.Server != config.Server {
 		return &caddy.AdminConfig{Disabled: true}
@@ -146,8 +144,8 @@ func buildCaddyLoggingConfig(options *config.Options) *caddy.Logging {
 	case "json":
 		defaultLog.EncoderRaw = caddyconfig.JSONModuleObject(caddylogging.JSONEncoder{}, "format", "json", nil)
 	}
-	// When the admin endpoint is disabled - controller-only mode, or CADDY_ADMIN=off -
-	// drop the admin logger so Caddy doesn't warn that it's disabled on every start.
+	// Drop the admin logger when the admin endpoint is disabled, so Caddy doesn't
+	// warn that it's disabled on every start.
 	if options.AdminDisabled || options.Mode&config.Server != config.Server {
 		defaultLog.Exclude = append(defaultLog.Exclude, "admin")
 	}
@@ -157,10 +155,8 @@ func buildCaddyLoggingConfig(options *config.Options) *caddy.Logging {
 	}
 }
 
-// defaultAdminListen is the admin endpoint the plugin falls back to when none is
-// configured. It mirrors Caddy's own default (localhost:2019) in the plugin's
-// canonical "tcp/host:port" form, matching getServerAdminListen and
-// normalizeAdminListen.
+// defaultAdminListen mirrors Caddy's default (localhost:2019) in the plugin's
+// canonical "tcp/host:port" form (as used by getServerAdminListen).
 const defaultAdminListen = "tcp/localhost:2019"
 
 func getAdminListen(options *config.Options) string {
@@ -197,7 +193,6 @@ func getAdminListen(options *config.Options) string {
 			}
 		}
 	}
-	// No listen to enforce: use the default (Caddy's own default, localhost:2019).
 	return defaultAdminListen
 }
 
