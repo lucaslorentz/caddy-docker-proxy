@@ -349,13 +349,10 @@ func (dockerLoader *DockerLoader) prepareServerConfig(server string) ([]byte, er
 		return nil, err
 	}
 
-	// Remote servers always need a reachable admin endpoint for controller
-	// pushes, so an absent or disabled admin config falls back to the server
-	// address. The local instance loads in-process and leaves the decision to
-	// the config: an explicit admin config ("admin off" included) is respected,
-	// and an absent one gets Caddy's own default. CADDY_ADMIN supplies the
-	// local listen address or "off" - applied here because Caddy itself has no
-	// disable semantics for that variable.
+	// The local instance loads in-process, so an explicit admin config ("admin
+	// off" included) is respected and only an absent one is filled from
+	// CADDY_ADMIN or the default. Remote servers always need a reachable admin
+	// endpoint for controller pushes, so an absent or disabled one is overridden.
 	if server == localServer {
 		if config.Admin == nil {
 			if dockerLoader.options.AdminDisabled {
