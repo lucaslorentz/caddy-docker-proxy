@@ -1,0 +1,65 @@
+# Hardened variant of the quickstart.
+#
+# Caddy never mounts the Docker socket. The Docker API is exposed read-only
+# through docker-socket-proxy, so even a fully compromised Caddy container
+# gets container/network metadata only — never control of the Docker daemon
+# (which is root-equivalent on the host).
+#
+# docker-socket-proxy: https://github.com/Tecnativa/docker-socket-proxy
+
+services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    environment:
+      # caddy-docker-proxy only reads container/network metadata and the
+      # event stream. Everything else — including all mutating requests
+      # (POST=0) — stays blocked.
+      - CONTAINERS=1
+      - NETWORKS=1
+      - INFO=1
+      - POST=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - socket_proxy
+    restart: unless-stopped
+
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    ports:
+      - 80:80
+      - 443:443
+      - 443:443/udp
+    environment:
+      # Reach the Docker API through the proxy instead of a mounted socket.
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375
+      # Caddy sits on two networks; only "caddy" carries ingress traffic.
+      - CADDY_INGRESS_NETWORKS=caddy
+    networks:
+      - caddy
+      - socket_proxy
+    volumes:
+      # keep certificates across restarts (avoids Let's Encrypt rate limits)
+      - caddy_data:/data
+    restart: unless-stopped
+
+  # Example target service
+  whoami:
+    image: traefik/whoami
+    networks:
+      - caddy
+    labels:
+      caddy: whoami.example.com
+      caddy.reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: "internal"
+
+networks:
+  caddy:
+    name: caddy
+  # Caddy <-> socket proxy only. internal: true means no gateway and no
+  # outbound access: unreachable from other stacks or the internet.
+  socket_proxy:
+    internal: true
+
+volumes:
+  caddy_data: {}
