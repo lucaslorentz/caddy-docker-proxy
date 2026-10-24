@@ -102,6 +102,8 @@ networks:
 $ docker compose up -d
 ```
 Now, visit `https://whoami.example.com`. The site will be served [automatically over HTTPS](https://caddyserver.com/docs/automatic-https) with a certificate issued by Let's Encrypt or ZeroSSL.
+
+> **Security note:** the example above mounts the Docker socket directly, which gives the Caddy container root-equivalent access to the host. caddy-docker-proxy only needs read access to container/network metadata, so the socket can be exposed read-only via [docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy). See [`examples/socket-proxy.yaml`](examples/socket-proxy.yaml).
 		
 ## Labels to Caddyfile conversion
 Please first read the [Caddyfile Concepts](https://caddyserver.com/docs/caddyfile/concepts) documentation to understand the structure of a Caddyfile.
