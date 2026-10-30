@@ -131,11 +131,16 @@ func (g *CaddyfileGenerator) GenerateCaddyfile(logger *zap.Logger) ([]byte, []st
 						}
 					}
 				}
-				containerCaddyfile, err := g.getContainerCaddyfile(&container, logger)
-				if err == nil {
-					caddyfileBlock.Merge(containerCaddyfile)
+				details, err := dockerClient.ContainerInspect(context.Background(), container.ID);
+				if err != nil {
+					logger.Error("Failed to inspect Container", zap.String("container", container.ID), zap.Error(err))
 				} else {
-					logger.Error("Failed to get Container Caddyfile", zap.String("container", container.ID), zap.Error(err))
+					containerCaddyfile, err := g.getContainerCaddyfile(&container, &details, logger)
+					if err == nil {
+						caddyfileBlock.Merge(containerCaddyfile)
+					} else {
+						logger.Error("Failed to get Container Caddyfile", zap.String("container", container.ID), zap.Error(err))
+					}
 				}
 			}
 		} else {
