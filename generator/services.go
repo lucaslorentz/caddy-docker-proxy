@@ -2,6 +2,7 @@ package generator
 
 import (
 	"context"
+	"errors"
 
 	"github.com/lucaslorentz/caddy-docker-proxy/v2/caddyfile"
 	"github.com/moby/moby/api/types/swarm"
@@ -13,9 +14,16 @@ import (
 func (g *CaddyfileGenerator) getServiceCaddyfile(service *swarm.Service, logger *zap.Logger) (*caddyfile.Container, error) {
 	caddyLabels := g.filterLabels(service.Spec.Labels)
 
-	return labelsToCaddyfile(caddyLabels, service, func() ([]string, error) {
-		return g.getServiceProxyTargets(service, logger, true)
-	})
+	return labelsToCaddyfile(
+		caddyLabels,
+		service,
+		func() ([]string, error) {
+			return g.getServiceProxyTargets(service, logger, true)
+		},
+		func() ([]int, error) {
+			return nil, errors.New("detection of exposed ports is not implemeted for swarm")
+		},
+	)
 }
 
 func (g *CaddyfileGenerator) getServiceProxyTargets(service *swarm.Service, logger *zap.Logger, onlyIngressIps bool) ([]string, error) {

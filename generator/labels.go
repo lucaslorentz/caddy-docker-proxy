@@ -1,7 +1,9 @@
 package generator
 
 import (
+	"errors"
 	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -10,8 +12,9 @@ import (
 )
 
 type targetsProvider func() ([]string, error)
+type exposedPortsProvider func() ([]int, error)
 
-func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTargets targetsProvider) (*caddyfile.Container, error) {
+func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTargets targetsProvider, getExposedPorts exposedPortsProvider) (*caddyfile.Container, error) {
 	funcMap := sprig.TxtFuncMap()
 	funcMap["upstreams"] = func(options ...interface{}) (string, error) {
 		targets, err := getTargets()
@@ -22,6 +25,14 @@ func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTa
 				if protocol, isProtocol := param.(string); isProtocol {
 					target = protocol + "://" + target
 				} else if port, isPort := param.(int); isPort {
+					if port == 0 {
+						ports, portsErr := getExposedPorts()
+						if portsErr != nil {
+							err = errors.Join(err, portsErr)
+						} else {
+							port = slices.Min(ports)
+						}
+					}
 					target = target + ":" + strconv.Itoa(port)
 				}
 			}

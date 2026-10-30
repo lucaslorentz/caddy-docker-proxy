@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -9,12 +10,19 @@ import (
 	"go.uber.org/zap"
 )
 
-func (g *CaddyfileGenerator) getContainerCaddyfile(container *container.Summary, logger *zap.Logger) (*caddyfile.Container, error) {
+func (g *CaddyfileGenerator) getContainerCaddyfile(container *container.Summary, details *container.InspectResponse, logger *zap.Logger) (*caddyfile.Container, error) {
 	caddyLabels := g.filterLabels(container.Labels)
 
-	return labelsToCaddyfile(caddyLabels, container, func() ([]string, error) {
-		return g.getContainerIPAddresses(container, logger, true)
-	})
+	return labelsToCaddyfile(
+		caddyLabels,
+		container,
+		func() ([]string, error) {
+			return g.getContainerIPAddresses(container, logger, true)
+		},
+		func() ([]int, error) {
+			return g.getContainerExposedPorts(details, logger)
+		},
+	)
 }
 
 func (g *CaddyfileGenerator) getContainerIPAddresses(container *container.Summary, logger *zap.Logger, onlyIngressIps bool) ([]string, error) {
@@ -66,4 +74,20 @@ func containerName(container *container.Summary) string {
 		return strings.TrimPrefix(container.Names[0], "/")
 	}
 	return container.ID
+}
+
+func (g *CaddyfileGenerator) getContainerExposedPorts(container *container.InspectResponse, logger *zap.Logger) ([]int, error) {
+	ports := []int{}
+
+	for port, _ := range container.Config.ExposedPorts {
+		if port.Proto() == "tcp" {
+			ports = append(ports, int(port.Num()))
+		}
+	}
+
+	if len(ports) == 0 {
+		return nil, fmt.Errorf("container %v doesn't expose any TCP ports", container.ID)
+	}
+
+	return ports, nil
 }
