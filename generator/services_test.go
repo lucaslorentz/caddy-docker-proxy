@@ -595,3 +595,43 @@ func TestServiceTasks_OneClientTaskListError(t *testing.T) {
 	assert.Equal(t, expectedCaddyfile, string(caddyfileBytes),
 		"manager client's task IP must still reach the Caddyfile when a peer client's TaskList errors")
 }
+
+// lowestExposedPort is not supported for swarm services: the service is
+// skipped and logged, without affecting other services.
+func TestServices_LowestExposedPortIsNotSupported(t *testing.T) {
+	newService := func(name string, reverseProxy string) swarm.Service {
+		return swarm.Service{
+			Spec: swarm.ServiceSpec{
+				Annotations: swarm.Annotations{
+					Name: name,
+					Labels: map[string]string{
+						fmtLabel("%s"):               name + ".testdomain.com",
+						fmtLabel("%s.reverse_proxy"): reverseProxy,
+					},
+				},
+			},
+			Endpoint: swarm.Endpoint{
+				VirtualIPs: []swarm.EndpointVirtualIP{
+					{
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+		}
+	}
+
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ServicesData = []swarm.Service{
+		newService("auto", "{{upstreams lowestExposedPort}}"),
+		newService("explicit", "{{upstreams 8080}}"),
+	}
+
+	const expectedCaddyfile = "explicit.testdomain.com {\n" +
+		"	reverse_proxy explicit:8080\n" +
+		"}\n"
+
+	const expectedLogs = commonLogs +
+		`ERROR	Failed to get Swarm service caddyfile	{"service": "auto", "error": "template: :1:12: executing \"\" at <lowestExposedPort>: error calling lowestExposedPort: not supported for swarm services, specify the port explicitly"}` + newLine
+
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
+}

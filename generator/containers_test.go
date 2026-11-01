@@ -444,3 +444,91 @@ func TestContainers_WithSnippets(t *testing.T) {
 
 	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
 }
+
+func TestContainers_LowestExposedPort(t *testing.T) {
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []container.Summary{
+		{
+			Names: []string{
+				"/container-name",
+			},
+			NetworkSettings: &container.NetworkSettingsSummary{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": {
+						IPAddress: netip.MustParseAddr("172.17.0.2"),
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Ports: []container.PortSummary{
+				{PrivatePort: 9090, Type: "tcp"},
+				{PrivatePort: 53, Type: "udp"},
+				{PrivatePort: 8080, Type: "tcp"},
+			},
+			Labels: map[string]string{
+				fmtLabel("%s"):               "testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams https lowestExposedPort}}",
+			},
+		},
+	}
+
+	const expectedCaddyfile = "testdomain.com {\n" +
+		"	reverse_proxy https://172.17.0.2:8080\n" +
+		"}\n"
+
+	const expectedLogs = commonLogs
+
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
+}
+
+func TestContainers_LowestExposedPortWithoutTcpPorts(t *testing.T) {
+	_, err := getContainerLowestExposedPort(&container.Summary{
+		Names: []string{"/container-name"},
+		Ports: []container.PortSummary{{PrivatePort: 53, Type: "udp"}},
+	})
+
+	if err == nil {
+		t.Fatal("expected an error for a container without exposed TCP ports")
+	}
+}
+
+// A container whose lowestExposedPort lookup fails is skipped and logged,
+// without affecting other containers.
+func TestContainers_LowestExposedPortFailureDoesNotAffectOthers(t *testing.T) {
+	newContainer := func(id string, name string, ip string, ports []container.PortSummary) container.Summary {
+		return container.Summary{
+			ID:    id,
+			Names: []string{"/" + name},
+			NetworkSettings: &container.NetworkSettingsSummary{
+				Networks: map[string]*network.EndpointSettings{
+					"caddy-network": {
+						IPAddress: netip.MustParseAddr(ip),
+						NetworkID: caddyNetworkID,
+					},
+				},
+			},
+			Ports: ports,
+			Labels: map[string]string{
+				fmtLabel("%s"):               name + ".testdomain.com",
+				fmtLabel("%s.reverse_proxy"): "{{upstreams lowestExposedPort}}",
+			},
+		}
+	}
+
+	dockerClient := createBasicDockerClientMock()
+	dockerClient.ContainersData = []container.Summary{
+		newContainer("CONTAINER-1", "no-ports", "172.17.0.2", nil),
+		newContainer("CONTAINER-2", "udp-only", "172.17.0.3", []container.PortSummary{{PrivatePort: 53, Type: "udp"}}),
+		newContainer("CONTAINER-3", "with-port", "172.17.0.4", []container.PortSummary{{PrivatePort: 3000, Type: "tcp"}}),
+	}
+
+	const expectedCaddyfile = "with-port.testdomain.com {\n" +
+		"	reverse_proxy 172.17.0.4:3000\n" +
+		"}\n"
+
+	const expectedLogs = commonLogs +
+		`ERROR	Failed to get Container Caddyfile	{"container": "CONTAINER-1", "error": "template: :1:12: executing \"\" at <lowestExposedPort>: error calling lowestExposedPort: container no-ports doesn't expose any TCP port"}` + newLine +
+		`ERROR	Failed to get Container Caddyfile	{"container": "CONTAINER-2", "error": "template: :1:12: executing \"\" at <lowestExposedPort>: error calling lowestExposedPort: container udp-only doesn't expose any TCP port"}` + newLine
+
+	testGeneration(t, dockerClient, nil, expectedCaddyfile, expectedLogs)
+}

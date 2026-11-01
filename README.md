@@ -360,6 +360,26 @@ caddy.reverse_proxy: "{{upstreams}}"
 reverse_proxy "192.168.0.1 192.168.0.2"
 ```
 
+### lowestExposedPort
+
+Returns the lowest TCP port exposed by the current container (`EXPOSE` in the image, or `--expose`/`expose:` at runtime). It is meant to be used as the port argument of `upstreams`, so the port doesn't need to be hardcoded in the label.
+
+Only available for containers. For swarm services it fails with an error, and the port must be specified explicitly.
+
+Examples:
+```
+caddy.reverse_proxy: {{upstreams lowestExposedPort}}
+↓
+reverse_proxy 192.168.0.1:8080 192.168.0.2:8080
+```
+```
+caddy.reverse_proxy: {{upstreams https lowestExposedPort}}
+↓
+reverse_proxy https://192.168.0.1:8443 https://192.168.0.2:8443
+```
+
+When the container exposes more than one TCP port, the lowest one is used. If it's not the right one, specify the port explicitly.
+
 ## Examples
 Proxying all requests to a domain to the container
 ```yml
