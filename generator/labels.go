@@ -1,9 +1,7 @@
 package generator
 
 import (
-	"errors"
 	"sort"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -12,9 +10,9 @@ import (
 )
 
 type targetsProvider func() ([]string, error)
-type exposedPortsProvider func() ([]int, error)
+type portProvider func() (int, error)
 
-func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTargets targetsProvider, getExposedPorts exposedPortsProvider) (*caddyfile.Container, error) {
+func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTargets targetsProvider, getLowestExposedPort portProvider) (*caddyfile.Container, error) {
 	funcMap := sprig.TxtFuncMap()
 	funcMap["upstreams"] = func(options ...interface{}) (string, error) {
 		targets, err := getTargets()
@@ -25,14 +23,6 @@ func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTa
 				if protocol, isProtocol := param.(string); isProtocol {
 					target = protocol + "://" + target
 				} else if port, isPort := param.(int); isPort {
-					if port == 0 {
-						ports, portsErr := getExposedPorts()
-						if portsErr != nil {
-							err = errors.Join(err, portsErr)
-						} else {
-							port = slices.Min(ports)
-						}
-					}
 					target = target + ":" + strconv.Itoa(port)
 				}
 			}
@@ -41,6 +31,7 @@ func labelsToCaddyfile(labels map[string]string, templateData interface{}, getTa
 		sort.Strings(transformed)
 		return strings.Join(transformed, " "), err
 	}
+	funcMap["lowestExposedPort"] = getLowestExposedPort
 	funcMap["http"] = func() string { return "http" }
 	funcMap["https"] = func() string { return "https" }
 	funcMap["h2c"] = func() string { return "h2c" }

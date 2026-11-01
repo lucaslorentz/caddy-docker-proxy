@@ -20,8 +20,8 @@ func (g *CaddyfileGenerator) getServiceCaddyfile(service *swarm.Service, logger 
 		func() ([]string, error) {
 			return g.getServiceProxyTargets(service, logger, true)
 		},
-		func() ([]int, error) {
-			return nil, errors.New("detection of exposed ports is not implemeted for swarm")
+		func() (int, error) {
+			return 0, errors.New("not supported for swarm services, specify the port explicitly")
 		},
 	)
 }
