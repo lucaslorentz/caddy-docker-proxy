@@ -539,10 +539,10 @@ Check the **examples** folder to see how to set them in a Docker Compose file.
 
 ## Viewing the generated Caddyfile
 
-The generated Caddyfile is automatically saved to `Caddyfile.autosave` inside Caddy's config directory whenever it changes. The full path is logged at startup and depends on the environment (typically `/config/caddy/Caddyfile.autosave` in Docker). You can inspect it to troubleshoot label-to-Caddyfile conversion issues:
+The generated Caddyfile is automatically saved to `Caddyfile.autosave` inside Caddy's config directory whenever it changes. The full path is logged at startup and depends on the environment (typically `/config/caddy/Caddyfile.autosave` in Docker). To print the file on the host for a container named `caddy`, run:
 
 ```sh
-docker exec <caddy-container> cat /config/caddy/Caddyfile.autosave
+docker cp caddy:/config/caddy/Caddyfile.autosave - | tar -xOf -
 ```
 
 ## Docker images
